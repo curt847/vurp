@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RollWatch v2</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0c0f; --surface:#111418; --surface2:#181d23; --border:#1e2530;
+    --text:#e2e8f0; --muted:#7a8fa6; --accent:#00d4ff;
+    --green:#00e88a; --yellow:#f5c842; --orange:#ff8c42; --red:#ff3d5a;
+    --red-dim:rgba(255,61,90,0.12); --orange-dim:rgba(255,140,66,0.12);
+    --yellow-dim:rgba(245,200,66,0.12); --green-dim:rgba(0,232,138,0.08);
+    --teal:#00c8b4; --purple:#a78bfa; --blue:#3b9eff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;min-height:100vh}
+
+  /* HEADER */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-left{display:flex;align-items:center;gap:14px}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--accent);letter-spacing:-0.5px}
+  .logo span{color:var(--muted);font-weight:400}
+  .version{color:var(--muted);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:3px}
+  .last-refresh{color:var(--muted);font-size:10px}
+  .header-right{display:flex;align-items:center;gap:10px}
+  .conn-badge{display:flex;align-items:center;gap:6px;font-size:10px}
+  .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .btn{background:var(--accent);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:7px 14px;border-radius:4px;cursor:pointer;transition:opacity .2s;letter-spacing:.5px}
+  .btn:hover{opacity:.85}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);opacity:1}
+  .btn-auto{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:10px}
+  .btn-auto.on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+
+  /* STATS BAR */
+  .stats-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .stat{background:var(--surface);padding:10px 8px;text-align:center}
+  .stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
+  .stat-lbl{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px}
+  .stat-red .stat-val{color:var(--red)}
+  .stat-orange .stat-val{color:var(--orange)}
+  .stat-yellow .stat-val{color:var(--yellow)}
+  .stat-green .stat-val{color:var(--green)}
+  .stat-accent .stat-val{color:var(--accent)}
+
+  /* PRICE TICKER BAR */
+  .flow-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 20px;display:flex;align-items:center;gap:12px;overflow:hidden}
+  .flow-bar-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+  .flow-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;flex:1}
+  .flow-scroll::-webkit-scrollbar{display:none}
+  .flow-item{display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:10px}
+  .flow-ticker-label{font-weight:700;color:var(--text)}
+  .price-up{color:var(--green)}
+  .price-dn{color:var(--red)}
+  .price-neu{color:var(--muted)}
+
+  /* CONTROLS */
+  .controls{padding:10px 20px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+  .filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .15s}
+  .filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+  .filter-btn.f-red.active{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+  .filter-btn.f-orange.active{border-color:var(--orange);color:var(--orange);background:var(--orange-dim)}
+  .filter-btn.f-yellow.active{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-dim)}
+  .filter-btn.f-ern.active{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.1)}
+  .sort-wrap{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:10px;margin-left:auto}
+  .sort-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 8px;border-radius:3px;outline:none;cursor:pointer}
+  .search-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 10px;border-radius:3px;outline:none;width:140px}
+  .search-input:focus{border-color:var(--accent)}
+
+  /* TABLE */
+  /* table-wrap and table defined above with thead */
+  thead th{background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;user-select:none;position:sticky;top:0;cursor:pointer;z-index:10}
+  .table-wrap{padding:0 20px 40px;overflow-x:auto;margin-top:0}
+  table{width:100%;border-collapse:collapse;margin-top:0}
+  thead th:hover{color:var(--accent)}
+  tr.row{border-bottom:1px solid var(--border);transition:background .1s}
+  tr.row:hover{background:var(--surface2)}
+  tr.row-itm{background:rgba(255,61,90,.03)}
+  tr.row-itm:hover{background:rgba(255,61,90,.07)}
+  tr.expiry-hdr td{background:var(--surface2);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:6px 10px;border-top:2px solid var(--border)}
+  td{padding:8px 10px;white-space:nowrap;vertical-align:middle}
+
+  .ticker-name{font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.5px;text-transform:uppercase}
+  .ern-warn{font-size:8px;color:var(--purple);display:block;margin-top:1px}
+  .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
+  /* Put Credit + Call Debit = BULLISH — light blue */
+  .type-P-cr{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.4)}
+  .type-C-db{background:transparent;color:#63b3ed;border:1px solid rgba(99,179,237,.45);opacity:.85}
+  /* Call Credit + Put Debit = BEARISH — purple */
+  .type-C-cr{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.4)}
+  .type-P-db{background:transparent;color:var(--purple);border:1px solid rgba(167,139,250,.45);opacity:.85}
+  /* Covered call — muted gray */
+  .type-cc{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
+  /* Long call — green */
+  .type-long-c{background:rgba(0,232,138,.12);color:var(--green);border:1px solid rgba(0,232,138,.35)}
+  /* Long put — yellow */
+  .type-long-p{background:rgba(245,200,66,.12);color:var(--yellow);border:1px solid rgba(245,200,66,.35)}
+  /* Legacy fallbacks */
+  .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
+  .type-P{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.35)}
+  .strike-range{color:var(--text);font-size:13px}
+  .dte-val{font-weight:500}
+  .dte-near{color:var(--orange)}
+  .dte-urgent{color:var(--red);font-weight:700}
+  .stock-itm{color:var(--red);font-weight:700}
+  .stock-atm{color:var(--yellow);font-weight:700}
+  .stock-otm{color:var(--green)}
+  .stock-chg{font-size:9px;display:block}
+  .delta-cell{font-weight:700;font-size:12px}
+  .alert-red{color:var(--red)}
+  .alert-orange{color:var(--orange)}
+  .alert-yellow{color:var(--yellow)}
+  .alert-green{color:var(--green)}
+  .iv-val{color:var(--muted)}
+  .iv-high{color:var(--orange)}
+  .pnl-pos{color:var(--green);font-weight:600}
+  .pnl-neg{color:var(--red);font-weight:600}
+  .pnl-neu{color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.5px}
+  .pill-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,90,.3)}
+  .pill-orange{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,140,66,.3)}
+  .pill-yellow{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,200,66,.3)}
+  .pill-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.2)}
+  .pill-purple{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+  /* Profit pills — blue spectrum */
+  .pill-close{background:rgba(59,158,255,.15);color:#3b9eff;border:1px solid rgba(59,158,255,.4);animation:glow-blue 1.5s ease-in-out infinite}
+  .pill-profit{background:rgba(59,158,255,.1);color:#3b9eff;border:1px solid rgba(59,158,255,.3)}
+  .pill-watch-profit{background:rgba(59,158,255,.06);color:#5aabff;border:1px solid rgba(59,158,255,.2)}
+  @keyframes glow-blue{0%,100%{box-shadow:0 0 4px rgba(59,158,255,.3)}50%{box-shadow:0 0 10px rgba(59,158,255,.7)}}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .dot-red{background:var(--red);box-shadow:0 0 5px var(--red)}
+  .dot-orange{background:var(--orange);box-shadow:0 0 5px var(--orange)}
+  .dot-yellow{background:var(--yellow)}
+  .dot-green{background:var(--green)}
+  .action-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .action-btn.roll{border-color:rgba(255,140,66,.5);color:var(--orange)}
+  .action-btn.roll:hover{background:var(--orange-dim)}
+  .action-btn.closebtn{border-color:rgba(0,232,138,.4);color:var(--green)}
+  .action-btn.closebtn:hover{background:var(--green-dim)}
+  .bid-ask{font-size:10px;color:var(--muted)}
+  .bid-ask b{color:var(--text)}
+  .roll-cost{font-size:10px;font-weight:600}
+  .rc-pos{color:var(--green)}
+  .rc-neg{color:var(--red)}
+  .flow-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
+  .fb-bull{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.25)}
+  .fb-bear{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+  .fb-neu{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
+  .spin{display:inline-block;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+  .modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:16px;color:var(--orange)}
+  .modal-section{color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+  .modal-row{display:flex;justify-content:space-between;padding:5px 0;font-size:11px}
+  .modal-label{color:var(--muted)}
+  .modal-val{color:var(--text);font-weight:600}
+  .modal-close{margin-top:16px;width:100%}
+
+  /* Position editor modal */
+  .pos-modal{width:560px}
+  .pos-modal .modal-title{color:var(--accent)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .form-group{display:flex;flex-direction:column;gap:4px}
+  .form-group.full{grid-column:1/-1}
+  .form-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px}
+  .form-input{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 10px;border-radius:4px;outline:none;width:100%}
+  .form-input:focus{border-color:var(--accent)}
+  .form-select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 10px;border-radius:4px;outline:none;width:100%;cursor:pointer}
+  .form-select:focus{border-color:var(--accent)}
+  .form-actions{display:flex;gap:8px;margin-top:16px}
+  .form-actions .btn{flex:1}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-danger:hover{opacity:.85}
+  .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent);opacity:1}
+  .close-x{background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;transition:all .15s}
+  .close-x:hover{color:var(--red);background:var(--red-dim)}
+  .edit-x{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 5px;border-radius:3px;line-height:1;transition:all .15s}
+  .edit-x:hover{color:var(--accent)}
+  .storage-badge{font-size:9px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,232,138,.2);padding:2px 7px;border-radius:3px}
+
+  .watch-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:130px;position:relative;transition:border-color .15s}
+  .watch-card:hover{border-color:var(--accent)}
+  .watch-card.has-position{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.04)}
+  .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)}
+  .watch-card .wc-price{font-size:12px;font-weight:600;margin-top:2px}
+  .watch-card .wc-change{font-size:10px;margin-top:1px}
+  .watch-card .wc-iv{font-size:9px;color:var(--muted);margin-top:3px}
+  .watch-card .wc-pos{font-size:9px;margin-top:4px;padding:2px 6px;border-radius:3px;display:inline-block}
+  .watch-card .wc-pos.in{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+  .watch-card .wc-pos.out{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .watch-card .wc-remove{position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
+  .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
+
+  .footer-note{text-align:center;color:var(--muted);font-size:9px;padding:16px;border-top:1px solid var(--border);letter-spacing:.5px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">ROLL<span>WATCH</span></div>
+    <span class="version">v2.7</span>
+    <div class="last-refresh" id="lastRefresh">Not yet refreshed — hit ⟳</div>
+  </div>
+  <div class="header-right">
+    <div class="conn-badge"><div class="conn-dot"></div><span style="color:var(--green);font-size:10px">UW CONNECTED</span></div>
+    <span class="storage-badge" id="storageBadge">💾 LOCAL</span>
+    <span class="storage-badge" id="driveBadge" style="background:rgba(66,133,244,.1);border-color:rgba(66,133,244,.3);color:#4285f4;cursor:pointer" onclick="driveSync()">☁ DRIVE</span>
+    <button class="btn btn-secondary" onclick="exportPositions()" style="font-size:10px;padding:5px 10px">⬇ EXPORT</button>
+    <button class="btn" onclick="showAddModal()" style="background:var(--green);font-size:11px">+ ADD</button>
+    <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
+    <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat stat-red"><div class="stat-val" id="s-red">—</div><div class="stat-lbl">🔴 Roll Now</div></div>
+  <div class="stat stat-orange"><div class="stat-val" id="s-orange">—</div><div class="stat-lbl">🟠 Watch</div></div>
+  <div class="stat stat-yellow"><div class="stat-val" id="s-yellow">—</div><div class="stat-lbl">🟡 Radar</div></div>
+  <div class="stat stat-green"><div class="stat-val" id="s-green">—</div><div class="stat-lbl">✅ Healthy</div></div>
+  <div class="stat stat-accent"><div class="stat-val" id="s-total">59</div><div class="stat-lbl">Positions</div></div>
+  <div class="stat"><div class="stat-val" id="s-itm" style="color:var(--red)">—</div><div class="stat-lbl">ITM</div></div>
+  <div class="stat"><div class="stat-val" id="s-collateral" style="color:var(--text);font-size:15px">$65.5K</div><div class="stat-lbl">Collateral</div></div>
+  <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple);font-size:18px">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
+  <div class="stat"><div class="stat-val" id="s-flow" style="color:var(--red);font-size:18px">—</div><div class="stat-lbl">⚠ Contra Flow</div></div>
+  <div class="stat" style="cursor:pointer" onclick="showBaselineModal()" title="Click to set baseline">
+    <div class="stat-val" id="s-portval" style="color:var(--text);font-size:13px">—</div>
+    <div id="s-portpnl" style="font-size:10px;color:var(--muted);margin-top:2px">click to set baseline</div>
+    <div class="stat-lbl">Portfolio</div>
+  </div>
+</div>
+
+<div class="flow-bar">
+  <div class="flow-bar-label">LIVE</div>
+  <div class="flow-scroll" id="priceTicker"><span style="color:var(--muted);font-size:10px">Hit ⟳ Refresh Live to load prices &amp; flow…</span></div>
+</div>
+
+<div class="controls">
+  <button class="filter-btn active" onclick="setFilter('all',this)">ALL</button>
+  <button class="filter-btn f-red" onclick="setFilter('red',this)">🔴 ROLL</button>
+  <button class="filter-btn f-orange" onclick="setFilter('orange',this)">🟠 WATCH</button>
+  <button class="filter-btn f-yellow" onclick="setFilter('yellow',this)">🟡 RADAR</button>
+  <button class="filter-btn" onclick="setFilter('green',this)">✅ OK</button>
+  <button class="filter-btn" onclick="setFilter('close',this)" style="border-color:rgba(59,158,255,.3);color:#3b9eff">⭐ CLOSE</button>
+  <button class="filter-btn" onclick="setFilter('profit',this)" style="border-color:rgba(59,158,255,.2);color:#5aabff">🟦 PROFIT</button>
+  <button class="filter-btn" onclick="setFilter('calls',this)">CALLS</button>
+  <button class="filter-btn" onclick="setFilter('puts',this)">PUTS</button>
+  <button class="filter-btn" onclick="setFilter('itm',this)">ITM</button>
+  <button class="filter-btn f-ern" onclick="setFilter('earnings',this)">⚠ EARNINGS</button>
+  <button class="filter-btn" onclick="setFilter('flow',this)">⚠ CONTRA FLOW</button>
+  <div class="sort-wrap">SORT:
+    <select class="sort-select" id="sortSelect" onchange="renderTable()">
+      <option value="alert">Alert Level</option>
+      <option value="expiry">Expiry Date</option>
+      <option value="dte">DTE ↑</option>
+      <option value="collateral">Collateral ↓</option>
+      <option value="delta">Delta ↓</option>
+      <option value="ticker">Ticker A-Z</option>
+    </select>
+  </div>
+  <input class="search-input" type="text" id="searchInput" placeholder="Search ticker…" oninput="renderTable()"/>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>DTE</th>
+    <th>Stock $</th><th>Δ Short</th><th>IV</th><th>Extrinsic</th>
+    <th>Spread Mid</th><th>% Gain</th><th>Bid / Ask</th><th>Roll Cost</th><th>Collateral</th>
+    <th>Status</th><th>Flow</th><th>Action</th>
+  </tr></thead>
+  <tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<div style="padding:0 20px 8px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Stock Positions</div>
+    <button class="action-btn" onclick="showAddStockModal()" style="border-color:var(--accent);color:var(--accent)">+ ADD STOCK</button>
+  </div>
+  <table id="stockTable" style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Ticker</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Shares</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Cost Basis</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Current $</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Mkt Value</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Unreal G/L</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Day %</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)"></th>
+    </tr></thead>
+    <tbody id="stockBody"></tbody>
+  </table>
+</div>
+
+<!-- EXPOSURE SUMMARY TABLE -->
+<div style="padding:0 20px 20px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:8px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Ticker Exposure</div>
+    <span style="color:var(--muted);font-size:9px">ranked by collateral · close cost color: 🟢 &lt;25% · 🟠 25–50% · 🔴 &gt;50% of collateral</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Ticker</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Positions</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Contracts</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Collateral</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">To Close</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">% of Collateral</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Concentration</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Alert</th>
+    </tr></thead>
+    <tbody id="exposureBody"></tbody>
+  </table>
+</div>
+
+<!-- WATCH LIST -->
+<div style="padding:0 20px 20px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+      <input id="watchInput" class="search-input" placeholder="Add ticker…" style="width:120px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addWatchTicker()"/>
+      <button class="action-btn" onclick="addWatchTicker()" style="border-color:var(--accent);color:var(--accent)">+ ADD</button>
+    </div>
+  </div>
+  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+</div>
+
+<div class="footer-note">
+  ROLLWATCH v2.1 — Spreads: ≥0.75 🔴 ROLL | 0.65–0.75 🟠 WATCH | 0.55–0.65 🟡 RADAR — Long Options: &lt;0.15Δ 🔴 FADING | &lt;0.25Δ 🟠 WATCH — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.) — Positions stored locally in browser
+</div>
+
+<div class="modal-overlay" id="rollModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <button class="btn modal-close" onclick="closeModal()">CLOSE</button>
+  </div>
+</div>
+
+<!-- BASELINE MODAL -->
+<div class="modal-overlay" id="baselineModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-title" style="color:var(--accent)">📊 Portfolio Baseline</div>
+    <p style="color:var(--muted);font-size:11px;margin-bottom:16px;line-height:1.6">
+      Enter your total account value right now. The dashboard will track P&L from this point using live spread mids and stock prices. Update anytime — each update resets the baseline.
+    </p>
+    <div class="form-group full" style="margin-bottom:12px">
+      <label class="form-label">Total Account Value $</label>
+      <input class="form-input" id="baselineInput" type="number" step="100" placeholder="e.g. 47500"/>
+    </div>
+    <div style="color:var(--muted);font-size:10px;margin-bottom:16px" id="baselineCurrentEst"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeBaselineModal()">CANCEL</button>
+      <button class="btn" onclick="saveBaseline()" style="background:var(--accent);color:#000">SET BASELINE</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK POSITION MODAL -->
+<div class="modal-overlay" id="stockModal">
+  <div class="modal" style="width:400px">
+    <div class="modal-title" id="stockModalTitle" style="color:var(--accent)">+ Add Stock Position</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Ticker</label>
+        <input class="form-input" id="fs-ticker" placeholder="e.g. ONDS" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Shares</label>
+        <input class="form-input" id="fs-shares" type="number" placeholder="e.g. 8000"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Cost Basis $ (per share)</label>
+        <input class="form-input" id="fs-cost" type="number" step="0.01" placeholder="e.g. 9.53"/>
+      </div>
+    </div>
+    <div id="stockFormError" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeStockModal()">CANCEL</button>
+      <button class="btn btn-danger" id="stockDeleteBtn" onclick="deleteStock()" style="display:none">✕ REMOVE</button>
+      <button class="btn" onclick="saveStock()" style="background:var(--accent);color:#000">SAVE</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="posModal">
+  <div class="modal pos-modal">
+    <div class="modal-title" id="posModalTitle">+ Add Position</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Ticker</label>
+        <input class="form-input" id="f-ticker" placeholder="e.g. PLTR" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Position Type</label>
+        <select class="form-select" id="f-postype" onchange="onPosTypeChange()">
+          <option value="spread_credit">Credit Spread</option>
+          <option value="spread_debit">Debit Spread</option>
+          <option value="covered_call">Covered Call</option>
+          <option value="long_call">Long Call</option>
+          <option value="long_put">Long Put</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Option Type</label>
+        <select class="form-select" id="f-type">
+          <option value="P">PUT</option>
+          <option value="C">CALL</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="f-short-label">Short Strike $</label>
+        <input class="form-input" id="f-short" type="number" placeholder="e.g. 150"/>
+      </div>
+      <div class="form-group long-strike-group">
+        <label class="form-label">Long Strike $</label>
+        <input class="form-input" id="f-long" type="number" placeholder="e.g. 140"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contracts</label>
+        <input class="form-input" id="f-cts" type="number" placeholder="e.g. 3" min="1"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expiry Date</label>
+        <input class="form-input" id="f-expiry" type="date"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Open Premium $ (per share — credit received or debit paid)</label>
+        <input class="form-input" id="f-open" type="number" step="0.01" placeholder="e.g. 4.33"/>
+      </div>
+    </div>
+    <div id="posCollateralPreview" style="color:var(--muted);font-size:10px;margin-bottom:10px;display:none">
+      📐 Cost Basis / Collateral: <span id="collateralCalc" style="color:var(--accent);font-weight:700"></span>
+    </div>
+    <div id="posFormError" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closePosModal()">CANCEL</button>
+      <button class="btn btn-danger" id="posDeleteBtn" onclick="deletePosition()" style="display:none">✕ CLOSE POSITION</button>
+      <button class="btn" id="posSaveBtn" onclick="savePosition()" style="background:var(--green)">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// POSITIONS
+// ══════════════════════════════════════════
+const POSITIONS = [
+  {ticker:"USO", type:"C",short:140,long:144,cts:2,dte:6,  expiry:"2026-04-08",stock:137.92,iv:99.8, remain:39.0,gain:-12.2,collateral:800, open:1.56,shortMid:6.13,  longMid:4.57},
+  {ticker:"BSX", type:"C",short:63, long:65, cts:2,dte:22, expiry:"2026-04-24",stock:62.82, iv:44.3, remain:42.5,gain:-2.4, collateral:400, open:0.85,shortMid:2.65,  longMid:1.80},
+  {ticker:"INTC",type:"P",short:47, long:45, cts:5,dte:22, expiry:"2026-04-24",stock:50.38, iv:74.5, remain:34.9,gain:47.1, collateral:1000,open:0.70,shortMid:2.09,  longMid:1.39},
+  {ticker:"VRT", type:"P",short:245,long:240,cts:1,dte:22, expiry:"2026-04-24",stock:261.29,iv:72.9, remain:41.4,gain:5.9,  collateral:500, open:2.07,shortMid:11.07, longMid:9.00},
+  {ticker:"ADBE",type:"C",short:245,long:250,cts:1,dte:29, expiry:"2026-05-01",stock:242.92,iv:37.7, remain:46.6,gain:-5.0, collateral:500, open:2.33,shortMid:9.55,  longMid:7.22},
+  {ticker:"LLY", type:"P",short:970,long:960,cts:1,dte:29, expiry:"2026-05-01",stock:935.58,iv:31.8, remain:87.0,gain:-53.4,collateral:1000,open:8.70,shortMid:63.00, longMid:54.30},
+  {ticker:"MRK", type:"P",short:118,long:116,cts:2,dte:29, expiry:"2026-05-01",stock:120.87,iv:33.6, remain:26.5,gain:26.4, collateral:400, open:0.53,shortMid:3.04,  longMid:2.51},
+  {ticker:"NOW", type:"C",short:105,long:110,cts:1,dte:29, expiry:"2026-05-01",stock:102.00,iv:61.1, remain:38.0,gain:15.6, collateral:500, open:1.90,shortMid:5.65,  longMid:3.75},
+  {ticker:"GLW", type:"P",short:133,long:131,cts:2,dte:36, expiry:"2026-05-08",stock:147.92,iv:76.6, remain:21.5,gain:33.8, collateral:400, open:0.43,shortMid:7.40,  longMid:6.97},
+  {ticker:"IONQ",type:"C",short:30, long:31, cts:2,dte:36, expiry:"2026-05-08",stock:29.30, iv:95.1, remain:56.0,gain:-51.4,collateral:200, open:0.56,shortMid:3.10,  longMid:2.54},
+  {ticker:"AMD", type:"P",short:220,long:210,cts:4,dte:43, expiry:"2026-05-15",stock:217.50,iv:54.9, remain:50.1,gain:-37.5,collateral:4000,open:5.01,shortMid:17.13, longMid:12.12},
+  {ticker:"BA",  type:"P",short:210,long:205,cts:1,dte:43, expiry:"2026-05-15",stock:208.22,iv:38.6, remain:65.3,gain:-31.6,collateral:500, open:3.26,shortMid:12.20, longMid:8.94},
+  {ticker:"CRM", type:"C",short:190,long:195,cts:1,dte:43, expiry:"2026-05-15",stock:187.18,iv:39.7, remain:43.0,gain:4.4,  collateral:500, open:2.15,shortMid:8.93,  longMid:6.78},
+  {ticker:"DUOL",type:"C",short:105,long:110,cts:1,dte:43, expiry:"2026-05-15",stock:96.54, iv:91.1, remain:35.0,gain:0.0,  collateral:500, open:1.75,shortMid:8.70,  longMid:6.95},
+  {ticker:"FLUT",type:"C",short:105,long:110,cts:1,dte:43, expiry:"2026-05-15",stock:106.38,iv:66.7, remain:45.0,gain:-13.6,collateral:500, open:2.25,shortMid:10.40, longMid:8.05},
+  {ticker:"IBM", type:"P",short:245,long:235,cts:2,dte:43, expiry:"2026-05-15",stock:248.16,iv:42.9, remain:36.3,gain:27.5, collateral:2000,open:3.63,shortMid:12.73, longMid:9.10},
+  {ticker:"JPM", type:"P",short:290,long:285,cts:1,dte:43, expiry:"2026-05-15",stock:294.60,iv:32.6, remain:37.8,gain:24.4, collateral:500, open:1.89,shortMid:10.82, longMid:8.93},
+  {ticker:"LASR",type:"P",short:70, long:65, cts:2,dte:43, expiry:"2026-05-15",stock:60.12, iv:91.6, remain:39.9,gain:23.3, collateral:1000,open:1.99,shortMid:13.74, longMid:11.75},
+  {ticker:"MS",  type:"P",short:175,long:170,cts:1,dte:43, expiry:"2026-05-15",stock:165.81,iv:37.3, remain:56.4,gain:-6.5, collateral:500, open:2.82,shortMid:13.50, longMid:10.68},
+  {ticker:"PLTR",type:"P",short:150,long:140,cts:3,dte:43, expiry:"2026-05-15",stock:148.46,iv:56.2, remain:43.3,gain:30.4, collateral:3000,open:4.33,shortMid:12.28, longMid:7.95},
+  {ticker:"RDDT",type:"P",short:145,long:140,cts:1,dte:43, expiry:"2026-05-15",stock:136.00,iv:81.7, remain:59.6,gain:6.9,  collateral:500, open:2.98,shortMid:20.55, longMid:17.57},
+  {ticker:"WDAY",type:"C",short:130,long:135,cts:1,dte:43, expiry:"2026-05-15",stock:132.26,iv:47.3, remain:33.7,gain:19.8, collateral:500, open:1.68,shortMid:9.98,  longMid:8.30},
+  {ticker:"WDC", type:"P",short:290,long:280,cts:1,dte:43, expiry:"2026-05-15",stock:294.97,iv:83.6, remain:45.8,gain:28.4, collateral:1000,open:4.58,shortMid:30.21, longMid:26.27},
+  {ticker:"AMAT",type:"P",short:350,long:340,cts:1,dte:77, expiry:"2026-06-18",stock:348.47,iv:56.9, remain:50.6,gain:-7.0, collateral:1000,open:5.06,shortMid:37.08, longMid:32.02},
+  {ticker:"AMZN",type:"P",short:220,long:210,cts:1,dte:77, expiry:"2026-06-18",stock:209.77,iv:34.0, remain:39.8,gain:20.2, collateral:1000,open:3.98,shortMid:17.91, longMid:13.93},
+  {ticker:"AMZN",type:"P",short:215,long:210,cts:1,dte:77, expiry:"2026-06-18",stock:209.77,iv:34.9, remain:49.0,gain:4.7,  collateral:500, open:2.45,shortMid:16.38, longMid:13.93},
+  {ticker:"APLD",type:"P",short:32, long:26, cts:1,dte:77, expiry:"2026-06-18",stock:24.56, iv:102.2,remain:68.0,gain:-12.3,collateral:600, open:4.08,shortMid:9.55,  longMid:5.47},
+  {ticker:"APLD",type:"P",short:30, long:24, cts:1,dte:77, expiry:"2026-06-18",stock:24.56, iv:102.6,remain:66.3,gain:-16.7,collateral:600, open:3.98,shortMid:8.38,  longMid:4.40},
+  {ticker:"AVGO",type:"P",short:340,long:330,cts:1,dte:77, expiry:"2026-06-18",stock:314.55,iv:100.0,remain:63.2,gain:-23.9,collateral:1000,open:6.32,shortMid:42.35, longMid:35.73},
+  {ticker:"FLUT",type:"C",short:105,long:110,cts:1,dte:77, expiry:"2026-06-18",stock:106.38,iv:59.0, remain:34.0,gain:26.1, collateral:500, open:1.70,shortMid:12.51, longMid:10.55},
+  {ticker:"HUT", type:"P",short:60, long:55, cts:2,dte:77, expiry:"2026-06-18",stock:48.11, iv:100.0,remain:71.9,gain:-10.6,collateral:1000,open:3.59,shortMid:16.47, longMid:12.88},
+  {ticker:"META",type:"P",short:650,long:645,cts:2,dte:77, expiry:"2026-06-18",stock:574.46,iv:100.0,remain:81.4,gain:-43.8,collateral:1000,open:4.07,shortMid:149.14,longMid:145.76},
+  {ticker:"RDDT",type:"P",short:160,long:150,cts:2,dte:77, expiry:"2026-06-18",stock:136.00,iv:60.7, remain:68.8,gain:0.0,  collateral:2000,open:6.88,shortMid:30.06, longMid:27.13},
+  {ticker:"AMZN",type:"P",short:235,long:225,cts:1,dte:106,expiry:"2026-07-17",stock:209.77,iv:100.0,remain:65.5,gain:0.0,  collateral:1000,open:6.55,shortMid:59.02, longMid:23.80},
+  {ticker:"RDDT",type:"P",short:145,long:140,cts:2,dte:106,expiry:"2026-07-17",stock:136.00,iv:60.7, remain:60.0,gain:-4.8, collateral:1000,open:3.00,shortMid:22.03, longMid:19.03},
+  {ticker:"APP", type:"P",short:420,long:410,cts:1,dte:141,expiry:"2026-08-21",stock:386.37,iv:100.0,remain:64.6,gain:-4.8, collateral:1000,open:6.46,shortMid:111.76,longMid:105.30},
+  {ticker:"HIMS",type:"P",short:24, long:22, cts:5,dte:141,expiry:"2026-08-21",stock:19.14, iv:87.0, remain:75.0,gain:-9.5, collateral:1000,open:1.50,shortMid:7.38,  longMid:5.88},
+  {ticker:"HOOD",type:"P",short:75, long:65, cts:4,dte:141,expiry:"2026-08-21",stock:68.90, iv:63.6, remain:54.2,gain:2.9,  collateral:4000,open:5.42,shortMid:14.57, longMid:9.15},
+  {ticker:"JPM", type:"P",short:300,long:290,cts:2,dte:141,expiry:"2026-08-21",stock:294.60,iv:28.3, remain:39.0,gain:8.9,  collateral:2000,open:3.90,shortMid:23.60, longMid:19.70},
+  {ticker:"META",type:"P",short:580,long:570,cts:1,dte:141,expiry:"2026-08-21",stock:574.46,iv:100.0,remain:47.4,gain:7.4,  collateral:1000,open:4.74,shortMid:55.98, longMid:51.24},
+  {ticker:"MSTR",type:"P",short:135,long:130,cts:1,dte:141,expiry:"2026-08-21",stock:119.83,iv:71.3, remain:61.0,gain:1.6,  collateral:500, open:3.05,shortMid:30.65, longMid:27.60},
+  {ticker:"NBIS",type:"P",short:100,long:95, cts:1,dte:141,expiry:"2026-08-21",stock:108.82,iv:100.0,remain:53.5,gain:2.4,  collateral:500, open:2.68,shortMid:20.43, longMid:17.76},
+  {ticker:"TSLA",type:"P",short:380,long:370,cts:1,dte:141,expiry:"2026-08-21",stock:360.59,iv:100.0,remain:55.0,gain:-3.4, collateral:1000,open:5.50,shortMid:49.75, longMid:44.25},
+  {ticker:"ASTS",type:"P",short:100,long:95, cts:2,dte:169,expiry:"2026-09-18",stock:92.62, iv:101.1,remain:77.5,gain:-3.3, collateral:1000,open:3.87,shortMid:29.20, longMid:25.33},
+  {ticker:"AVGO",type:"P",short:320,long:310,cts:3,dte:169,expiry:"2026-09-18",stock:314.55,iv:45.2, remain:47.7,gain:18.5, collateral:3000,open:4.77,shortMid:41.55, longMid:36.78},
+  {ticker:"GOOG",type:"P",short:280,long:275,cts:2,dte:169,expiry:"2026-09-18",stock:294.46,iv:100.0,remain:35.0,gain:30.3, collateral:1000,open:1.75,shortMid:19.70, longMid:17.95},
+  {ticker:"HUT", type:"P",short:55, long:50, cts:4,dte:169,expiry:"2026-09-18",stock:48.11, iv:100.0,remain:52.0,gain:19.0, collateral:2000,open:2.60,shortMid:16.72, longMid:13.00},
+  {ticker:"IREN",type:"P",short:40, long:35, cts:3,dte:169,expiry:"2026-09-18",stock:34.77, iv:89.5, remain:44.5,gain:33.7, collateral:1500,open:2.23,shortMid:11.28, longMid:9.05},
+  {ticker:"NVDA",type:"P",short:175,long:170,cts:1,dte:169,expiry:"2026-09-18",stock:177.39,iv:100.0,remain:44.8,gain:11.5, collateral:500, open:2.24,shortMid:17.42, longMid:15.18},
+  {ticker:"TSLA",type:"P",short:370,long:365,cts:3,dte:169,expiry:"2026-09-18",stock:360.59,iv:100.0,remain:50.0,gain:3.5,  collateral:1500,open:2.50,shortMid:47.85, longMid:45.25},
+  {ticker:"APLD",type:"P",short:30, long:24, cts:5,dte:197,expiry:"2026-10-16",stock:24.56, iv:100.0,remain:66.4,gain:9.3,  collateral:3000,open:3.98,shortMid:10.34, longMid:6.36},
+  {ticker:"APLD",type:"P",short:28, long:25, cts:2,dte:197,expiry:"2026-10-16",stock:24.56, iv:100.0,remain:58.9,gain:-2.1, collateral:600, open:1.77,shortMid:8.95,  longMid:7.18},
+  {ticker:"ASTS",type:"P",short:110,long:100,cts:2,dte:197,expiry:"2026-10-16",stock:92.62, iv:101.1,remain:68.0,gain:12.2, collateral:2000,open:6.80,shortMid:37.08, longMid:30.28},
+  {ticker:"GOOG",type:"P",short:280,long:275,cts:2,dte:197,expiry:"2026-10-16",stock:294.46,iv:100.0,remain:40.0,gain:20.3, collateral:1000,open:2.00,shortMid:21.25, longMid:19.30},
+  {ticker:"HUT", type:"P",short:50, long:45, cts:1,dte:197,expiry:"2026-10-16",stock:48.11, iv:92.3, remain:73.7,gain:-18.1,collateral:500, open:3.68,shortMid:13.98, longMid:10.30},
+  {ticker:"META",type:"P",short:600,long:590,cts:1,dte:197,expiry:"2026-10-16",stock:574.46,iv:100.0,remain:47.5,gain:15.9, collateral:1000,open:4.75,shortMid:74.55, longMid:69.80},
+  {ticker:"RKLB",type:"P",short:70, long:65, cts:3,dte:197,expiry:"2026-10-16",stock:67.73, iv:82.3, remain:64.0,gain:1.8,  collateral:1500,open:3.20,shortMid:17.38, longMid:14.18},
+  {ticker:"SOFI",type:"P",short:20, long:17, cts:7,dte:260,expiry:"2026-12-18",stock:15.85, iv:58.7, remain:60.7,gain:12.1, collateral:2100,open:1.82,shortMid:5.92,  longMid:4.10},
+  {ticker:"APLD",type:"P",short:32, long:27, cts:1,dte:288,expiry:"2027-01-15",stock:24.56, iv:100.0,remain:70.7,gain:-0.5, collateral:500, open:3.54,shortMid:13.06, longMid:9.52},
+];
+
+// ══════════════════════════════════════════
+// STATE & CONFIG
+// ══════════════════════════════════════════
+const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
+const THRESH_ROLL  = 0.75;
+const THRESH_WATCH = 0.65;
+const THRESH_RADAR = 0.55;
+// Profit-side thresholds (% gain)
+const THRESH_CLOSE  = 75; // ⭐ close now
+const THRESH_PROFIT = 60; // 🟦 strong close candidate
+const THRESH_WATCH_PROFIT = 45; // 🔷 on radar for closing
+// Delta equivalents (fallback when no open price)
+const THRESH_DELTA_CLOSE  = 0.10;
+const THRESH_DELTA_PROFIT = 0.15;
+const THRESH_DELTA_WATCH_PROFIT = 0.20;
+const UW_BASE      = 'https://api.unusualwhales.com';
+const UW_HDRS      = {'Authorization':`Bearer ${UW_API_KEY}`,'UW-CLIENT-API-ID':'100001'};
+
+let liveData    = {};  // ticker -> {[strike_type]:delta, iv, [bid/ask_strike_type]:val}
+let livePrices  = {};  // ticker -> {price, change, pct}
+let flowData    = {};  // ticker -> {sentiment, premium}
+let earningsMap = {};  // ticker -> date string
+let currentFilter = 'all';
+let autoTimer   = null;
+
+// ══════════════════════════════════════════
+// MATH
+// ══════════════════════════════════════════
+function normCDF(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const s=x<0?-1:1; x=Math.abs(x)/Math.sqrt(2);
+  const t=1/(1+p*x);
+  const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5*(1+s*y);
+}
+function bsDelta(S,K,T,iv,type) {
+  T=Math.max(T,1/365); iv=Math.max(0.05,Math.min(iv/100,3));
+  const r=0.043, d1=(Math.log(S/K)+(r+0.5*iv*iv)*T)/(iv*Math.sqrt(T));
+  return type==='P'?normCDF(d1)-1:normCDF(d1);
+}
+function getLiveStock(p) { return (livePrices[p.ticker]&&livePrices[p.ticker].price) || p.stock; }
+function getLiveIV(p) {
+  // Only use live UW IV — never trust the spreadsheet value (manual 100% entries)
+  const live = (liveData[p.ticker]&&liveData[p.ticker].iv);
+  if (live && live > 1 && live < 222) return live; // UW returns as percentage, sanity check
+  // Reasonable sector defaults for BS estimate when UW hasn't returned IV yet
+  // These are rough but far better than a manual 100% entry
+  const defaults = {
+    USO:60, AMZN:35, GOOG:35, META:40, MSFT:30, AAPL:28,
+    TSLA:75, NVDA:60, AMD:55, PLTR:70, MSTR:90, HOOD:75,
+    APLD:110, HUT:110, IREN:100, ASTS:110, HIMS:90, RKLB:85,
+    RDDT:80, APP:80, IONQ:100, SOFI:65, AVGO:45, AMAT:50,
+    IBM:30, JPM:30, MS:35, BA:40, CRM:40, WDC:55, LASR:95,
+    GLW:35, VRT:55, INTC:50, LLY:30, MRK:30, ADBE:35,
+    NOW:45, DUOL:85, FLUT:65, WDAY:45, NBIS:100, BSX:35,
+  };
+  return defaults[p.ticker] || 50; // 50% if totally unknown
+}
+function isITM(p)        { const s=getLiveStock(p); return p.type==='P'?s<p.short:s>p.short; }
+
+function getEffectiveDelta(p) {
+  const key=`${p.short}_${p.type}`;
+  if ((liveData[p.ticker]&&liveData[p.ticker][key]!==undefined)) return Math.abs(liveData[p.ticker][key]);
+  const S=getLiveStock(p), T=Math.max(p.dte,1)/365, iv=getLiveIV(p);
+  const K = p.short; // always use the primary strike
+  return Math.abs(bsDelta(S, K, T, iv, p.type));
+}
+
+function isLongOption(p) {
+  return p.postype === 'long_call' || p.postype === 'long_put';
+}
+function getDeltaSource(p) {
+  return (liveData[p.ticker]&&liveData[p.ticker][`${p.short}_${p.type}`]!==undefined)?'live':'bs';
+}
+function getAlertLevel(p) {
+  const d=getEffectiveDelta(p);
+  // Long options: delta FADING is the concern — opposite of spread roll logic
+  if (isLongOption(p)) {
+    if (d < 0.15)  return 'red';    // nearly worthless / deep OTM
+    if (d < 0.25)  return 'orange'; // fading fast
+    if (d < 0.35)  return 'yellow'; // worth monitoring
+    if (isITM(p)&&p.dte<=7)  return 'red';
+    return 'green';
+  }
+  if (d>=THRESH_ROLL)  return 'red';
+  if (d>=THRESH_WATCH) return 'orange';
+  if (d>=THRESH_RADAR) return 'yellow';
+  if (isITM(p)&&p.dte<=7)  return 'red';
+  if (isITM(p)&&p.dte<=21) return 'orange';
+  return 'green';
+}
+function getAlertScore(l){return{red:4,orange:3,yellow:2,green:1}[l]||0}
+
+function calcLiveGain(p) {
+  const { mid } = getSpreadMid(p);
+  const openPrem = Math.abs(p.open);
+  if (openPrem === 0) return 0;
+  if (isLongOption(p)) {
+    // Long option: gain = how much it has appreciated
+    return ((mid - openPrem) / openPrem) * 100;
+  }
+  // Credit spread: gain = how much premium has decayed
+  return ((openPrem - mid) / openPrem) * 100;
+}
+
+function getProfitLevel(p, liveGain) {
+  const { isLive } = getSpreadMid(p);
+
+  if (isLongOption(p)) {
+    // Long option: flag when it has appreciated significantly
+    if (isLive) {
+      if (liveGain >= 100) return 'close';        // doubled — seriously consider taking it
+      if (liveGain >= 60)  return 'profit';
+      if (liveGain >= 30)  return 'watch_profit';
+    }
+    const delta = getEffectiveDelta(p);
+    // Also flag when deep ITM (delta near 1) — consider rolling to lock gains
+    if (delta >= 0.85) return 'close';
+    if (delta >= 0.75) return 'profit';
+    return null;
+  }
+
+  // Credit spread / spread_debit: only flag profit if NOT in roll territory
+  const rollLevel = getAlertLevel(p);
+  if (rollLevel === 'red' || rollLevel === 'orange') return null;
+
+  const delta = getEffectiveDelta(p);
+  if (isLive) {
+    if (liveGain >= THRESH_CLOSE)         return 'close';
+    if (liveGain >= THRESH_PROFIT)        return 'profit';
+    if (liveGain >= THRESH_WATCH_PROFIT)  return 'watch_profit';
+  }
+  if (delta <= THRESH_DELTA_CLOSE)        return 'close';
+  if (delta <= THRESH_DELTA_PROFIT)       return 'profit';
+  if (delta <= THRESH_DELTA_WATCH_PROFIT) return 'watch_profit';
+  return null;
+}
+
+function getSpreadMid(p) {
+  if (isLongOption(p)) {
+    // Single-leg: use the single strike mid directly
+    const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
+    const sAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
+    if (sBid != null && sAsk != null) return { mid: (sBid + sAsk) / 2, isLive: true };
+    return { mid: Math.abs(p.open), isLive: false };
+  }
+  // Try live Robinhood-style spread mid first
+  const liveMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMid_${p.short}_${p.long}_${p.type}`]);
+  if (liveMid != null) return { mid: liveMid, isLive: true };
+  // Fall back to open premium
+  return { mid: Math.abs(p.open), isLive: false };
+}
+
+function calcExtrinsic(p) {
+  const stock = getLiveStock(p);
+  const { mid: spreadMid, isLive } = getSpreadMid(p);
+  if (isLongOption(p)) {
+    // Single-leg: intrinsic is simply how far ITM the strike is
+    const rawIntrinsic = p.type === 'P'
+      ? Math.max(0, p.short - stock)
+      : Math.max(0, stock - p.short);
+    const extrinsic = Math.max(0, spreadMid - rawIntrinsic);
+    return { value: extrinsic, mid: spreadMid, intrinsic: rawIntrinsic, isLive };
+  }
+  // Spread intrinsic = min(width, how far ITM the short is)
+  const width = Math.abs(p.short - p.long);
+  const rawIntrinsic = p.type === 'P'
+    ? Math.max(0, p.short - stock)
+    : Math.max(0, stock - p.short);
+  const intrinsic = Math.min(width, rawIntrinsic);
+  const extrinsic = Math.max(0, spreadMid - intrinsic);
+  return { value: extrinsic, mid: spreadMid, intrinsic, isLive };
+}
+function hasEarningsRisk(p){
+  const e=earningsMap[p.ticker];
+  if (!e || e > p.expiry) return false;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const earnDate=new Date(e+'T00:00:00');
+  const daysUntil=Math.round((earnDate-today)/86400000);
+  return daysUntil >= 0 && daysUntil <= 14;
+}
+function hasFlowSignal(p){return!!flowData[p.ticker]}
+
+function getRollCost(p) {
+  if (isLongOption(p)) return null; // long options don't roll the same way
+  const { mid, isLive } = getSpreadMid(p);
+  if (!isLive) return null;
+  return (mid - Math.abs(p.open)) * 100 * p.cts; // positive = costs more than you received
+}
+
+// ══════════════════════════════════════════
+// FILTER / SORT / RENDER
+// ══════════════════════════════════════════
+function setFilter(f,el) {
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function getFiltered() {
+  const q=document.getElementById('searchInput').value.trim().toUpperCase();
+  let pos=POSITIONS.filter(p=>{
+    if (q&&!p.ticker.includes(q)) return false;
+    switch(currentFilter){
+      case 'red':      return getAlertLevel(p)==='red';
+      case 'orange':   return getAlertLevel(p)==='orange';
+      case 'yellow':   return getAlertLevel(p)==='yellow';
+      case 'green':    return getAlertLevel(p)==='green';
+      case 'close':    return getProfitLevel(p, calcLiveGain(p)) === 'close';
+      case 'profit':   return ['close','profit','watch_profit'].includes(getProfitLevel(p, calcLiveGain(p)));
+      case 'calls':    return p.type==='C';
+      case 'puts':     return p.type==='P';
+      case 'itm':      return isITM(p);
+      case 'earnings': return hasEarningsRisk(p);
+      case 'flow':     return hasFlowSignal(p) && (flowData[p.ticker]&&flowData[p.ticker].isContra);
+      default:         return true;
+    }
+  });
+  const sort=document.getElementById('sortSelect').value;
+  pos.sort((a,b)=>{
+    switch(sort){
+      case 'alert':      {
+        const scoreDiff = getAlertScore(getAlertLevel(b))-getAlertScore(getAlertLevel(a));
+        return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
+      }
+      case 'expiry':     return a.expiry.localeCompare(b.expiry);
+      case 'dte':        return a.dte-b.dte;
+      case 'collateral': return b.collateral-a.collateral;
+      case 'remain':     return b.remain-a.remain;
+      case 'delta':      return getEffectiveDelta(b)-getEffectiveDelta(a);
+      case 'ticker':     return a.ticker.localeCompare(b.ticker);
+      default:           return 0;
+    }
+  });
+  return pos;
+}
+
+function renderTable() {
+  const positions=getFiltered();
+  const body=document.getElementById('tableBody');
+  body.innerHTML='';
+  if (!positions.length) {
+    body.innerHTML='<tr><td colspan="17" style="text-align:center;padding:40px;color:var(--muted)">No positions match filter</td></tr>';
+    updateStats(); return;
+  }
+  const sort=document.getElementById('sortSelect').value;
+  const doExpiryGroups = sort === 'expiry';
+  const doTickerGroups = sort === 'ticker';
+  let lastExpiry=null, lastTicker=null;
+
+  // Pre-calc ticker totals for subtotal rows
+  const tickerTotals = {};
+  POSITIONS.forEach(p => {
+    if (!tickerTotals[p.ticker]) tickerTotals[p.ticker] = { collateral:0, cts:0, count:0, closeCost:0 };
+    const t = tickerTotals[p.ticker];
+    t.collateral += (p.postype==='covered_call' ? 0 : p.collateral);
+    t.cts += p.cts;
+    t.count++;
+    const { mid } = getSpreadMid(p);
+    t.closeCost += mid * 100 * p.cts;
+  });
+
+  positions.forEach(p=>{
+    const level=getAlertLevel(p), itm=isITM(p);
+    const delta=getEffectiveDelta(p), src=getDeltaSource(p);
+    const stock=getLiveStock(p), lp=livePrices[p.ticker];
+    const iv=getLiveIV(p);
+    const eWarn=hasEarningsRisk(p), flow=flowData[p.ticker];
+    const sBid=(liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
+    const sAsk=(liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
+    const lBid=(liveData[p.ticker]&&liveData[p.ticker][`bid_${p.long}_${p.type}`]);
+    const lAsk=(liveData[p.ticker]&&liveData[p.ticker][`ask_${p.long}_${p.type}`]);
+    const rollCost=getRollCost(p);
+
+    if (doExpiryGroups && p.expiry!==lastExpiry) {
+      const daysOut=Math.round((new Date(p.expiry)-new Date())/86400000);
+      const hr=document.createElement('tr');
+      hr.className='expiry-hdr';
+      hr.innerHTML=`<td colspan="17">📅 ${p.expiry} &nbsp;—&nbsp; ${daysOut}d out</td>`;
+      body.appendChild(hr); lastExpiry=p.expiry;
+    }
+
+    if (doTickerGroups && p.ticker!==lastTicker) {
+      const tt = tickerTotals[p.ticker];
+      const lp2 = livePrices[p.ticker];
+      const priceStr = lp2 ? `$${lp2.price.toFixed(2)} ${lp2.pct>=0?'▲':'▼'}${Math.abs(lp2.pct).toFixed(2)}%` : '';
+      const hr=document.createElement('tr');
+      hr.className='expiry-hdr';
+      hr.innerHTML=`<td colspan="17" style="color:var(--accent)">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:12px">${p.ticker}</span>
+        <span style="color:var(--muted);margin-left:10px">${priceStr}</span>
+        &nbsp;·&nbsp; <span style="color:var(--text)">${tt.count} position${tt.count>1?'s':''}</span>
+        &nbsp;·&nbsp; <span style="color:var(--text)">${tt.cts} contracts</span>
+        &nbsp;·&nbsp; <span style="color:var(--muted)">collateral</span> <span style="color:var(--text)">$${tt.collateral.toLocaleString()}</span>
+        &nbsp;·&nbsp; <span style="color:var(--muted)">to close</span> <span style="color:${tt.closeCost>tt.collateral*0.5?'var(--red)':tt.closeCost>tt.collateral*0.25?'var(--orange)':'var(--green)'}">$${tt.closeCost.toFixed(0)}</span>
+      </td>`;
+      body.appendChild(hr); lastTicker=p.ticker;
+    }
+
+    const dClass=delta>=THRESH_ROLL?'alert-red':delta>=THRESH_WATCH?'alert-orange':delta>=THRESH_RADAR?'alert-yellow':'alert-green';
+    const srcTag=src==='live'
+      ?'<span style="color:var(--green);font-size:8px"> ●LIVE</span>'
+      :'<span style="color:var(--muted);font-size:8px"> ~BS</span>';
+    const dteClass=p.dte<=7?'dte-urgent':p.dte<=21?'dte-near':'dte-val';
+    const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
+    const chgHtml=lp
+      ?`<span class="stock-chg ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>`
+      :`<span class="stock-chg price-neu">as of 4/2</span>`;
+    const ext = calcExtrinsic(p);
+    const extColor = ext.value === 0    ? 'var(--red)'
+                   : ext.value < 0.50   ? 'var(--orange)'
+                   : ext.value < 2.00   ? 'var(--yellow)'
+                   : 'var(--green)';
+    const extHtml = `<div style="font-weight:600;color:${extColor}">$${ext.value.toFixed(2)}</div>
+      <div style="color:var(--muted);font-size:9px">mid $${ext.mid.toFixed(2)} · int $${ext.intrinsic.toFixed(2)}</div>`;
+    const gainClass=p.gain>0?'pnl-pos':p.gain<-10?'pnl-neg':'pnl-neu';
+
+    // % gain: uses calcLiveGain which handles both credit spreads (decay) and long options (appreciation)
+    const openPrem = Math.abs(p.open);
+    const liveGain = calcLiveGain(p);
+    const liveGainClass = isLongOption(p)
+      ? (liveGain >= 60 ? 'pnl-pos' : liveGain >= 0 ? 'pnl-neu' : 'pnl-neg')
+      : (liveGain >= 60 ? 'pnl-pos' : liveGain >= 0 ? 'pnl-neu' : 'pnl-neg');
+    const liveGainStr = (liveGain >= 0 ? '+' : '') + liveGain.toFixed(1) + '%';
+    const liveGainTag = ext.isLive ? '●' : '~';
+
+    const bidAsk=(sBid!=null||sAsk!=null)
+      ?`<div class="bid-ask" style="font-size:9px;line-height:1.6">
+          <span style="color:var(--muted)">S:</span> <b>${sBid!=null?'$'+sBid.toFixed(2):'—'}</b>/<b>${sAsk!=null?'$'+sAsk.toFixed(2):'—'}</b>
+          ${lBid!=null||lAsk!=null?`<br><span style="color:var(--muted)">L:</span> <b>${lBid!=null?'$'+lBid.toFixed(2):'—'}</b>/<b>${lAsk!=null?'$'+lAsk.toFixed(2):'—'}</b>`:''}
+        </div>`
+      :'<span class="bid-ask">—</span>';
+    const rcHtml=rollCost!==null
+      ?`<span class="roll-cost ${rollCost<=0?'rc-pos':'rc-neg'}">${rollCost<=0?'CR':'DR'} $${Math.abs(rollCost).toFixed(0)}</span>`
+      :'<span style="color:var(--muted)">—</span>';
+
+    const isLong = isLongOption(p);
+    const pills = isLong ? {
+      red:`<span class="pill pill-red"><span class="dot dot-red"></span>FADING</span>`,
+      orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
+      yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
+      green:`<span class="pill pill-green"><span class="dot dot-green"></span>OK</span>`,
+    } : {
+      red:`<span class="pill pill-red"><span class="dot dot-red"></span>ROLL NOW</span>`,
+      orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
+      yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
+      green:`<span class="pill pill-green"><span class="dot dot-green"></span>OK</span>`,
+    };
+    let statusHtml=pills[level];
+
+    // Profit-side alert
+    const profitLevel = getProfitLevel(p, liveGain);
+    if (profitLevel === 'close') {
+      statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ${isLong?'SELL':'CLOSE'}</span>`;
+    } else if (profitLevel === 'profit') {
+      statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">🟦 TAKE PROFIT</span>`;
+    } else if (profitLevel === 'watch_profit') {
+      statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
+    }
+
+    if (itm)   statusHtml+=` <span class="pill pill-${isLong?'green':'red'}" style="margin-left:2px">ITM</span>`;
+    if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ERN</span>`;
+
+    let flowHtml='<span style="color:var(--muted);font-size:10px">—</span>';
+    if (flow) {
+      const isContra = flow.isContra;
+      const fc = isContra
+        ? 'fb-bear'
+        : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
+      const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEU';
+      const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
+      const contraTag = isContra?` <span style="color:var(--red);font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
+      flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
+    }
+
+    const idx = POSITIONS.indexOf(p);
+
+    // Type badge — postype-aware label and color
+    let typeBadgeHtml;
+    const pt = p.postype || 'spread_credit';
+    if (pt === 'long_call') {
+      typeBadgeHtml = `<span class="type-badge type-long-c">Call</span>`;
+    } else if (pt === 'long_put') {
+      typeBadgeHtml = `<span class="type-badge type-long-p">Put</span>`;
+    } else if (pt === 'covered_call') {
+      typeBadgeHtml = `<span class="type-badge type-cc">CC</span>`;
+    } else if (pt === 'spread_debit') {
+      typeBadgeHtml = p.type === 'C'
+        ? `<span class="type-badge type-C-db">C·DB</span>`
+        : `<span class="type-badge type-P-db">P·DB</span>`;
+    } else {
+      // spread_credit (default)
+      typeBadgeHtml = p.type === 'C'
+        ? `<span class="type-badge type-C-cr">C·CR</span>`
+        : `<span class="type-badge type-P-cr">P·CR</span>`;
+    }
+
+    // Strikes display — single strike for long options
+    const strikesHtml = isLong
+      ? `<span class="strike-range">$${p.short}</span>`
+      : `<span class="strike-range">$${p.short} / $${p.long}</span>`;
+
+    // Collateral / cost basis display
+    const collateralHtml = p.postype==='covered_call'
+      ? '<span style="color:var(--muted)">stock</span>'
+      : isLong
+        ? `<span style="color:var(--yellow)">$${p.collateral.toLocaleString()}<span style="font-size:8px;color:var(--muted)"> paid</span></span>`
+        : '$' + p.collateral.toLocaleString();
+
+    // Delta column label — for long options, high delta is good
+    const deltaLabel = isLong
+      ? `${delta.toFixed(2)}${srcTag}`
+      : `${delta.toFixed(2)}${srcTag}`;
+
+    // Action buttons — long options get SELL (close) instead of ROLL
+    const actionHtml = isLong
+      ? profitLevel === 'close'
+        ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ SELL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
+        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`
+      : (level==='red'||level==='orange')
+        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`
+        : profitLevel==='close'
+          ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
+          : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+
+    const tr=document.createElement('tr');
+    tr.className=`row${itm?' row-itm':''}`;
+    tr.innerHTML=`
+      <td><span class="ticker-name">${p.ticker}</span>${eWarn?`<span class="ern-warn">⚠ ERN ${earningsMap[p.ticker]}</span>`:''}</td>
+      <td>${typeBadgeHtml}</td>
+      <td>${strikesHtml}</td>
+      <td style="color:var(--muted)">×${p.cts}</td>
+      <td class="${dteClass}">${p.dte}d</td>
+      <td class="${sClass}">$${stock.toFixed(2)}${chgHtml}</td>
+      <td class="delta-cell ${dClass}">${deltaLabel}</td>
+      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}</td>
+      <td>${extHtml}</td>
+      <td>
+        <div style="font-weight:600;color:var(--text)">$${ext.mid.toFixed(2)}<span style="color:var(--muted);font-size:8px;font-weight:400"> ${ext.isLive?'●LIVE':'~open'}</span></div>
+        <div style="color:var(--muted);font-size:9px">open $${Math.abs(p.open).toFixed(2)}</div>
+      </td>
+      <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
+      <td>${bidAsk}</td>
+      <td>${rcHtml}</td>
+      <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
+      <td>${statusHtml}</td>
+      <td>${flowHtml}</td>
+      <td>${actionHtml}</td>
+    `;
+    body.appendChild(tr);
+  });
+  updateStats();
+}
+
+function updateStats() {
+  const cnt={red:0,orange:0,yellow:0,green:0};
+  let col=0,itm=0,ern=0,fl=0;
+  POSITIONS.forEach(p=>{
+    cnt[getAlertLevel(p)]++;
+    // Only count spread collateral, not covered call or long option cost basis
+    if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
+    if(isITM(p)) itm++;
+    if(hasEarningsRisk(p)) ern++;
+    if(hasFlowSignal(p)&&(flowData[p.ticker]&&flowData[p.ticker].isContra)) fl++;
+  });
+  document.getElementById('s-red').textContent=cnt.red;
+  document.getElementById('s-orange').textContent=cnt.orange;
+  document.getElementById('s-yellow').textContent=cnt.yellow;
+  document.getElementById('s-green').textContent=cnt.green;
+  document.getElementById('s-total').textContent=POSITIONS.length;
+  document.getElementById('s-itm').textContent=itm||'—';
+  document.getElementById('s-collateral').textContent='$'+(col/1000).toFixed(1)+'K';
+  document.getElementById('s-earnings').textContent=ern||'—';
+  document.getElementById('s-flow').textContent=fl||'—';
+}
+
+function updatePriceTicker() {
+  const tickers=[...new Set(POSITIONS.map(p=>p.ticker))];
+  const bar=document.getElementById('priceTicker');
+  const items=tickers.map(t=>{
+    const lp=livePrices[t]; if(!lp) return '';
+    const cls=lp.pct>=0?'price-up':'price-dn', arr=lp.pct>=0?'▲':'▼';
+    return `<span class="flow-item"><span class="flow-ticker-label">${t}</span><span class="${cls}">$${lp.price.toFixed(2)} ${arr}${Math.abs(lp.pct).toFixed(2)}%</span></span>`;
+  }).filter(Boolean);
+  bar.innerHTML=items.length?items.join(''):'<span style="color:var(--muted);font-size:10px">No price data returned — market may be closed</span>';
+}
+
+// ══════════════════════════════════════════
+// API FETCHING
+// ══════════════════════════════════════════
+
+// ── Apps Script proxy — handles CORS so UW API works from local file ──
+const PROXY_URL = '/proxy';
+
+async function uw(path, expiry='') {
+  if (PROXY_URL) {
+    // Route through Apps Script proxy — no CORS issues
+    const params = new URLSearchParams({ path });
+    if (expiry) params.set('expiry', expiry);
+    const r = await fetch(`${PROXY_URL}?${params}`);
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  } else {
+    // Direct call — CORS will block this from a local file
+    let url = UW_BASE + path;
+    if (expiry) url += (url.includes('?') ? '&' : '?') + 'expiry=' + expiry;
+    const r = await fetch(url, { headers: UW_HDRS });
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }
+}
+
+// Timeout wrapper — kills a fetch if it takes more than 8 seconds
+function withTimeout(promise, ms=8000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+}
+
+async function fetchAll() {
+  const btn=document.getElementById('refreshBtn');
+  btn.disabled=true;
+  const posTickers=[...new Set(POSITIONS.map(p=>p.ticker))];
+  // Watch-only tickers — fetch price + IV but not full greeks
+  const watchOnly = WATCHLIST.filter(t => !posTickers.includes(t));
+  const tickers = posTickers;
+  let done=0;
+
+  const updateProgress = () => {
+    btn.textContent=`⟳ ${done}/${tickers.length} tickers…`;
+  };
+  updateProgress();
+
+  // Fetch full greeks/price for position tickers in batches of 4
+  for (let i=0;i<tickers.length;i+=4) {
+    await Promise.all(tickers.slice(i,i+4).map(async t => {
+      await fetchTicker(t);
+      done++; updateProgress();
+    }));
+  }
+
+  // Fetch price + IV only for watch-only tickers
+  btn.textContent='⟳ Watch list prices…';
+  await Promise.all(watchOnly.map(async t => {
+    try {
+      const v = await uw(`/api/stock/${t}/options-volume`);
+      const d = (v&&v.data&&v.data[0]);
+      if (d) {
+        const price = parseFloat(d.close||d.price||d.underlying_price||0);
+        const prev  = parseFloat(d.prev_close||d.open||price);
+        if (price>0) livePrices[t]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
+      }
+    } catch(e){}
+    try {
+      const iv = await uw(`/api/stock/${t}/interpolated-iv`);
+      if ((iv&&iv.data&&iv.data.iv)) { if(!liveData[t]) liveData[t]={}; liveData[t].iv = parseFloat(iv.data.iv)*100; }
+    } catch(e){}
+  }));
+
+  // Flow and earnings are best-effort — don't let them block
+  btn.textContent='⟳ Loading flow…';
+  await withTimeout(fetchFlowAlerts(tickers), 10000).catch(()=>{});
+
+  btn.textContent='⟳ Loading earnings…';
+  await withTimeout(fetchEarnings(tickers), 10000).catch(()=>{});
+
+  updatePriceTicker();
+  renderTable();
+  renderExposure();
+  renderStocks();
+  renderWatchList();
+  updatePortfolioStat();
+  btn.disabled=false; btn.textContent='⟳ REFRESH LIVE';
+  document.getElementById('lastRefresh').textContent='⏱ Refreshed '+new Date().toLocaleTimeString();
+}
+
+async function fetchTicker(ticker) {
+  if (!liveData[ticker]) liveData[ticker]={};
+
+  const myPositions = POSITIONS.filter(p=>p.ticker===ticker);
+  const expiries = [...new Set(myPositions.map(p=>p.expiry))];
+
+  // ── 1. DELTA: greeks endpoint per expiry (matches GET_UW_DELTA exactly) ──
+  await Promise.all(expiries.map(async expiry => {
+    try {
+      const g = await uw(`/api/stock/${ticker}/greeks`, expiry);
+      const arr = Array.isArray((g&&g.data)) ? g.data : [];
+      if (!arr.length) return;
+      myPositions.filter(p=>p.expiry===expiry).forEach(p => {
+        const deltaKey = p.type==='C' ? 'call_delta' : 'put_delta';
+
+        // Match short leg
+        const shortRow = arr.find(x=>Math.abs(Number((x&&x.strike))-p.short)<1e-6)
+                      || arr.find(x=>Number((x&&x.strike))===p.short);
+        // Match long leg
+        const longRow  = arr.find(x=>Math.abs(Number((x&&x.strike))-p.long)<1e-6)
+                      || arr.find(x=>Number((x&&x.strike))===p.long);
+
+        if (shortRow) {
+          if (shortRow[deltaKey] != null) liveData[ticker][`${p.short}_${p.type}`] = Number(shortRow[deltaKey]);
+          if (shortRow.iv  != null) liveData[ticker].iv = Number(shortRow.iv) * 100;
+          // Store short leg bid/ask for display
+          if (shortRow.bid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = Number(shortRow.bid);
+          if (shortRow.ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = Number(shortRow.ask);
+        }
+
+        if (longRow) {
+          // Store long leg bid/ask
+          if (longRow.bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = Number(longRow.bid);
+          if (longRow.ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = Number(longRow.ask);
+        }
+
+        // Calc Robinhood-style spread mid: short mid - long mid
+        const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
+        const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
+        const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
+        const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
+        if (sBid!=null && sAsk!=null && lBid!=null && lAsk!=null) {
+          const shortMid = (sBid + sAsk) / 2;
+          const longMid  = (lBid + lAsk) / 2;
+          liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = shortMid - longMid;
+        }
+      });
+    } catch(e){}
+  }));
+
+  // ── 2. Stock price from options-volume ──
+  try {
+    const v = await uw(`/api/stock/${ticker}/options-volume`);
+    const d = (v&&v.data&&v.data[0]);
+    if (d) {
+      const price = parseFloat(d.close||d.price||d.underlying_price||0);
+      const prev  = parseFloat(d.prev_close||d.open||price);
+      if (price>0) {
+        livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
+      }
+    }
+  } catch(e){}
+
+  // ── 3. Interpolated IV fallback if greeks didn't return it ──
+  if (!liveData[ticker].iv) try {
+    const iv = await uw(`/api/stock/${ticker}/interpolated-iv`);
+    if ((iv&&iv.data&&iv.data.iv)) liveData[ticker].iv = parseFloat(iv.data.iv) * 100;
+  } catch(e){}
+}
+
+// Build normalized OCC contract ID for intraday endpoint
+function buildOCCId(p) {
+  const exp = p.expiry.replace(/-/g,'').slice(2);
+  const strike = Math.round(p.short * 1000).toString().padStart(8,'0');
+  return `${p.ticker}${exp}${p.type}${strike}`;
+}
+
+async function fetchFlowAlerts(tickers) {
+  await Promise.all(tickers.map(async t=>{
+    try {
+      const r=await uw(`/api/stock/${t}/flow-recent`);
+      if (!(r&&r.data&&r.data.length)) return;
+      let calls=0, puts=0, callCt=0, putCt=0;
+      r.data.forEach(x=>{
+        const prem=parseFloat(x.total_premium||x.premium||0);
+        if ((x.option_type&&x.option_type.toLowerCase())==='call') { calls+=prem; callCt++; }
+        else { puts+=prem; putCt++; }
+      });
+      const total=calls+puts;
+      // Dynamic threshold: $200K for liquid large caps, $50K for smaller names
+      const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
+      const threshold = bigNames.includes(t) ? 200000 : 50000;
+      if (total < threshold) return;
+
+      const sentiment = calls>puts*1.4?'bull':puts>calls*1.4?'bear':'neu';
+
+      // Flag if flow is CONTRA to any of our positions on this ticker
+      // Put spread = short put = bearish flow AGAINST us
+      // Call spread = short call = bullish flow AGAINST us
+      const myPos = POSITIONS.filter(p=>p.ticker===t);
+      const hasShortPut  = myPos.some(p=>p.type==='P' && !isLongOption(p));
+      const hasShortCall = myPos.some(p=>(p.type==='C'||p.postype==='covered_call') && !isLongOption(p));
+      const hasLongCall  = myPos.some(p=>p.postype==='long_call');
+      const hasLongPut   = myPos.some(p=>p.postype==='long_put');
+      const isContra = (hasShortPut && sentiment==='bear')
+                    || (hasShortCall && sentiment==='bull')
+                    || (hasLongCall && sentiment==='bear')
+                    || (hasLongPut  && sentiment==='bull');
+
+      flowData[t]={sentiment, premium:total, calls, puts, callCt, putCt, isContra};
+    } catch(e){}
+  }));
+}
+
+// Known upcoming earnings as fallback (update periodically)
+const EARNINGS_FALLBACK = {
+  AMD:  '2026-04-29', AMZN: '2026-04-29', ASTS: '2026-05-12',
+  AVGO: '2026-06-05', APP:  '2026-05-07', AMAT: '2026-05-15',
+  BA:   '2026-04-23', BSX:  '2026-04-23', CRM:  '2026-05-28',
+  DUOL: '2026-05-05', FLUT: '2026-05-07', GOOG: '2026-04-29',
+  HIMS: '2026-05-05', HOOD: '2026-05-07', HUT:  '2026-05-12',
+  IBM:  '2026-04-22', INTC: '2026-04-24', IONQ: '2026-05-08',
+  IREN: '2026-05-15', JPM:  '2026-04-11', LASR: '2026-05-08',
+  LLY:  '2026-04-29', META: '2026-04-29', MRK:  '2026-04-24',
+  MS:   '2026-04-16', MSTR: '2026-05-01', NBIS: '2026-05-12',
+  NOW:  '2026-04-23', NVDA: '2026-05-28', PLTR: '2026-05-05',
+  RDDT: '2026-05-05', RKLB: '2026-05-07', SOFI: '2026-04-29',
+  TSLA: '2026-04-22', USO:  null,         VRT:  '2026-04-23',
+  WDAY: '2026-05-28', WDC:  '2026-04-23', GLW:  '2026-04-22',
+  ADBE: '2026-06-17', APLD: '2026-05-15',
+};
+
+async function fetchEarnings(tickers) {
+  const today = new Date().toISOString().slice(0,10);
+
+  // Seed from fallback first so we always have something
+  tickers.forEach(t => {
+    const d = EARNINGS_FALLBACK[t];
+    if (d && d >= today) earningsMap[t] = d;
+  });
+
+  // Then try to get fresher data from UW
+  await Promise.all(tickers.map(async t => {
+    try {
+      const r = await uw(`/api/earnings/${t}`);
+      const arr = Array.isArray((r&&r.data)) ? r.data : [];
+      if (!arr.length) return;
+      const upcoming = arr
+        .map(x => x.date || x.earnings_date || x.report_date || x.confirmed_date || x.estimated_date)
+        .filter(d => d && d >= today)
+        .sort()[0];
+      if (upcoming) earningsMap[t] = upcoming; // override fallback with live date
+    } catch(e){}
+  }));
+}
+
+// ══════════════════════════════════════════
+// ROLL MODAL
+// ══════════════════════════════════════════
+function showRollModal(idx) {
+  const p    = POSITIONS[idx];
+  const delta = getEffectiveDelta(p);
+  const stock = getLiveStock(p);
+  const iv    = getLiveIV(p);
+  const lp    = livePrices[p.ticker];
+  const flow  = flowData[p.ticker];
+  const width = Math.abs(p.short - p.long);
+  const { mid: spreadMid, isLive } = getSpreadMid(p);
+  const openPrem = Math.abs(p.open);
+  const liveGain = calcLiveGain(p);
+
+  // ── Depth analysis ──
+  const itmAmount = p.type==='P' ? p.short - stock : stock - p.short;
+  const itmPct    = (itmAmount / p.short) * 100;
+  const isDeepITM = itmAmount > width;      // beyond the long strike — max loss zone
+  const isFullITM = itmAmount > 0 && itmAmount <= width; // between strikes
+  const isOTM     = itmAmount <= 0;
+
+  // ── Roll credit feasibility ──
+  // If spread is trading near max value (close to width), rolling for credit is very hard
+  const spreadPctOfMax = width > 0 ? (spreadMid / width) * 100 : 0;
+  const canRollCredit  = spreadPctOfMax < 60;  // rough: if spread < 60% of max, credit roll possible
+  const rollCost       = getRollCost(p);
+
+  // ── DTE guidance ──
+  const dteAdvice = p.dte <= 14
+    ? { label:'URGENT', color:'var(--red)',    text:'Under 14 DTE — gamma risk accelerating. Roll now or let assignment risk mount.' }
+    : p.dte <= 30
+    ? { label:'SOON',   color:'var(--orange)', text:'Under 30 DTE — theta decay slowing. Ideal time to roll before gamma picks up.' }
+    : p.dte <= 60
+    ? { label:'OK',     color:'var(--yellow)', text:'30–60 DTE — some time remaining but worth acting if delta is elevated.' }
+    : { label:'EARLY',  color:'var(--green)',  text:'60+ DTE — plenty of time. Consider whether IV expansion is worth waiting out.' };
+
+  // ── Strike / size guidance ──
+  let strikeGuidance, sizeGuidance;
+
+  if (isDeepITM) {
+    strikeGuidance = `Stock is $${itmAmount.toFixed(2)} through BOTH strikes (${itmPct.toFixed(1)}% ITM). Rolling ATM makes sense if you still hold the thesis — target the short near current stock price $${stock.toFixed(0)}.`;
+    sizeGuidance   = `⚠ Position is at max loss territory. Strongly consider reducing size on the roll — take ${p.cts > 1 ? Math.max(1, Math.floor(p.cts/2)) + ' contracts instead of ' + p.cts : 'partial assignment'} to cut exposure on a losing thesis.`;
+  } else if (isFullITM) {
+    const itmDepthPct = (itmAmount / width) * 100;
+    strikeGuidance = `Stock is ${itmDepthPct.toFixed(0)}% into the spread ($${itmAmount.toFixed(2)} ITM on short). If thesis intact, roll short strike to near current stock price ($${stock.toFixed(0)}) and keep long proportionally lower.`;
+    sizeGuidance   = p.cts > 2
+      ? `Consider rolling ${p.cts - 1} contracts instead of ${p.cts} — reduce concentration on a stressed position.`
+      : `Size (${p.cts} contract${p.cts>1?'s':''}) is manageable — keep same if thesis is strong.`;
+  } else {
+    strikeGuidance = `Stock is OTM by $${Math.abs(itmAmount).toFixed(2)}. If rolling due to delta creep rather than being ITM, consider rolling same strike for time, or down/up ${width} points to maintain structure.`;
+    sizeGuidance   = `Position near original structure — size (${p.cts} contract${p.cts>1?'s':''}) is fine to maintain on roll.`;
+  }
+
+  // ── Credit feasibility ──
+  let creditGuidance;
+  if (!isLive) {
+    creditGuidance = 'Refresh live data to assess roll credit feasibility.';
+  } else if (isDeepITM) {
+    creditGuidance = `⚠ Spread trading at $${spreadMid.toFixed(2)} vs $${width} max — ${spreadPctOfMax.toFixed(0)}% of max loss realized. Rolling for credit is very unlikely. Expect a debit roll or consider closing.`;
+  } else if (canRollCredit) {
+    creditGuidance = `Spread at $${spreadMid.toFixed(2)} (${spreadPctOfMax.toFixed(0)}% of max). Credit roll is feasible — target +30–45 DTE for best premium.`;
+  } else {
+    creditGuidance = `Spread at $${spreadMid.toFixed(2)} (${spreadPctOfMax.toFixed(0)}% of max). Credit roll will be difficult — scratch or small debit likely. Weigh cost vs risk reduction.`;
+  }
+
+  // ── Width guidance ──
+  const widthGuidance = isDeepITM
+    ? `Consider narrowing spread width below $${width} on the roll to reduce max loss exposure if taking fewer contracts.`
+    : `Maintain $${width} width — no reason to change if thesis and IV support it.`;
+
+  document.getElementById('modalTitle').textContent = `↩ Roll Analysis — ${p.ticker} ${p.type==='P'?'PUT':'CALL'} $${p.short}/$${p.long}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-section">POSITION SNAPSHOT</div>
+    <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp?`$${lp.price.toFixed(2)} (${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%)`:`$${p.stock.toFixed(2)} (stale — refresh)`}</span></div>
+    <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:var(--red)">${delta.toFixed(3)} (${getDeltaSource(p)==='live'?'●LIVE':'~BS'})</span></div>
+    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${p.dte}d — ${dteAdvice.label}</span></div>
+    <div class="modal-row"><span class="modal-label">IV</span><span class="modal-val">${iv.toFixed(1)}%</span></div>
+    <div class="modal-row"><span class="modal-label">Spread Mid / Open</span><span class="modal-val">$${spreadMid.toFixed(2)} ${isLive?'●LIVE':'~open'} vs $${openPrem.toFixed(2)} open ${liveGain>0?'(+'+liveGain.toFixed(1)+'% captured)':'('+liveGain.toFixed(1)+'% move against)'}</span></div>
+    ${rollCost!==null?`<div class="modal-row"><span class="modal-label">Est. Close Cost</span><span class="modal-val" style="color:${rollCost>0?'var(--red)':'var(--green)'}">$${Math.abs(rollCost).toFixed(0)} ${rollCost>0?'debit to close':'credit to close'}</span></div>`:''}
+
+    <div class="modal-section">DTE URGENCY</div>
+    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Assessment</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${dteAdvice.text}</span></div>
+
+    <div class="modal-section">DEPTH & STRIKE GUIDANCE</div>
+    <div class="modal-row"><span class="modal-label">Position Status</span><span class="modal-val" style="color:${isDeepITM?'var(--red)':isFullITM?'var(--orange)':'var(--green)'}">${isDeepITM?'⚠ BEYOND MAX LOSS':isFullITM?'BETWEEN STRIKES':'OTM'}</span></div>
+    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Strike</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${strikeGuidance}</span></div>
+
+    <div class="modal-section">ROLL FEASIBILITY</div>
+    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Credit?</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${creditGuidance}</span></div>
+    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Width</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${widthGuidance}</span></div>
+
+    <div class="modal-section">SIZE GUIDANCE</div>
+    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Contracts</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${sizeGuidance}</span></div>
+    <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()} × ${p.cts} contracts</span></div>
+
+    ${earningsMap[p.ticker]?`
+    <div class="modal-section">⚠ EARNINGS RISK</div>
+    <div class="modal-row"><span class="modal-label">Date</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]} — roll expiry past this date</span></div>`:''}
+
+    ${flow?(()=>{
+      const flowColor = flow.sentiment==='bull'?'var(--green)':flow.sentiment==='bear'?'var(--red)':'var(--muted)';
+      const contraText = flow.isContra ? ' ⚠ CONTRA your position' : ' — aligned with your position';
+      return `
+    <div class="modal-section">FLOW CONTEXT</div>
+    <div class="modal-row"><span class="modal-label">Sentiment</span><span class="modal-val" style="color:${flowColor}">${flow.sentiment.toUpperCase()}${contraText}</span></div>
+    <div class="modal-row"><span class="modal-label">Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls / $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
+    })():''}
+  `;
+  document.getElementById('rollModal').classList.add('show');
+}
+function closeModal(){document.getElementById('rollModal').classList.remove('show')}
+document.getElementById('rollModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+// ══════════════════════════════════════════
+// AUTO REFRESH
+// ══════════════════════════════════════════
+function toggleAuto() {
+  const btn=document.getElementById('autoBtn');
+  if (autoTimer) {
+    clearInterval(autoTimer); autoTimer=null;
+    btn.textContent='⏱ AUTO: OFF'; btn.classList.remove('on');
+  } else {
+    fetchAll(); autoTimer=setInterval(fetchAll,5*60*1000);
+    btn.textContent='⏱ AUTO: 5MIN'; btn.classList.add('on');
+  }
+}
+
+// ══════════════════════════════════════════
+// POSITION STORAGE (localStorage)
+// ══════════════════════════════════════════
+const STORAGE_KEY       = 'rollwatch_positions_v2';
+const STOCK_STORAGE_KEY = 'rollwatch_stocks_v1';
+
+// Seed stock positions
+let STOCKS = [
+  { ticker: 'ONDS', shares: 8000, cost: 9.53 }
+];
+
+function calcDTE(expiry) {
+  return Math.max(0, Math.round((new Date(expiry) - new Date()) / 86400000));
+}
+
+function calcCollateral(postype, short, long, cts, stockPrice, open) {
+  if (postype === 'covered_call') {
+    return (stockPrice || short) * 100 * cts;
+  }
+  if (postype === 'long_call' || postype === 'long_put') {
+    // Max loss = premium paid
+    return Math.abs(open || 0) * 100 * cts;
+  }
+  // Spread: width × 100 × contracts
+  const width = Math.abs(short - long);
+  return width * 100 * cts;
+}
+
+// ══════════════════════════════════════════
+// GOOGLE DRIVE SYNC (via Apps Script proxy)
+// ══════════════════════════════════════════
+// Uses the same Apps Script web app as the UW proxy.
+// The script handles reading/writing a JSON file in your Drive.
+// No OAuth setup required — the script runs under your Google account.
+const SYNC_PROXY = '/proxy';
+let driveSyncing = false;
+let driveReady   = false; // blocks auto-push until driveLoad() completes
+
+function getDriveBadge() { return document.getElementById('driveBadge'); }
+function getStorageBadge() { return document.getElementById('storageBadge'); }
+
+function setDriveBadge(text, color) {
+  const b = getDriveBadge();
+  if (!b) return;
+  b.textContent = text;
+  b.style.color = color || '#4285f4';
+}
+
+async function driveRead() {
+  console.log('[RW] driveRead: sending POST to proxy');
+  const r = await fetch(SYNC_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'read' })
+  });
+  console.log('[RW] driveRead: response status', r.status, r.ok);
+  if (!r.ok) throw new Error('read failed: ' + r.status);
+  const data = await r.json();
+  console.log('[RW] driveRead: data received', JSON.stringify(data).slice(0, 200));
+  return data;
+}
+
+async function driveWrite(payload) {
+  const r = await fetch(SYNC_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'write', data: payload })
+  });
+  if (!r.ok) throw new Error('write failed');
+  return r.json();
+}
+
+// Manual sync button — push current state up
+async function driveSync() {
+  driveReady = true;
+  if (driveSyncing) return;
+  driveSyncing = true;
+  setDriveBadge('☁ SYNCING…', '#f5c842');
+  console.log('[RW] driveSync: pushing STOCKS=', JSON.stringify(STOCKS), 'positions=', POSITIONS.length);
+  try {
+    const payload = { positions: POSITIONS, stocks: STOCKS, ts: Date.now() };
+    const result = await driveWrite(payload);
+    console.log('[RW] driveSync: write result=', JSON.stringify(result));
+    localStorage.setItem('rollwatch_ts', String(payload.ts));
+    setDriveBadge('☁ SYNCED', '#00e88a');
+    setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
+  } catch(e) {
+    console.warn('[RW] driveSync error:', e);
+    setDriveBadge('☁ ERROR', '#ff3d5a');
+    setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 3000);
+  }
+  driveSyncing = false;
+}
+
+async function driveLoad() {
+  try {
+    setDriveBadge('☁ LOADING…', '#f5c842');
+    console.log('[RW] driveLoad: starting');
+    const data = await driveRead();
+
+    console.log('[RW] driveLoad: data.ts=', data && data.ts);
+    console.log('[RW] driveLoad: positions count=', data && data.positions && data.positions.length);
+    console.log('[RW] driveLoad: stocks=', JSON.stringify(data && data.stocks));
+
+    // Drive has no data yet — stay with local
+    if (!data || !data.ts || !Array.isArray(data.positions) || !data.positions.length) {
+      console.log('[RW] driveLoad: no valid Drive data, staying local');
+      setDriveBadge('☁ DRIVE', '#4285f4');
+      return false;
+    }
+
+    // Always trust Drive — it is the source of truth.
+    POSITIONS.length = 0;
+    data.positions.forEach(p => POSITIONS.push(p));
+    if (Array.isArray(data.stocks)) {
+      STOCKS = data.stocks;
+      console.log('[RW] driveLoad: STOCKS set to', JSON.stringify(STOCKS));
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(POSITIONS));
+    localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
+    localStorage.setItem('rollwatch_ts', String(data.ts));
+
+    console.log('[RW] driveLoad: success, loaded=true, re-rendering');
+    setDriveBadge('☁ IN SYNC', '#00e88a');
+    setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
+    return true;
+  } catch(e) {
+    console.warn('[RW] driveLoad error:', e);
+    setDriveBadge('☁ OFFLINE', '#7a8fa6');
+    setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 3000);
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════
+// LOCAL STORAGE (with Drive push on save)
+// ══════════════════════════════════════════
+function saveToStorage() {
+  try {
+    const ts = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(POSITIONS));
+    localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
+    localStorage.setItem('rollwatch_ts', String(ts));
+    const badge = getStorageBadge();
+    if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
+    // Auto-push to Drive in background — only after initial load is done
+    if (driveReady) {
+      var _autoPayload = { positions: POSITIONS, stocks: STOCKS, ts: ts };
+      driveWrite(_autoPayload).catch(function() {});
+    }
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (Array.isArray(saved) && saved.length) {
+        POSITIONS.length = 0;
+        saved.forEach(p => POSITIONS.push(p));
+      }
+    }
+    const rawS = localStorage.getItem(STOCK_STORAGE_KEY);
+    if (rawS) {
+      const savedS = JSON.parse(rawS);
+      if (Array.isArray(savedS)) { STOCKS = savedS; }
+    }
+  } catch(e) {}
+  // NOTE: intentionally NOT calling saveToStorage() here —
+  // that would stamp a fresh timestamp and push stale hardcoded
+  // positions to Drive before driveLoad() gets a chance to run.
+}
+
+// Recalc collateral for all existing positions that have it hardcoded
+function recalcAllCollateral() {
+  POSITIONS.forEach(p => {
+    if (p.postype === 'covered_call') { p.collateral = 0; return; }
+    if (p.postype === 'long_call' || p.postype === 'long_put') {
+      p.collateral = Math.abs(p.open || 0) * 100 * p.cts; return;
+    }
+    const width = Math.abs(p.short - (p.long || 0));
+    if (width > 0) p.collateral = width * 100 * p.cts;
+  });
+}
+
+// ── FORM TYPE CHANGE ──
+function onPosTypeChange() {
+  const pt = document.getElementById('f-postype').value;
+  const longGroup = document.querySelector('.long-strike-group');
+  const typeSelect = document.getElementById('f-type');
+  const shortLabel = document.getElementById('f-short-label');
+  const isSingleLeg = pt === 'long_call' || pt === 'long_put';
+
+  if (pt === 'covered_call') {
+    longGroup.style.display = 'none';
+    typeSelect.value = 'C';
+    typeSelect.disabled = true;
+    shortLabel.textContent = 'Short Strike $';
+  } else if (pt === 'long_call') {
+    longGroup.style.display = 'none';
+    typeSelect.value = 'C';
+    typeSelect.disabled = true;
+    shortLabel.textContent = 'Strike $';
+  } else if (pt === 'long_put') {
+    longGroup.style.display = 'none';
+    typeSelect.value = 'P';
+    typeSelect.disabled = true;
+    shortLabel.textContent = 'Strike $';
+  } else {
+    longGroup.style.display = 'flex';
+    typeSelect.disabled = false;
+    shortLabel.textContent = 'Short Strike $';
+  }
+  updateCollateralPreview();
+}
+
+function updateCollateralPreview() {
+  const pt    = document.getElementById('f-postype').value;
+  const prev  = document.getElementById('posCollateralPreview');
+  const calc  = document.getElementById('collateralCalc');
+  if (pt === 'covered_call') {
+    calc.textContent = 'N/A (secured by stock)';
+    calc.style.color = 'var(--muted)';
+    prev.style.display = 'block'; return;
+  }
+  const short = parseFloat(document.getElementById('f-short').value);
+  const cts   = parseInt(document.getElementById('f-cts').value) || 1;
+  if (pt === 'long_call' || pt === 'long_put') {
+    const open = parseFloat(document.getElementById('f-open').value);
+    if (isNaN(short) || isNaN(open)) { prev.style.display='none'; return; }
+    const cost = open * 100 * cts;
+    calc.textContent = '$' + cost.toLocaleString() + ' (max loss = premium paid)';
+    calc.style.color = 'var(--yellow)';
+    prev.style.display = 'block'; return;
+  }
+  const long  = parseFloat(document.getElementById('f-long').value);
+  if (isNaN(short) || isNaN(long)) { prev.style.display='none'; return; }
+  const col = Math.abs(short - long) * 100 * cts;
+  calc.textContent = '$' + col.toLocaleString();
+  calc.style.color = 'var(--accent)';
+  prev.style.display = 'block';
+}
+
+// Wire up live preview
+['f-short','f-long','f-cts','f-open'].forEach(id => {
+  var _el=document.getElementById(id);if(_el)_el.addEventListener('input', updateCollateralPreview);
+});
+
+// ── ADD / EDIT MODAL ──
+let editingIdx = null;
+
+function showAddModal() {
+  editingIdx = null;
+  document.getElementById('posModalTitle').textContent = '+ Add Position';
+  document.getElementById('posDeleteBtn').style.display = 'none';
+  document.getElementById('posSaveBtn').textContent = 'SAVE';
+  ['f-ticker','f-short','f-long','f-cts','f-expiry','f-open']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-type').value = 'P';
+  document.getElementById('f-postype').value = 'spread_credit';
+  document.getElementById('f-type').disabled = false;
+  document.querySelector('.long-strike-group').style.display = 'flex';
+  document.getElementById('posCollateralPreview').style.display = 'none';
+  document.getElementById('posFormError').style.display = 'none';
+  document.getElementById('posModal').classList.add('show');
+  document.getElementById('f-ticker').focus();
+}
+
+function showEditModal(idx) {
+  editingIdx = idx;
+  const p = POSITIONS[idx];
+  const isSingleLeg = p.postype === 'long_call' || p.postype === 'long_put';
+  const ptLabel = p.postype === 'covered_call' ? 'Covered Call'
+                : p.postype === 'long_call'    ? 'Long Call'
+                : p.postype === 'long_put'     ? 'Long Put'
+                : p.type==='P'                 ? 'PUT' : 'CALL';
+  document.getElementById('posModalTitle').textContent = `✎ Edit — ${p.ticker} ${ptLabel} $${p.short}`;
+  document.getElementById('posDeleteBtn').style.display = 'block';
+  document.getElementById('posSaveBtn').textContent = 'UPDATE';
+  document.getElementById('f-ticker').value   = p.ticker;
+  document.getElementById('f-type').value     = p.type;
+  document.getElementById('f-postype').value  = p.postype || 'spread_credit';
+  document.getElementById('f-short').value    = p.short;
+  document.getElementById('f-long').value     = p.long || '';
+  document.getElementById('f-cts').value      = p.cts;
+  document.getElementById('f-expiry').value   = p.expiry;
+  document.getElementById('f-open').value     = Math.abs(p.open);
+  document.getElementById('posFormError').style.display = 'none';
+  onPosTypeChange();
+  document.getElementById('posModal').classList.add('show');
+}
+
+function closePosModal() {
+  document.getElementById('posModal').classList.remove('show');
+  editingIdx = null;
+}
+
+function savePosition() {
+  const ticker  = document.getElementById('f-ticker').value.trim().toUpperCase();
+  const type    = document.getElementById('f-type').value;
+  const postype = document.getElementById('f-postype').value;
+  const short   = parseFloat(document.getElementById('f-short').value);
+  const long    = parseFloat(document.getElementById('f-long').value) || 0;
+  const cts     = parseInt(document.getElementById('f-cts').value);
+  const expiry  = document.getElementById('f-expiry').value;
+  const open    = parseFloat(document.getElementById('f-open').value);
+  const err     = document.getElementById('posFormError');
+  const isSingleLeg = postype === 'long_call' || postype === 'long_put';
+
+  if (!ticker)                                        { err.textContent='Ticker required';       err.style.display='block'; return; }
+  if (isNaN(short))                                   { err.textContent='Strike required';       err.style.display='block'; return; }
+  if (!isSingleLeg && postype!=='covered_call' && isNaN(long)) { err.textContent='Long strike required'; err.style.display='block'; return; }
+  if (isNaN(cts)||cts<1)                              { err.textContent='Contracts required';    err.style.display='block'; return; }
+  if (!expiry)                                        { err.textContent='Expiry required';       err.style.display='block'; return; }
+  if (isNaN(open))                                    { err.textContent='Open premium required'; err.style.display='block'; return; }
+  err.style.display = 'none';
+
+  const collateral = calcCollateral(postype, short, long, cts, (livePrices[ticker]&&livePrices[ticker].price) || short, open);
+  const dte        = calcDTE(expiry);
+  const isDebit    = postype === 'spread_debit' || isSingleLeg;
+
+  const pos = {
+    ticker, type, postype: postype || 'spread_credit',
+    short, long: (postype==='covered_call' || isSingleLeg) ? 0 : long,
+    cts, dte, expiry,
+    stock: (livePrices[ticker]&&livePrices[ticker].price) || short,
+    open: isDebit ? -Math.abs(open) : Math.abs(open), // debit stored as negative
+    collateral, gain: 0, remain: 50,
+    shortMid: open, longMid: 0,
+  };
+
+  if (editingIdx !== null) {
+    POSITIONS[editingIdx] = pos;
+  } else {
+    POSITIONS.push(pos);
+  }
+
+  saveToStorage();
+  closePosModal();
+  renderTable();
+  renderExposure();
+  renderWatchList();
+}
+
+function confirmClose(idx) {
+  const p = POSITIONS[idx];
+  const label = p.postype==='covered_call'
+    ? `${p.ticker} Covered Call $${p.short}`
+    : `${p.ticker} ${p.type==='P'?'PUT':'CALL'} $${p.short}/${p.long} ×${p.cts}`;
+  if (confirm(`Close position: ${label}?\n\nThis removes it from the dashboard.`)) {
+    POSITIONS.splice(idx, 1);
+    saveToStorage();
+    renderTable();
+    renderExposure();
+    renderWatchList();
+  }
+}
+
+function deletePosition() {
+  if (editingIdx !== null) { confirmClose(editingIdx); closePosModal(); }
+}
+
+function exportPositions() {
+  const data = { positions: POSITIONS, stocks: STOCKS, exported: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `rollwatch_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('posModal').addEventListener('click', e => { if(e.target===e.currentTarget) closePosModal(); });
+
+// ══════════════════════════════════════════
+// STOCK POSITIONS
+// ══════════════════════════════════════════
+let editingStockIdx = null;
+
+function renderStocks() {
+  const body = document.getElementById('stockBody');
+  if (!STOCKS.length) {
+    body.innerHTML = '<tr><td colspan="8" style="padding:12px 10px;color:var(--muted);font-size:10px">No stock positions — click + ADD STOCK</td></tr>';
+    return;
+  }
+  let totalValue = 0, totalCost = 0;
+  body.innerHTML = STOCKS.map((s, i) => {
+    const lp      = livePrices[s.ticker];
+    const current = (lp&&lp.price) || s.cost;
+    const value   = current * s.shares;
+    const cost    = s.cost * s.shares;
+    const gl      = value - cost;
+    const glPct   = ((current - s.cost) / s.cost) * 100;
+    totalValue   += value;
+    totalCost    += cost;
+    const glClass = gl >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const dayClass = lp ? (lp.pct >= 0 ? 'price-up' : 'price-dn') : 'price-neu';
+    return `<tr class="row">
+      <td><span class="ticker-name">${s.ticker}</span></td>
+      <td style="color:var(--text)">${s.shares.toLocaleString()}</td>
+      <td style="color:var(--muted)">$${s.cost.toFixed(2)}</td>
+      <td class="${lp?'stock-otm':'price-neu'}">$${current.toFixed(2)}</td>
+      <td style="color:var(--text)">$${(value/1000).toFixed(1)}K</td>
+      <td class="${glClass}">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</td>
+      <td class="${dayClass}">${lp?(lp.pct>=0?'▲':'▼')+Math.abs(lp.pct).toFixed(2)+'%':'—'}</td>
+      <td><button class="edit-x" onclick="showEditStockModal(${i})" title="Edit">✎</button> <button class="close-x" onclick="removeStock(${i})" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Totals row
+  const totalGL = totalValue - totalCost;
+  const totalGLClass = totalGL >= 0 ? 'pnl-pos' : 'pnl-neg';
+  body.innerHTML += `<tr style="border-top:2px solid var(--border)">
+    <td colspan="4" style="color:var(--muted);font-size:10px;padding:8px 10px">TOTAL</td>
+    <td style="color:var(--text);font-weight:700">$${(totalValue/1000).toFixed(1)}K</td>
+    <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}</td>
+    <td colspan="2"></td>
+  </tr>`;
+}
+
+function showAddStockModal() {
+  editingStockIdx = null;
+  document.getElementById('stockModalTitle').textContent = '+ Add Stock Position';
+  document.getElementById('stockDeleteBtn').style.display = 'none';
+  ['fs-ticker','fs-shares','fs-cost'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('stockFormError').style.display = 'none';
+  document.getElementById('stockModal').classList.add('show');
+  document.getElementById('fs-ticker').focus();
+}
+
+function showEditStockModal(idx) {
+  editingStockIdx = idx;
+  const s = STOCKS[idx];
+  document.getElementById('stockModalTitle').textContent = `✎ Edit — ${s.ticker}`;
+  document.getElementById('stockDeleteBtn').style.display = 'block';
+  document.getElementById('fs-ticker').value  = s.ticker;
+  document.getElementById('fs-shares').value  = s.shares;
+  document.getElementById('fs-cost').value    = s.cost;
+  document.getElementById('stockFormError').style.display = 'none';
+  document.getElementById('stockModal').classList.add('show');
+}
+
+function closeStockModal() {
+  document.getElementById('stockModal').classList.remove('show');
+  editingStockIdx = null;
+}
+
+function saveStock() {
+  const ticker = document.getElementById('fs-ticker').value.trim().toUpperCase();
+  const shares = parseFloat(document.getElementById('fs-shares').value);
+  const cost   = parseFloat(document.getElementById('fs-cost').value);
+  const err    = document.getElementById('stockFormError');
+  if (!ticker)       { err.textContent='Ticker required'; err.style.display='block'; return; }
+  if (isNaN(shares)) { err.textContent='Shares required'; err.style.display='block'; return; }
+  if (isNaN(cost))   { err.textContent='Cost basis required'; err.style.display='block'; return; }
+  err.style.display = 'none';
+  const s = { ticker, shares, cost };
+  if (editingStockIdx !== null) { STOCKS[editingStockIdx] = s; }
+  else { STOCKS.push(s); }
+  saveToStorage();
+  closeStockModal();
+  renderStocks();
+}
+
+function removeStock(idx) {
+  if (confirm(`Remove ${STOCKS[idx].ticker} position?`)) {
+    STOCKS.splice(idx, 1);
+    saveToStorage();
+    renderStocks();
+  }
+}
+
+function deleteStock() {
+  if (editingStockIdx !== null) { removeStock(editingStockIdx); closeStockModal(); }
+}
+
+document.getElementById('stockModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeStockModal(); });
+
+// ══════════════════════════════════════════
+// EXPOSURE SUMMARY TABLE
+// ══════════════════════════════════════════
+function renderExposure() {
+  const body = document.getElementById('exposureBody');
+
+  // Build per-ticker totals
+  const totals = {};
+  let grandCollateral = 0;
+  POSITIONS.forEach(p => {
+    if (!totals[p.ticker]) totals[p.ticker] = { collateral:0, cts:0, count:0, closeCost:0, alerts:{red:0,orange:0,yellow:0,green:0} };
+    const t = totals[p.ticker];
+    const col = p.postype==='covered_call' ? 0 : p.collateral;
+    t.collateral += col;
+    t.cts += p.cts;
+    t.count++;
+    const { mid } = getSpreadMid(p);
+    t.closeCost += mid * 100 * p.cts;
+    t.alerts[getAlertLevel(p)]++;
+    grandCollateral += col;
+  });
+
+  // Sort by collateral desc
+  const sorted = Object.entries(totals).sort((a,b) => b[1].collateral - a[1].collateral);
+
+  body.innerHTML = sorted.map(([ticker, t]) => {
+    const lp = livePrices[ticker];
+    const closePct = t.collateral > 0 ? (t.closeCost / t.collateral) * 100 : 0;
+    const concPct  = grandCollateral > 0 ? (t.collateral / grandCollateral) * 100 : 0;
+    const closeColor = closePct > 50 ? 'var(--red)' : closePct > 25 ? 'var(--orange)' : 'var(--green)';
+    const concColor  = concPct > 15 ? 'var(--red)' : concPct > 8 ? 'var(--orange)' : 'var(--muted)';
+
+    // Alert summary badges
+    const alertBadges = [
+      t.alerts.red    ? `<span style="color:var(--red);font-size:9px;font-weight:700">${t.alerts.red}🔴</span>` : '',
+      t.alerts.orange ? `<span style="color:var(--orange);font-size:9px;font-weight:700">${t.alerts.orange}🟠</span>` : '',
+      t.alerts.yellow ? `<span style="color:var(--yellow);font-size:9px;font-weight:700">${t.alerts.yellow}🟡</span>` : '',
+      t.alerts.green  ? `<span style="color:var(--green);font-size:9px;font-weight:700">${t.alerts.green}✅</span>` : '',
+    ].filter(Boolean).join(' ');
+
+    // Concentration bar
+    const barWidth = Math.min(100, concPct * 3); // scale so 33% fills bar
+    const concBar = `<div style="display:flex;align-items:center;gap:6px">
+      <div style="width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="width:${barWidth}%;height:100%;background:${concColor};border-radius:2px"></div>
+      </div>
+      <span style="color:${concColor};font-size:10px">${concPct.toFixed(1)}%</span>
+    </div>`;
+
+    return `<tr class="row">
+      <td><span class="ticker-name">${ticker}</span>${lp?`<span style="color:var(--muted);font-size:9px;display:block">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>`:''}
+      </td>
+      <td style="color:var(--text)">${t.count}</td>
+      <td style="color:var(--text)">${t.cts}</td>
+      <td style="color:var(--text)">$${t.collateral.toLocaleString()}</td>
+      <td style="color:${closeColor};font-weight:600">$${t.closeCost.toFixed(0)}</td>
+      <td style="color:${closeColor}">${closePct.toFixed(1)}%</td>
+      <td>${concBar}</td>
+      <td>${alertBadges}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// WATCH LIST
+// ══════════════════════════════════════════
+const WATCH_KEY  = 'rollwatch_watchlist_v1';
+const BIAS_KEY   = 'rollwatch_bias_v1';
+let WATCHLIST = []; // user-added tickers (watch-only)
+let BIAS      = {}; // ticker -> 'bull' | 'bear' | 'neu'
+
+function loadWatchList() {
+  try {
+    const raw = localStorage.getItem(WATCH_KEY);
+    if (raw) WATCHLIST = JSON.parse(raw);
+    const rawB = localStorage.getItem(BIAS_KEY);
+    if (rawB) BIAS = JSON.parse(rawB);
+  } catch(e) {}
+}
+
+function saveWatchList() {
+  localStorage.setItem(WATCH_KEY, JSON.stringify(WATCHLIST));
+  localStorage.setItem(BIAS_KEY, JSON.stringify(BIAS));
+}
+
+function addWatchTicker() {
+  const input  = document.getElementById('watchInput');
+  const ticker = input.value.trim().toUpperCase();
+  if (!ticker) return;
+  if (WATCHLIST.includes(ticker)) { input.value=''; return; }
+  WATCHLIST.push(ticker);
+  if (!BIAS[ticker]) BIAS[ticker] = 'neu';
+  saveWatchList();
+  input.value = '';
+  renderWatchList();
+}
+
+function removeWatchTicker(ticker) {
+  WATCHLIST = WATCHLIST.filter(t => t !== ticker);
+  saveWatchList();
+  renderWatchList();
+}
+
+function cycleBias(ticker) {
+  const current = BIAS[ticker] || 'neu';
+  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : 'neu';
+  saveWatchList();
+  renderWatchList();
+}
+
+function renderWatchList() {
+  const grid = document.getElementById('watchGrid');
+  const posTickers = new Set(POSITIONS.map(p => p.ticker));
+
+  // Build master list: watch-only first (sorted alpha), then position tickers (sorted alpha)
+  const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t)).sort();
+  const inPosition = [...posTickers].sort();
+  // Also include any watch-list tickers that happen to have positions (they stay in both)
+  const watchInPos = WATCHLIST.filter(t => posTickers.has(t)).sort();
+  // Final order: pure watch-only → watch+position → position-only (auto)
+  const allCards = [
+    ...watchOnly,
+    ...watchInPos,
+    ...inPosition.filter(t => !WATCHLIST.includes(t))
+  ];
+
+  grid.innerHTML = allCards.map(ticker => {
+    const lp       = livePrices[ticker];
+    const iv       = (liveData[ticker]&&liveData[ticker].iv);
+    const hasPos   = posTickers.has(ticker);
+    const isWatch  = WATCHLIST.includes(ticker);
+    const posCount = POSITIONS.filter(p => p.ticker === ticker).length;
+    const bias     = BIAS[ticker] || 'neu';
+    const isWatchOnly = isWatch && !hasPos;
+
+    // Card border/bg based on status
+    const cardStyle = isWatchOnly
+      ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'  // teal — watching, no position
+      : hasPos && isWatch
+        ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)' // purple — watching + in position
+        : 'border-color:var(--border);background:var(--surface);opacity:0.7';  // grey — position only (auto)
+
+    const priceHtml = lp
+      ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
+         <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
+      : `<div class="wc-price" style="color:var(--muted)">—</div>`;
+
+    const ivHtml = iv ? `<div class="wc-iv">IV ${iv.toFixed(1)}%</div>` : '';
+
+    const posBadge = hasPos
+      ? `<span class="wc-pos in">${posCount} pos</span>`
+      : `<span class="wc-pos out">watching</span>`;
+
+    // Bias button
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':'var(--muted)';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':'→ NEU';
+    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':'rgba(74,85,104,.15)';
+    const biasBtn   = `<button onclick="cycleBias('${ticker}')"
+      style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
+             font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+             padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">
+      ${biasLabel}
+    </button>`;
+
+    // Remove button — only for manually-added watch tickers
+    const removeBtn = isWatch
+      ? `<button class="wc-remove" onclick="removeWatchTicker('${ticker}')" title="Remove from watch list">✕</button>`
+      : '';
+
+    return `<div class="watch-card" style="${cardStyle}">
+      ${removeBtn}
+      <div class="wc-ticker">${ticker}</div>
+      ${priceHtml}
+      ${ivHtml}
+      ${posBadge}
+      ${biasBtn}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// PORTFOLIO TRACKER
+// ══════════════════════════════════════════
+const PORT_KEY = 'rollwatch_portfolio_v1';
+let portfolioBaseline = null; // { value, date }
+
+function loadPortfolio() {
+  try {
+    const raw = localStorage.getItem(PORT_KEY);
+    if (raw) portfolioBaseline = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function savePortfolio() {
+  localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
+}
+
+function calcCurrentPortfolioValue() {
+  let optionsPnL = 0;
+  POSITIONS.forEach(p => {
+    const { mid } = getSpreadMid(p);
+    const open = Math.abs(p.open);
+    if (isLongOption(p)) {
+      // Long option: P&L = appreciation (current mid - open premium paid) × 100 × cts
+      optionsPnL += (mid - open) * 100 * p.cts;
+    } else {
+      // Credit spread: P&L = premium decay (open received - current mid) × 100 × cts
+      optionsPnL += (open - mid) * 100 * p.cts;
+    }
+  });
+
+  // Stock value
+  let stockValue = 0;
+  STOCKS.forEach(s => {
+    const price = (livePrices[s.ticker]&&livePrices[s.ticker].price) || s.cost;
+    stockValue += price * s.shares;
+  });
+
+  return { optionsPnL, stockValue, total: optionsPnL + stockValue };
+}
+
+function showBaselineModal() {
+  const est = calcCurrentPortfolioValue();
+  const estEl = document.getElementById('baselineCurrentEst');
+  estEl.innerHTML = `Current estimate — Options P&L: <span style="color:${est.optionsPnL>=0?'var(--green)':'var(--red)'}">${est.optionsPnL>=0?'+':''}$${Math.round(est.optionsPnL).toLocaleString()}</span>
+    &nbsp;·&nbsp; Stock value: <span style="color:var(--text)">$${Math.round(est.stockValue).toLocaleString()}</span>
+    <br>Tip: enter your <b>total account value</b> including cash, not just these positions.`;
+  if (portfolioBaseline) {
+    document.getElementById('baselineInput').value = portfolioBaseline.value;
+  }
+  document.getElementById('baselineModal').classList.add('show');
+}
+
+function closeBaselineModal() {
+  document.getElementById('baselineModal').classList.remove('show');
+}
+
+function saveBaseline() {
+  const val = parseFloat(document.getElementById('baselineInput').value);
+  if (isNaN(val) || val <= 0) return;
+  portfolioBaseline = { value: val, date: new Date().toISOString() };
+  savePortfolio();
+  closeBaselineModal();
+  updatePortfolioStat();
+}
+
+function updatePortfolioStat() {
+  const valEl = document.getElementById('s-portval');
+  const pnlEl = document.getElementById('s-portpnl');
+
+  if (!portfolioBaseline) {
+    valEl.textContent = '—';
+    pnlEl.innerHTML = '<span style="color:var(--muted);font-size:9px">click to set baseline</span>';
+    pnlEl.style.color = 'var(--muted)';
+    return;
+  }
+
+  const est = calcCurrentPortfolioValue();
+  // Current estimated value = baseline + options P&L change since baseline + stock value change
+  // We track relative change: options P&L delta from when baseline was set
+  // Simpler: just show running options P&L + stock unrealized G/L as the delta
+  const stockGL = STOCKS.reduce((sum, s) => {
+    const price = (livePrices[s.ticker]&&livePrices[s.ticker].price) || s.cost;
+    return sum + (price - s.cost) * s.shares;
+  }, 0);
+
+  const totalDelta = est.optionsPnL + stockGL;
+  const currentEst = portfolioBaseline.value + totalDelta;
+  const pct = (totalDelta / portfolioBaseline.value) * 100;
+  const color = totalDelta >= 0 ? 'var(--green)' : 'var(--red)';
+  const sign = totalDelta >= 0 ? '+' : '';
+  const baseDate = new Date(portfolioBaseline.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+  valEl.textContent = '$' + (currentEst/1000).toFixed(1) + 'K';
+  valEl.style.color = 'var(--text)';
+  valEl.style.fontSize = '15px';
+  pnlEl.innerHTML = `<span style="color:${color};font-weight:700">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span>
+    <span style="color:var(--muted);font-size:8px"> since ${baseDate}</span>`;
+}
+
+document.getElementById('baselineModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeBaselineModal();
+});
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+loadFromStorage();
+recalcAllCollateral();
+// Attempt Drive load — if Drive has newer data, reload UI
+driveLoad().then(function(loaded) {
+  if (loaded) {
+    recalcAllCollateral();
+    updateStats();
+    renderTable();
+    renderStocks();
+    renderWatchList();
+    updatePortfolioStat();
+  }
+  driveReady = true; // now safe to auto-push on user changes
+});
+loadWatchList();
+loadPortfolio();
+
+// Pre-seed earnings
+const today0 = new Date().toISOString().slice(0,10);
+Object.entries(EARNINGS_FALLBACK).forEach(([t,d]) => { if (d && d >= today0) earningsMap[t] = d; });
+
+updateStats();
+renderTable();
+renderExposure();
+renderStocks();
+renderWatchList();
+updatePortfolioStat();
+</script>
+</body>
+</html>
