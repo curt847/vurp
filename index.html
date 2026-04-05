@@ -208,7 +208,7 @@
 <div class="header">
   <div class="header-left">
     <div class="logo">ROLL<span>WATCH</span></div>
-    <span class="version">v2.7</span>
+    <span class="version">v2.8</span>
     <div class="last-refresh" id="lastRefresh">Not yet refreshed — hit ⟳</div>
   </div>
   <div class="header-right">
@@ -1009,7 +1009,7 @@ function updatePriceTicker() {
 // ══════════════════════════════════════════
 
 // ── Apps Script proxy — handles CORS so UW API works from local file ──
-const PROXY_URL = '/proxy';
+const PROXY_URL = 'https://script.google.com/macros/s/AKfycbx6bii9j6bTsTQCK4QT5-zF4XGVRygiYdqExdb0QbFQJqu__l-gLjBr8gRUyGpZzAziow/exec';
 
 async function uw(path, expiry='') {
   if (PROXY_URL) {
@@ -1412,7 +1412,7 @@ function calcCollateral(postype, short, long, cts, stockPrice, open) {
 // Uses the same Apps Script web app as the UW proxy.
 // The script handles reading/writing a JSON file in your Drive.
 // No OAuth setup required — the script runs under your Google account.
-const SYNC_PROXY = '/proxy';
+const SYNC_PROXY = 'https://script.google.com/macros/s/AKfycbx6bii9j6bTsTQCK4QT5-zF4XGVRygiYdqExdb0QbFQJqu__l-gLjBr8gRUyGpZzAziow/exec';
 let driveSyncing = false;
 let driveReady   = false; // blocks auto-push until driveLoad() completes
 
@@ -1427,24 +1427,19 @@ function setDriveBadge(text, color) {
 }
 
 async function driveRead() {
-  console.log('[RW] driveRead: sending POST to proxy');
-  const r = await fetch(SYNC_PROXY, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'read' })
+  // GET with cache-bust — no preflight, no CORS block from any origin
+  const r = await fetch(SYNC_PROXY + '?action=read&cb=' + Date.now(), {
+    method: 'GET'
   });
-  console.log('[RW] driveRead: response status', r.status, r.ok);
   if (!r.ok) throw new Error('read failed: ' + r.status);
-  const data = await r.json();
-  console.log('[RW] driveRead: data received', JSON.stringify(data).slice(0, 200));
-  return data;
+  return r.json();
 }
 
 async function driveWrite(payload) {
-  const r = await fetch(SYNC_PROXY, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'write', data: payload })
+  // GET with encoded payload — avoids CORS preflight entirely
+  const encoded = encodeURIComponent(JSON.stringify(payload));
+  const r = await fetch(SYNC_PROXY + '?action=write&data=' + encoded + '&cb=' + Date.now(), {
+    method: 'GET'
   });
   if (!r.ok) throw new Error('write failed');
   return r.json();
@@ -1456,16 +1451,13 @@ async function driveSync() {
   if (driveSyncing) return;
   driveSyncing = true;
   setDriveBadge('☁ SYNCING…', '#f5c842');
-  console.log('[RW] driveSync: pushing STOCKS=', JSON.stringify(STOCKS), 'positions=', POSITIONS.length);
   try {
     const payload = { positions: POSITIONS, stocks: STOCKS, ts: Date.now() };
     const result = await driveWrite(payload);
-    console.log('[RW] driveSync: write result=', JSON.stringify(result));
     localStorage.setItem('rollwatch_ts', String(payload.ts));
     setDriveBadge('☁ SYNCED', '#00e88a');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
   } catch(e) {
-    console.warn('[RW] driveSync error:', e);
     setDriveBadge('☁ ERROR', '#ff3d5a');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 3000);
   }
@@ -1475,16 +1467,11 @@ async function driveSync() {
 async function driveLoad() {
   try {
     setDriveBadge('☁ LOADING…', '#f5c842');
-    console.log('[RW] driveLoad: starting');
     const data = await driveRead();
 
-    console.log('[RW] driveLoad: data.ts=', data && data.ts);
-    console.log('[RW] driveLoad: positions count=', data && data.positions && data.positions.length);
-    console.log('[RW] driveLoad: stocks=', JSON.stringify(data && data.stocks));
 
     // Drive has no data yet — stay with local
     if (!data || !data.ts || !Array.isArray(data.positions) || !data.positions.length) {
-      console.log('[RW] driveLoad: no valid Drive data, staying local');
       setDriveBadge('☁ DRIVE', '#4285f4');
       return false;
     }
@@ -1494,18 +1481,15 @@ async function driveLoad() {
     data.positions.forEach(p => POSITIONS.push(p));
     if (Array.isArray(data.stocks)) {
       STOCKS = data.stocks;
-      console.log('[RW] driveLoad: STOCKS set to', JSON.stringify(STOCKS));
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(POSITIONS));
     localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
     localStorage.setItem('rollwatch_ts', String(data.ts));
 
-    console.log('[RW] driveLoad: success, loaded=true, re-rendering');
     setDriveBadge('☁ IN SYNC', '#00e88a');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
     return true;
   } catch(e) {
-    console.warn('[RW] driveLoad error:', e);
     setDriveBadge('☁ OFFLINE', '#7a8fa6');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 3000);
     return false;
