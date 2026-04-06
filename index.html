@@ -15,7 +15,7 @@
     --teal:#00c8b4; --purple:#a78bfa; --blue:#3b9eff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;min-height:100vh}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-height:100vh}
 
   /* HEADER */
   .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
@@ -50,10 +50,12 @@
   /* PRICE TICKER BAR */
   .flow-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 20px;display:flex;align-items:center;gap:12px;overflow:hidden}
   .flow-bar-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
-  .flow-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;flex:1}
-  .flow-scroll::-webkit-scrollbar{display:none}
-  .flow-item{display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:10px}
-  .flow-ticker-label{font-weight:700;color:var(--text)}
+  .flow-scroll{display:flex;flex:1;overflow:hidden;position:relative}
+  .flow-track{display:flex;gap:24px;white-space:nowrap;animation:marquee 40s linear infinite}
+  .flow-track:hover{animation-play-state:paused}
+  @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  .flow-item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;font-weight:600}
+  .flow-ticker-label{font-weight:800;color:var(--text);font-size:11px;letter-spacing:0.5px}
   .price-up{color:var(--green)}
   .price-dn{color:var(--red)}
   .price-neu{color:var(--muted)}
@@ -218,6 +220,7 @@
     <button class="btn btn-secondary" onclick="exportPositions()" style="font-size:10px;padding:5px 10px">⬇ EXPORT</button>
     <button class="btn" onclick="showAddModal()" style="background:var(--green);font-size:11px">+ ADD</button>
     <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
+    <button class="btn btn-ghost" id="extrasBtn" onclick="fetchExtras()" style="font-size:10px;padding:5px 10px">⟳ EXTRAS</button>
     <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
   </div>
 </div>
@@ -558,9 +561,17 @@ function bsDelta(S,K,T,iv,type) {
 }
 function getLiveStock(p) { return (livePrices[p.ticker]&&livePrices[p.ticker].price) || p.stock; }
 function getLiveIV(p) {
-  // Only use live UW IV — never trust the spreadsheet value (manual 100% entries)
+  // Try to match IV to position's specific DTE from term structure
+  const term = liveData[p.ticker]&&liveData[p.ticker].iv_term;
+  if (term && Object.keys(term).length) {
+    const dtes = Object.keys(term).map(Number);
+    const closest = dtes.reduce((b, d) => Math.abs(d - p.dte) < Math.abs(b - p.dte) ? d : b, dtes[0]);
+    const matched = term[closest];
+    if (matched && matched > 1 && matched < 500) return matched;
+  }
+  // Fall back to general IV
   const live = (liveData[p.ticker]&&liveData[p.ticker].iv);
-  if (live && live > 1 && live < 222) return live; // UW returns as percentage, sanity check
+  if (live && live > 1 && live < 222) return live;
   // Reasonable sector defaults for BS estimate when UW hasn't returned IV yet
   // These are rough but far better than a manual 100% entry
   const defaults = {
@@ -1001,38 +1012,67 @@ function updatePriceTicker() {
     const cls=lp.pct>=0?'price-up':'price-dn', arr=lp.pct>=0?'▲':'▼';
     return `<span class="flow-item"><span class="flow-ticker-label">${t}</span><span class="${cls}">$${lp.price.toFixed(2)} ${arr}${Math.abs(lp.pct).toFixed(2)}%</span></span>`;
   }).filter(Boolean);
-  bar.innerHTML=items.length?items.join(''):'<span style="color:var(--muted);font-size:10px">No price data returned — market may be closed</span>';
+  if (!items.length) {
+    bar.innerHTML='<span style="color:var(--muted);font-size:10px">No price data returned — market may be closed</span>';
+    return;
+  }
+  // Duplicate items for seamless infinite scroll
+  const html = items.join('<span class="flow-item" style="color:var(--border);margin:0 8px">·</span>');
+  bar.innerHTML = `<div class="flow-track">${html}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${html}</div>`;
+  // Adjust speed based on content width — more tickers = faster
+  const track = bar.querySelector('.flow-track');
+  const speed = Math.max(20, items.length * 3);
+  track.style.animationDuration = speed + 's';
 }
 
 // ══════════════════════════════════════════
 // API FETCHING
 // ══════════════════════════════════════════
 
+// ── Request semaphore — caps concurrent UW calls to avoid rate limiting ──
+function makeSemaphore(max) {
+  let active = 0;
+  const queue = [];
+  return async function acquire(fn) {
+    if (active >= max) await new Promise(r => queue.push(r));
+    active++;
+    try { return await fn(); }
+    finally {
+      active--;
+      if (queue.length) queue.shift()();
+    }
+  };
+}
+const uwSem = makeSemaphore(6); // max 6 concurrent UW requests
+
 // ── Apps Script proxy — handles CORS so UW API works from local file ──
 const PROXY_URL = 'https://script.google.com/macros/s/AKfycbx6bii9j6bTsTQCK4QT5-zF4XGVRygiYdqExdb0QbFQJqu__l-gLjBr8gRUyGpZzAziow/exec';
 
 async function uw(path, expiry='', ms=15000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    if (PROXY_URL) {
-      // Route through Apps Script proxy — no CORS issues
-      const params = new URLSearchParams({ path });
-      if (expiry) params.set('expiry', expiry);
-      const r = await fetch(`${PROXY_URL}?${params}`, { signal: controller.signal });
-      if (!r.ok) throw new Error(r.status);
-      return r.json();
-    } else {
-      // Direct call — CORS will block this from a local file
-      let url = UW_BASE + path;
-      if (expiry) url += (url.includes('?') ? '&' : '?') + 'expiry=' + expiry;
-      const r = await fetch(url, { headers: UW_HDRS, signal: controller.signal });
-      if (!r.ok) throw new Error(r.status);
-      return r.json();
+  return uwSem(async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      if (PROXY_URL) {
+        const params = new URLSearchParams({ path });
+        if (expiry) params.set('query', 'expiry=' + expiry);
+        const r = await fetch(`${PROXY_URL}?${params}`, { signal: controller.signal });
+        if (!r.ok) throw new Error(r.status);
+        const json = await r.json();
+        // Treat rate limit responses as errors so callers can handle gracefully
+        if (json && json.error && String(json.error).includes('rate limit')) throw new Error('rate_limit');
+        return json;
+      } else {
+        let url = UW_BASE + path;
+        if (expiry) url += (url.includes('?') ? '&' : '?') + 'expiry=' + expiry;
+        const r = await fetch(url, { headers: UW_HDRS, signal: controller.signal });
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      }
+    } finally {
+      clearTimeout(timer);
     }
-  } finally {
-    clearTimeout(timer);
-  }
+  });
 }
 
 // Timeout wrapper — kills a fetch if it takes more than 8 seconds
@@ -1066,30 +1106,42 @@ async function fetchAll() {
     }));
   }
 
-  // Fetch price + IV only for watch-only tickers
-  btn.textContent='⟳ Watch list prices…';
-  await Promise.all(watchOnly.map(async t => {
-    try {
-      const v = await uw(`/api/stock/${t}/options-volume`);
-      const d = (v&&v.data&&v.data[0]);
-      if (d) {
-        const price = parseFloat(d.close||d.price||d.underlying_price||0);
-        const prev  = parseFloat(d.prev_close||d.open||price);
-        if (price>0) livePrices[t]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
-      }
-    } catch(e){}
+  // Interpolated IV for all position tickers — always fetch, overwrites greeks IV with more accurate value
+  await Promise.all(tickers.map(async t => {
     try {
       const iv = await uw(`/api/stock/${t}/interpolated-iv`);
-      if ((iv&&iv.data&&iv.data.iv)) { if(!liveData[t]) liveData[t]={}; liveData[t].iv = parseFloat(iv.data.iv)*100; }
-    } catch(e){}
+      const arr = Array.isArray(iv&&iv.data) ? iv.data : null;
+      if (arr && arr.length) {
+        if (!liveData[t]) liveData[t]={};
+        // Store full term structure keyed by DTE for per-expiry lookup
+        liveData[t].iv_term = {};
+        arr.forEach(r => {
+          const vol = parseFloat(r.volatility);
+          if (vol > 0 && vol < 10) liveData[t].iv_term[Number(r.days)] = vol * 100;
+        });
+        // Also store a fallback: the row closest to 30 DTE as a general IV
+        const target = 30;
+        const best = arr.reduce((b, r) => Math.abs(Number(r.days)-target) < Math.abs(Number(b.days)-target) ? r : b, arr[0]);
+        const vol = parseFloat(best.volatility);
+        if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
+      }
+    } catch(e) {}
   }));
 
-  // Flow and earnings are best-effort — don't let them block
-  btn.textContent='⟳ Loading flow…';
-  await withTimeout(fetchFlowAlerts(tickers), 10000).catch(()=>{});
-
-  btn.textContent='⟳ Loading earnings…';
-  await withTimeout(fetchEarnings(tickers), 10000).catch(()=>{});
+  // Fetch stock prices for stock positions (e.g. ONDS) — not covered by fetchTicker
+  await Promise.all(STOCKS.map(async s => {
+    // Always fetch fresh price for stock positions — don't rely on options fetch
+    try {
+      const v = await uw(`/api/stock/${s.ticker}/stock-state`);
+      const d = v&&v.data;
+      const row = d ? (Array.isArray(d) ? d[0] : d) : null;
+      if (row) {
+        const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+        const prev  = parseFloat(row.prev_close||row.open||price);
+        if (price > 0) livePrices[s.ticker] = { price, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+      }
+    } catch(e) {}
+  }));
 
   updatePriceTicker();
   renderTable();
@@ -1099,6 +1151,66 @@ async function fetchAll() {
   updatePortfolioStat();
   btn.disabled=false; btn.textContent='⟳ REFRESH LIVE';
   document.getElementById('lastRefresh').textContent='⏱ Refreshed '+new Date().toLocaleTimeString();
+}
+
+// ══════════════════════════════════════════
+// EXTRAS — watchlist prices + earnings (run on demand, not every refresh)
+// ══════════════════════════════════════════
+async function fetchExtras() {
+  const btn = document.getElementById('extrasBtn');
+  btn.disabled = true;
+  const posTickers = new Set(POSITIONS.map(p => p.ticker));
+  const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t));
+  const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+
+  // Watchlist-only prices + IV
+  btn.textContent = '⟳ Watch prices…';
+  await Promise.all(watchOnly.map(async t => {
+    if (!livePrices[t]) {
+      try {
+        const v = await uw(`/api/stock/${t}/stock-state`);
+        const d = v&&v.data;
+        const row = d ? (Array.isArray(d) ? d[0] : d) : null;
+        if (row) {
+          const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+          const prev  = parseFloat(row.prev_close||row.open||price);
+          if (price > 0) livePrices[t] = { price, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+        }
+      } catch(e) {}
+    }
+    try {
+      const iv = await uw(`/api/stock/${t}/interpolated-iv`);
+      const arr = Array.isArray(iv&&iv.data) ? iv.data : null;
+      if (arr && arr.length) {
+        if (!liveData[t]) liveData[t]={};
+        liveData[t].iv_term = {};
+        arr.forEach(r => {
+          const vol = parseFloat(r.volatility);
+          if (vol > 0 && vol < 10) liveData[t].iv_term[Number(r.days)] = vol * 100;
+        });
+        const target = 30;
+        const best = arr.reduce((b, r) => Math.abs(Number(r.days)-target) < Math.abs(Number(b.days)-target) ? r : b, arr[0]);
+        const vol = parseFloat(best.volatility);
+        if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
+      }
+    } catch(e) {}
+  }));
+
+  // Flow alerts
+  btn.textContent = '⟳ Flow…';
+  await withTimeout(fetchFlowAlerts(allTickers), 15000).catch(()=>{});
+
+  // Earnings
+  btn.textContent = '⟳ Earnings…';
+  await withTimeout(fetchEarnings(allTickers), 15000).catch(()=>{});
+
+  renderTable();
+  renderWatchList();
+  updateStats();
+  updatePriceTicker();
+  btn.disabled = false;
+  btn.textContent = '⟳ EXTRAS';
+  document.getElementById('lastRefresh').textContent += ' · extras ' + new Date().toLocaleTimeString();
 }
 
 async function fetchTicker(ticker) {
@@ -1177,29 +1289,33 @@ async function fetchTicker(ticker) {
       }
     }),
 
-    // 2. Stock price from options-volume
+    // 2. Stock price from stock-state (reliable prev_close for % change)
     (async () => {
       try {
-        const v = await uw(`/api/stock/${ticker}/options-volume`);
-        const d = (v&&v.data&&v.data[0]);
-        if (d) {
-          const price = parseFloat(d.close||d.price||d.underlying_price||0);
-          const prev  = parseFloat(d.prev_close||d.open||price);
+        const v = await uw(`/api/stock/${ticker}/stock-state`);
+        const d = v&&v.data;
+        const row = Array.isArray(d) ? d[0] : d;
+        if (row) {
+          const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+          const prev  = parseFloat(row.prev_close||row.open||price);
           if (price>0) livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
         }
       } catch(e) {}
+      // Fallback to options-volume if stock-state gave nothing
+      if (!livePrices[ticker]) {
+        try {
+          const v = await uw(`/api/stock/${ticker}/options-volume`);
+          const d = v&&v.data&&v.data[0];
+          if (d) {
+            const price = parseFloat(d.close||d.price||d.underlying_price||0);
+            const prev  = parseFloat(d.prev_close||d.open||price);
+            if (price>0) livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
+          }
+        } catch(e) {}
+      }
     })(),
   ]);
 
-  // 3. Interpolated IV — only as fallback if greeks didn't return usable IV
-  if (!greeksSetIV || !liveData[ticker].iv) {
-    try {
-      const iv = await uw(`/api/stock/${ticker}/interpolated-iv`);
-      if (iv&&iv.data&&iv.data.iv) {
-        liveData[ticker].iv = parseFloat(iv.data.iv) * 100;
-      }
-    } catch(e) {}
-  }
 }
 
 // Build normalized OCC contract ID for intraday endpoint
@@ -1247,22 +1363,7 @@ async function fetchFlowAlerts(tickers) {
 }
 
 // Known upcoming earnings as fallback (update periodically)
-const EARNINGS_FALLBACK = {
-  AMD:  '2026-04-29', AMZN: '2026-04-29', ASTS: '2026-05-12',
-  AVGO: '2026-06-05', APP:  '2026-05-07', AMAT: '2026-05-15',
-  BA:   '2026-04-23', BSX:  '2026-04-23', CRM:  '2026-05-28',
-  DUOL: '2026-05-05', FLUT: '2026-05-07', GOOG: '2026-04-29',
-  HIMS: '2026-05-05', HOOD: '2026-05-07', HUT:  '2026-05-12',
-  IBM:  '2026-04-22', INTC: '2026-04-24', IONQ: '2026-05-08',
-  IREN: '2026-05-15', JPM:  '2026-04-11', LASR: '2026-05-08',
-  LLY:  '2026-04-29', META: '2026-04-29', MRK:  '2026-04-24',
-  MS:   '2026-04-16', MSTR: '2026-05-01', NBIS: '2026-05-12',
-  NOW:  '2026-04-23', NVDA: '2026-05-28', PLTR: '2026-05-05',
-  RDDT: '2026-05-05', RKLB: '2026-05-07', SOFI: '2026-04-29',
-  TSLA: '2026-04-22', USO:  null,         VRT:  '2026-04-23',
-  WDAY: '2026-05-28', WDC:  '2026-04-23', GLW:  '2026-04-22',
-  ADBE: '2026-06-17', APLD: '2026-05-15',
-};
+const EARNINGS_FALLBACK = {}; // populated by EXTRAS fetch only
 
 async function fetchEarnings(tickers) {
   const today = new Date().toISOString().slice(0,10);
@@ -2187,9 +2288,7 @@ driveLoad().then(function(loaded) {
 loadWatchList();
 loadPortfolio();
 
-// Pre-seed earnings
-const today0 = new Date().toISOString().slice(0,10);
-Object.entries(EARNINGS_FALLBACK).forEach(([t,d]) => { if (d && d >= today0) earningsMap[t] = d; });
+// Earnings populated on demand via EXTRAS button
 
 updateStats();
 renderTable();
