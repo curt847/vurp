@@ -54,8 +54,8 @@
   .flow-track{display:flex;gap:24px;white-space:nowrap;animation:marquee 40s linear infinite}
   .flow-track:hover{animation-play-state:paused}
   @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-  .flow-item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;font-weight:600}
-  .flow-ticker-label{font-weight:800;color:var(--text);font-size:11px;letter-spacing:0.5px}
+  .flow-item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:15px;font-weight:600}
+  .flow-ticker-label{font-weight:800;color:var(--text);font-size:13px;letter-spacing:0.5px}
   .price-up{color:var(--green)}
   .price-dn{color:var(--red)}
   .price-neu{color:var(--muted)}
@@ -673,9 +673,35 @@ function getSpreadMid(p) {
     if (sBid != null && sAsk != null) return { mid: (sBid + sAsk) / 2, isLive: true };
     return { mid: Math.abs(p.open), isLive: false };
   }
-  // Try live Robinhood-style spread mid first
+  // Try live Robinhood-style spread mid first (requires both legs)
   const liveMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMid_${p.short}_${p.long}_${p.type}`]);
-  if (liveMid != null) return { mid: liveMid, isLive: true };
+  if (liveMid != null) return { mid: Math.max(0, liveMid), isLive: true };
+
+  // Partial fallback: if we have at least the short leg live, estimate spread mid
+  // by subtracting p.open's long-leg contribution from the live short mid
+  const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
+  const sAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
+  const lBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.long}_${p.type}`]);
+  const lAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.long}_${p.type}`]);
+
+  if (sBid != null && sAsk != null && lBid != null && lAsk != null) {
+    // Both legs live — compute spread mid (shouldn't reach here, but safety net)
+    const shortMid = (sBid + sAsk) / 2;
+    const longMid  = (lBid + lAsk) / 2;
+    return { mid: Math.max(0, shortMid - longMid), isLive: true };
+  }
+  if (sBid != null && sAsk != null) {
+    // Only short leg — use short mid as upper bound of spread mid
+    // (long leg adds some value, so real spread mid is lower, but this is better than stale open)
+    const shortMid = (sBid + sAsk) / 2;
+    // Use p.open's long-leg shortMid/longMid ratio to estimate long leg if available
+    const openShort = Math.abs(p.shortMid || 0);
+    const openLong  = Math.abs(p.longMid  || 0);
+    const longEst   = openShort > 0 && openLong > 0
+      ? shortMid * (openLong / openShort)  // scale long est proportionally
+      : 0;
+    return { mid: Math.max(0, shortMid - longEst), isLive: true };
+  }
   // Fall back to open premium
   return { mid: Math.abs(p.open), isLive: false };
 }
@@ -1265,7 +1291,7 @@ async function fetchTicker(ticker) {
       if (sBid!=null && sAsk!=null && lBid!=null && lAsk!=null) {
         const shortMid = (sBid + sAsk) / 2;
         const longMid  = (lBid + lAsk) / 2;
-        liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = shortMid - longMid;
+        liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = Math.max(0, shortMid - longMid);
       }
     });
   }
@@ -1587,6 +1613,18 @@ async function driveWrite(payload) {
   return { ok: true };
 }
 
+// Build the full portable state payload — everything Drive needs to restore the app
+function buildPayload() {
+  return {
+    positions:         POSITIONS,
+    stocks:            STOCKS,
+    watchlist:         WATCHLIST,
+    bias:              BIAS,
+    portfolioBaseline: portfolioBaseline,
+    ts:                Date.now()
+  };
+}
+
 // Manual sync button — push current state up
 async function driveSync() {
   driveReady = true;
@@ -1594,9 +1632,8 @@ async function driveSync() {
   driveSyncing = true;
   setDriveBadge('☁ SYNCING…', '#f5c842');
   try {
-    const payload = { positions: POSITIONS, stocks: STOCKS, ts: Date.now() };
-    const result = await driveWrite(payload);
-    localStorage.setItem('rollwatch_ts', String(payload.ts));
+    const payload = buildPayload();
+    await driveWrite(payload);
     setDriveBadge('☁ SYNCED', '#00e88a');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
   } catch(e) {
@@ -1611,22 +1648,22 @@ async function driveLoad() {
     setDriveBadge('☁ LOADING…', '#f5c842');
     const data = await driveRead();
 
-
-    // Drive has no data yet — stay with local
+    // Drive has no data yet — nothing to restore
     if (!data || !data.ts || !Array.isArray(data.positions) || !data.positions.length) {
       setDriveBadge('☁ DRIVE', '#4285f4');
       return false;
     }
 
-    // Always trust Drive — it is the source of truth.
+    // Always trust Drive — it is the single source of truth
     POSITIONS.length = 0;
     data.positions.forEach(p => POSITIONS.push(p));
-    if (Array.isArray(data.stocks)) {
-      STOCKS = data.stocks;
+
+    if (Array.isArray(data.stocks))    { STOCKS    = data.stocks; }
+    if (Array.isArray(data.watchlist)) { WATCHLIST = data.watchlist; }
+    if (data.bias && typeof data.bias === 'object') { BIAS = data.bias; }
+    if (data.portfolioBaseline && data.portfolioBaseline.value) {
+      portfolioBaseline = data.portfolioBaseline;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(POSITIONS));
-    localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
-    localStorage.setItem('rollwatch_ts', String(data.ts));
 
     setDriveBadge('☁ IN SYNC', '#00e88a');
     setTimeout(() => setDriveBadge('☁ DRIVE', '#4285f4'), 2500);
@@ -1643,16 +1680,17 @@ async function driveLoad() {
 // ══════════════════════════════════════════
 function saveToStorage() {
   try {
-    const ts = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(POSITIONS));
+    // localStorage — fast local cache so the page renders instantly on reload
+    localStorage.setItem(STORAGE_KEY,       JSON.stringify(POSITIONS));
     localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
-    localStorage.setItem('rollwatch_ts', String(ts));
+    localStorage.setItem(WATCH_KEY,         JSON.stringify(WATCHLIST));
+    localStorage.setItem(BIAS_KEY,          JSON.stringify(BIAS));
+    if (portfolioBaseline) localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
     const badge = getStorageBadge();
     if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
-    // Auto-push to Drive in background — only after initial load is done
+    // Push full portable state to Drive — only after initial load is done
     if (driveReady) {
-      var _autoPayload = { positions: POSITIONS, stocks: STOCKS, ts: ts };
-      driveWrite(_autoPayload).catch(function() {});
+      driveWrite(buildPayload()).catch(function() {});
     }
   } catch(e) {}
 }
@@ -1672,10 +1710,24 @@ function loadFromStorage() {
       const savedS = JSON.parse(rawS);
       if (Array.isArray(savedS)) { STOCKS = savedS; }
     }
+    const rawW = localStorage.getItem(WATCH_KEY);
+    if (rawW) {
+      const savedW = JSON.parse(rawW);
+      if (Array.isArray(savedW)) { WATCHLIST = savedW; }
+    }
+    const rawB = localStorage.getItem(BIAS_KEY);
+    if (rawB) {
+      const savedB = JSON.parse(rawB);
+      if (savedB && typeof savedB === 'object') { BIAS = savedB; }
+    }
+    const rawP = localStorage.getItem(PORT_KEY);
+    if (rawP) {
+      const savedP = JSON.parse(rawP);
+      if (savedP && savedP.value) { portfolioBaseline = savedP; }
+    }
   } catch(e) {}
   // NOTE: intentionally NOT calling saveToStorage() here —
-  // that would stamp a fresh timestamp and push stale hardcoded
-  // positions to Drive before driveLoad() gets a chance to run.
+  // that would push stale hardcoded positions to Drive before driveLoad() runs.
 }
 
 // Recalc collateral for all existing positions that have it hardcoded
@@ -2055,18 +2107,9 @@ const BIAS_KEY   = 'rollwatch_bias_v1';
 let WATCHLIST = []; // user-added tickers (watch-only)
 let BIAS      = {}; // ticker -> 'bull' | 'bear' | 'neu'
 
-function loadWatchList() {
-  try {
-    const raw = localStorage.getItem(WATCH_KEY);
-    if (raw) WATCHLIST = JSON.parse(raw);
-    const rawB = localStorage.getItem(BIAS_KEY);
-    if (rawB) BIAS = JSON.parse(rawB);
-  } catch(e) {}
-}
-
 function saveWatchList() {
-  localStorage.setItem(WATCH_KEY, JSON.stringify(WATCHLIST));
-  localStorage.setItem(BIAS_KEY, JSON.stringify(BIAS));
+  // Always go through saveToStorage so Drive gets the full state update
+  saveToStorage();
 }
 
 function addWatchTicker() {
@@ -2170,15 +2213,9 @@ function renderWatchList() {
 const PORT_KEY = 'rollwatch_portfolio_v1';
 let portfolioBaseline = null; // { value, date }
 
-function loadPortfolio() {
-  try {
-    const raw = localStorage.getItem(PORT_KEY);
-    if (raw) portfolioBaseline = JSON.parse(raw);
-  } catch(e) {}
-}
-
 function savePortfolio() {
-  localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
+  // Always go through saveToStorage so Drive gets the full state update
+  saveToStorage();
 }
 
 function calcCurrentPortfolioValue() {
@@ -2271,31 +2308,34 @@ document.getElementById('baselineModal').addEventListener('click', e => {
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-loadFromStorage();
+loadFromStorage(); // restores positions, stocks, watchlist, bias, portfolioBaseline from cache
 recalcAllCollateral();
-// Attempt Drive load — if Drive has newer data, reload UI
-driveLoad().then(function(loaded) {
-  if (loaded) {
-    recalcAllCollateral();
-    updateStats();
-    renderTable();
-    renderStocks();
-    renderWatchList();
-    updatePortfolioStat();
-  }
-  driveReady = true; // now safe to auto-push on user changes
-});
-loadWatchList();
-loadPortfolio();
 
-// Earnings populated on demand via EXTRAS button
-
+// Initial render with local/storage data
 updateStats();
 renderTable();
 renderExposure();
 renderStocks();
 renderWatchList();
 updatePortfolioStat();
+
+// Attempt Drive load — if Drive has newer data, reload UI
+driveLoad().then(function(loaded) {
+  if (loaded) {
+    recalcAllCollateral();
+    updateStats();
+    renderTable();
+    renderExposure();
+    renderStocks();
+    renderWatchList();
+  }
+  // Always re-run portfolio stat after Drive resolves so baseline
+  // is displayed correctly against final POSITIONS state
+  updatePortfolioStat();
+  driveReady = true; // now safe to auto-push on user changes
+});
+
+// Earnings populated on demand via EXTRAS button
 
 // ══════════════════════════════════════════
 // DEBUG MODAL
