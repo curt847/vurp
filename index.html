@@ -90,9 +90,9 @@
   /* Put Credit + Call Debit = BULLISH — light blue */
   .type-P-cr{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.4)}
   .type-C-db{background:transparent;color:#63b3ed;border:1px solid rgba(99,179,237,.45);opacity:.85}
-  /* Call Credit + Put Debit = BEARISH — purple */
-  .type-C-cr{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.4)}
-  .type-P-db{background:transparent;color:var(--purple);border:1px solid rgba(167,139,250,.45);opacity:.85}
+  /* Call Credit + Put Debit = BEARISH — pink */
+  .type-C-cr{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.4)}
+  .type-P-db{background:transparent;color:#ff64b4;border:1px solid rgba(255,100,180,.45);opacity:.85}
   /* Covered call — muted gray */
   .type-cc{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   /* Long call — green */
@@ -101,7 +101,7 @@
   .type-long-p{background:rgba(245,200,66,.12);color:var(--yellow);border:1px solid rgba(245,200,66,.35)}
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
-  .type-P{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.35)}
+  .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
   .strike-range{color:var(--text);font-size:13px}
   .dte-val{font-weight:500}
   .dte-near{color:var(--orange)}
@@ -1011,21 +1011,27 @@ function updatePriceTicker() {
 // ── Apps Script proxy — handles CORS so UW API works from local file ──
 const PROXY_URL = 'https://script.google.com/macros/s/AKfycbx6bii9j6bTsTQCK4QT5-zF4XGVRygiYdqExdb0QbFQJqu__l-gLjBr8gRUyGpZzAziow/exec';
 
-async function uw(path, expiry='') {
-  if (PROXY_URL) {
-    // Route through Apps Script proxy — no CORS issues
-    const params = new URLSearchParams({ path });
-    if (expiry) params.set('expiry', expiry);
-    const r = await fetch(`${PROXY_URL}?${params}`);
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
-  } else {
-    // Direct call — CORS will block this from a local file
-    let url = UW_BASE + path;
-    if (expiry) url += (url.includes('?') ? '&' : '?') + 'expiry=' + expiry;
-    const r = await fetch(url, { headers: UW_HDRS });
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
+async function uw(path, expiry='', ms=15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    if (PROXY_URL) {
+      // Route through Apps Script proxy — no CORS issues
+      const params = new URLSearchParams({ path });
+      if (expiry) params.set('expiry', expiry);
+      const r = await fetch(`${PROXY_URL}?${params}`, { signal: controller.signal });
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    } else {
+      // Direct call — CORS will block this from a local file
+      let url = UW_BASE + path;
+      if (expiry) url += (url.includes('?') ? '&' : '?') + 'expiry=' + expiry;
+      const r = await fetch(url, { headers: UW_HDRS, signal: controller.signal });
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -1051,9 +1057,10 @@ async function fetchAll() {
   };
   updateProgress();
 
-  // Fetch full greeks/price for position tickers in batches of 4
-  for (let i=0;i<tickers.length;i+=4) {
-    await Promise.all(tickers.slice(i,i+4).map(async t => {
+  // Fetch position tickers with concurrency limit of 8 — avoids proxy timeout storms
+  const CONCURRENCY = 8;
+  for (let i = 0; i < tickers.length; i += CONCURRENCY) {
+    await Promise.all(tickers.slice(i, i + CONCURRENCY).map(async t => {
       await fetchTicker(t);
       done++; updateProgress();
     }));
@@ -1100,68 +1107,99 @@ async function fetchTicker(ticker) {
   const myPositions = POSITIONS.filter(p=>p.ticker===ticker);
   const expiries = [...new Set(myPositions.map(p=>p.expiry))];
 
-  // ── 1. DELTA: greeks endpoint per expiry (matches GET_UW_DELTA exactly) ──
-  await Promise.all(expiries.map(async expiry => {
-    try {
-      const g = await uw(`/api/stock/${ticker}/greeks`, expiry);
-      const arr = Array.isArray((g&&g.data)) ? g.data : [];
-      if (!arr.length) return;
-      myPositions.filter(p=>p.expiry===expiry).forEach(p => {
-        const deltaKey = p.type==='C' ? 'call_delta' : 'put_delta';
+  // Helper to apply greeks response for a given expiry
+  function applyGreeks(arr, requestedExpiry) {
+    if (!arr.length) return;
 
-        // Match short leg
-        const shortRow = arr.find(x=>Math.abs(Number((x&&x.strike))-p.short)<1e-6)
-                      || arr.find(x=>Number((x&&x.strike))===p.short);
-        // Match long leg
-        const longRow  = arr.find(x=>Math.abs(Number((x&&x.strike))-p.long)<1e-6)
-                      || arr.find(x=>Number((x&&x.strike))===p.long);
-
-        if (shortRow) {
-          if (shortRow[deltaKey] != null) liveData[ticker][`${p.short}_${p.type}`] = Number(shortRow[deltaKey]);
-          if (shortRow.iv  != null) liveData[ticker].iv = Number(shortRow.iv) * 100;
-          // Store short leg bid/ask for display
-          if (shortRow.bid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = Number(shortRow.bid);
-          if (shortRow.ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = Number(shortRow.ask);
-        }
-
-        if (longRow) {
-          // Store long leg bid/ask
-          if (longRow.bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = Number(longRow.bid);
-          if (longRow.ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = Number(longRow.ask);
-        }
-
-        // Calc Robinhood-style spread mid: short mid - long mid
-        const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
-        const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
-        const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
-        const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
-        if (sBid!=null && sAsk!=null && lBid!=null && lAsk!=null) {
-          const shortMid = (sBid + sAsk) / 2;
-          const longMid  = (lBid + lAsk) / 2;
-          liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = shortMid - longMid;
-        }
-      });
-    } catch(e){}
-  }));
-
-  // ── 2. Stock price from options-volume ──
-  try {
-    const v = await uw(`/api/stock/${ticker}/options-volume`);
-    const d = (v&&v.data&&v.data[0]);
-    if (d) {
-      const price = parseFloat(d.close||d.price||d.underlying_price||0);
-      const prev  = parseFloat(d.prev_close||d.open||price);
-      if (price>0) {
-        livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
-      }
+    // Detect stale UW response: if the returned expiry doesn't match what we asked for,
+    // UW is returning yesterday's EOD data. In that case skip delta/IV (use BS instead)
+    // but still extract bid/ask which remain useful for spread mid calculation.
+    const returnedExpiry = arr[0] && arr[0].expiry;
+    const isStale = returnedExpiry && returnedExpiry !== requestedExpiry;
+    if (isStale) {
+      console.warn(`[RW] ${ticker} (${requestedExpiry}): UW returned stale data for ${returnedExpiry} — skipping delta/IV, keeping bid/ask`);
     }
-  } catch(e){}
 
-  // ── 3. Interpolated IV fallback if greeks didn't return it ──
-  if (!liveData[ticker].iv) try {
-    const iv = await uw(`/api/stock/${ticker}/interpolated-iv`);
-    if ((iv&&iv.data&&iv.data.iv)) liveData[ticker].iv = parseFloat(iv.data.iv) * 100;
-  } catch(e){}
+    myPositions.filter(p=>p.expiry===requestedExpiry).forEach(p => {
+      const deltaKey = p.type==='C' ? 'call_delta' : 'put_delta';
+
+      const shortRow = arr.find(x=>Math.abs(Number((x&&x.strike))-p.short)<1e-6)
+                    || arr.find(x=>Number((x&&x.strike))===p.short);
+      const longRow  = arr.find(x=>Math.abs(Number((x&&x.strike))-p.long)<1e-6)
+                    || arr.find(x=>Number((x&&x.strike))===p.long);
+
+      if (shortRow) {
+        // Only trust delta and IV if the data is for the correct date
+        if (!isStale) {
+          if (shortRow[deltaKey] != null) liveData[ticker][`${p.short}_${p.type}`] = Number(shortRow[deltaKey]);
+          // UW greeks returns iv as a percentage already (e.g. 63.6)
+          if (shortRow.iv != null) liveData[ticker].iv = Number(shortRow.iv);
+        }
+        // Bid/ask are still useful even if stale (ballpark for spread mid)
+        if (shortRow.bid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = Number(shortRow.bid);
+        if (shortRow.ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = Number(shortRow.ask);
+      }
+
+      if (longRow) {
+        if (longRow.bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = Number(longRow.bid);
+        if (longRow.ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = Number(longRow.ask);
+      }
+
+      // Spread mid: short mid - long mid
+      const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
+      const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
+      const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
+      const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
+      if (sBid!=null && sAsk!=null && lBid!=null && lAsk!=null) {
+        const shortMid = (sBid + sAsk) / 2;
+        const longMid  = (lBid + lAsk) / 2;
+        liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = shortMid - longMid;
+      }
+    });
+  }
+
+  // ── Fire greeks + price in parallel; IV fallback runs after ──
+  let greeksSetIV = false;
+
+  await Promise.all([
+    // 1. DELTA: greeks per expiry
+    ...expiries.map(async expiry => {
+      try {
+        const g = await uw(`/api/stock/${ticker}/greeks`, expiry);
+        const arr = Array.isArray(g&&g.data) ? g.data : [];
+        if (expiry === expiries[0]) {
+          console.log(`[RW] ${ticker} greeks (${expiry}) — ${arr.length} rows, sample:`, arr[0]);
+        }
+        applyGreeks(arr, expiry);
+        if (arr.length) greeksSetIV = true;
+      } catch(e) {
+        console.warn(`[RW] ${ticker} greeks fetch failed:`, e);
+      }
+    }),
+
+    // 2. Stock price from options-volume
+    (async () => {
+      try {
+        const v = await uw(`/api/stock/${ticker}/options-volume`);
+        const d = (v&&v.data&&v.data[0]);
+        if (d) {
+          const price = parseFloat(d.close||d.price||d.underlying_price||0);
+          const prev  = parseFloat(d.prev_close||d.open||price);
+          if (price>0) livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
+        }
+      } catch(e) {}
+    })(),
+  ]);
+
+  // 3. Interpolated IV — only as fallback if greeks didn't return usable IV
+  if (!greeksSetIV || !liveData[ticker].iv) {
+    try {
+      const iv = await uw(`/api/stock/${ticker}/interpolated-iv`);
+      if (iv&&iv.data&&iv.data.iv) {
+        liveData[ticker].iv = parseFloat(iv.data.iv) * 100;
+      }
+    } catch(e) {}
+  }
 }
 
 // Build normalized OCC contract ID for intraday endpoint
@@ -2159,6 +2197,100 @@ renderExposure();
 renderStocks();
 renderWatchList();
 updatePortfolioStat();
+
+// ══════════════════════════════════════════
+// DEBUG MODAL
+// ══════════════════════════════════════════
+async function showDebugModal() {
+  const ticker = prompt('Enter ticker to debug (e.g. META):');
+  if (!ticker) return;
+  const t = ticker.trim().toUpperCase();
+
+  const myPos = POSITIONS.filter(p => p.ticker === t);
+  const expiries = [...new Set(myPos.map(p => p.expiry))];
+
+  let html = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)">`;
+  html += `<div style="color:var(--accent);font-size:14px;font-weight:700;margin-bottom:12px">🔬 RAW UW DATA — ${t}</div>`;
+
+  // Show cached liveData
+  html += `<div style="color:var(--yellow);margin-bottom:6px">── Cached liveData[${t}] ──</div>`;
+  const cached = liveData[t];
+  if (cached && Object.keys(cached).length) {
+    Object.entries(cached).forEach(([k,v]) => {
+      html += `<div style="padding:2px 0"><span style="color:var(--muted)">${k}:</span> <span style="color:var(--green)">${v}</span></div>`;
+    });
+  } else {
+    html += `<div style="color:var(--orange)">Nothing cached — hit Refresh Live first, or wait for live fetch below.</div>`;
+  }
+
+  // Show computed delta per position
+  if (myPos.length) {
+    html += `<div style="color:var(--yellow);margin:12px 0 6px">── Computed deltas ──</div>`;
+    myPos.forEach(p => {
+      const d = getEffectiveDelta(p);
+      const src = getDeltaSource(p);
+      const rawKey = `${p.short}_${p.type}`;
+      const rawVal = cached ? cached[rawKey] : undefined;
+      html += `<div style="padding:2px 0">
+        <span style="color:var(--muted)">${p.expiry} ${p.type} $${p.short}/$${p.long}:</span>
+        delta=<span style="color:${d>=0.75?'var(--red)':d>=0.55?'var(--orange)':'var(--green)'}">${d.toFixed(4)}</span>
+        <span style="color:var(--muted);font-size:9px">(${src})</span>
+        raw liveData=${rawVal !== undefined ? rawVal : '—'}
+      </div>`;
+    });
+  }
+
+  html += `<div style="color:var(--yellow);margin:12px 0 6px">── Live fetch from UW greeks ──</div>`;
+  html += `<div id="dbg-live" style="color:var(--muted)">Fetching…</div>`;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:720px;max-width:96vw;max-height:86vh;overflow-y:auto">
+      ${html}
+      <button onclick="this.closest('[style]').remove()" style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:11px;padding:6px 14px;border-radius:4px;cursor:pointer;width:100%">CLOSE</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  const liveEl = overlay.querySelector('#dbg-live');
+  try {
+    const results = await Promise.all(expiries.map(async expiry => {
+      try {
+        const g = await uw(`/api/stock/${t}/greeks`, expiry);
+        return { expiry, ok: true, data: g };
+      } catch(e) {
+        return { expiry, ok: false, err: String(e) };
+      }
+    }));
+
+    let liveHtml = '';
+    results.forEach(r => {
+      liveHtml += `<div style="color:var(--accent);margin:8px 0 4px;font-weight:700">Expiry: ${r.expiry}</div>`;
+      if (!r.ok) {
+        liveHtml += `<div style="color:var(--red)">ERROR: ${r.err}</div>`;
+        return;
+      }
+      const arr = Array.isArray(r.data && r.data.data) ? r.data.data : [];
+      if (!arr.length) {
+        liveHtml += `<div style="color:var(--red)">Empty data array. Full response:</div>`;
+        liveHtml += `<pre style="font-size:9px;color:var(--muted);background:var(--bg);padding:6px;border-radius:3px;white-space:pre-wrap;word-break:break-all">${JSON.stringify(r.data).slice(0, 500)}</pre>`;
+        return;
+      }
+      const myStrikes = new Set(myPos.filter(p => p.expiry === r.expiry).flatMap(p => [p.short, p.long]));
+      const matching = arr.filter(x => myStrikes.has(Number(x.strike)));
+      const shown = matching.length ? matching : arr.slice(0, 3);
+      liveHtml += `<div style="color:var(--muted);font-size:9px">${arr.length} rows returned — ${matching.length ? matching.length + ' strike(s) matched' : 'NO STRIKE MATCH — showing first 3 rows'}</div>`;
+      shown.forEach(row => {
+        liveHtml += `<pre style="font-size:9px;color:var(--text);background:var(--bg);padding:6px;border-radius:3px;margin:3px 0;white-space:pre-wrap;word-break:break-all">${JSON.stringify(row, null, 2)}</pre>`;
+      });
+    });
+    liveEl.innerHTML = liveHtml || '<span style="color:var(--muted)">No expiries to fetch.</span>';
+  } catch(e) {
+    liveEl.innerHTML = `<span style="color:var(--red)">Fetch failed: ${e}</span>`;
+  }
+}
+
 </script>
 </body>
 </html>
