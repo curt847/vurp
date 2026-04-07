@@ -358,7 +358,7 @@
   <thead><tr>
     <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
     <th>Stock $</th><th>Δ Short</th><th>IV</th><th>Extrinsic</th>
-    <th style="display:none">Bid / Ask</th><th>Collateral</th>
+    <th>Leg Quotes</th><th>Collateral</th>
     <th>Status</th><th>Flow</th><th>Action</th>
   </tr></thead>
   <tbody id="tableBody"></tbody>
@@ -1020,12 +1020,20 @@ function renderTable() {
     const liveGainStr = (liveGain >= 0 ? '+' : '') + liveGain.toFixed(1) + '%';
 
 
+    const sNBBO = liveData[p.ticker] && liveData[p.ticker][`nbbo_${p.short}_${p.type}`];
+    const lNBBO = liveData[p.ticker] && liveData[p.ticker][`nbbo_${p.long}_${p.type}`];
+    const sMidVal = (sBid != null && sAsk != null) ? ((sBid + sAsk) / 2) : null;
+    const lMidVal = (lBid != null && lAsk != null) ? ((lBid + lAsk) / 2) : null;
     const bidAsk=(sBid!=null||sAsk!=null)
-      ?`<div class="bid-ask" style="font-size:11px;line-height:1.7">
-          <span style="color:var(--muted)">S:</span> <b>${sBid!=null?'$'+sBid.toFixed(2):'—'}</b>/<b>${sAsk!=null?'$'+sAsk.toFixed(2):'—'}</b>
-          ${lBid!=null||lAsk!=null?`<br><span style="color:var(--muted)">L:</span> <b>${lBid!=null?'$'+lBid.toFixed(2):'—'}</b>/<b>${lAsk!=null?'$'+lAsk.toFixed(2):'—'}</b>`:''}
+      ?`<div class="bid-ask" style="font-size:10px;line-height:1.8;color:var(--muted)">
+          <span style="opacity:.7">S${sNBBO?'●':'~'}:</span>
+          <span style="color:var(--text)">${sBid!=null?'$'+sBid.toFixed(2):'—'}</span>/<span style="color:var(--text)">${sAsk!=null?'$'+sAsk.toFixed(2):'—'}</span>
+          ${sMidVal!=null?`<span style="color:var(--accent);margin-left:2px">=mid $${sMidVal.toFixed(2)}</span>`:''}
+          ${lBid!=null||lAsk!=null?`<br><span style="opacity:.7">L${lNBBO?'●':'~'}:</span>
+          <span style="color:var(--text)">${lBid!=null?'$'+lBid.toFixed(2):'—'}</span>/<span style="color:var(--text)">${lAsk!=null?'$'+lAsk.toFixed(2):'—'}</span>
+          ${lMidVal!=null?`<span style="color:var(--accent);margin-left:2px">=mid $${lMidVal.toFixed(2)}</span>`:''}`:''} 
         </div>`
-      :'<span class="bid-ask">—</span>';
+      :'<span class="bid-ask" style="color:var(--muted);font-size:10px">no quote</span>';
     const rcHtml=rollCost!==null
       ?`<span class="roll-cost ${rollCost<=0?'rc-pos':'rc-neg'}">${rollCost<=0?'CR':'DR'} $${Math.abs(rollCost).toFixed(0)}</span>`
       :'<span style="color:var(--muted)">—</span>';
@@ -1143,7 +1151,7 @@ function renderTable() {
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
       <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}</td>
       <td>${extHtml}</td>
-      <td style="display:none">${bidAsk}</td>
+      <td>${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
       <td>${statusHtml}</td>
       <td>${flowHtml}</td>
@@ -1652,6 +1660,7 @@ async function fetchTicker(ticker) {
           liveData[ticker].ts = fetchTime;
         }
         if (ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = ask;
+        liveData[ticker][`nbbo_${p.short}_${p.type}`] = isRealNBBO;
         console.log(`[RW] ${ticker} ${p.expiry} short $${p.short}${p.type}: bid=${bid?.toFixed(2) ?? 'null'} ask=${ask?.toFixed(2) ?? 'null'} realNBBO=${isRealNBBO} (sym match: ${!!bySymbol[shortSym]})`);
       } else {
         console.warn(`[RW] ${ticker} ${p.expiry} $${p.short}${p.type}: NO MATCH. sym=${shortSym}`);
@@ -1661,11 +1670,11 @@ async function fetchTicker(ticker) {
         longIsRealNBBO = isRealNBBO;
         if (bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = bid;
         if (ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = ask;
+        liveData[ticker][`nbbo_${p.long}_${p.type}`] = isRealNBBO;
       }
 
       // Compute live spread mid ONLY when both legs have real NBBO quotes.
-      // Synthetic fallbacks (last/avg/mid ±2%) are too unreliable for deep ITM options
-      // early in the session — Black-Scholes (computed at end of cycle) is more accurate.
+      // Synthetic fallbacks are too unreliable — Black-Scholes (end of cycle) handles it.
       const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
       const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
       const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
@@ -1688,20 +1697,17 @@ async function fetchTicker(ticker) {
           liveData[ticker][liveKeyTs] = cycleId;
           delete liveData[ticker][bsKey];
         }
-        // If rawMid invalid, leave blank — end-of-cycle BS recalc will handle it
       }
-      // If missing real NBBO or leg data — end-of-cycle BS recalc handles it
+      // If not both real NBBO — end-of-cycle BS recalc handles it
     });
   }
 
   // ── Helper: extract best price from an option-contracts row ──
   // Priority: nbbo bid/ask → last_price → avg_price → mid_volume
-  // Returns { bid, ask, isRealNBBO } — isRealNBBO=true only when both NBBO legs are live.
-  // Synthetic fallbacks (stale last/avg/mid ±2%) are flagged isRealNBBO=false so
-  // applyContracts can skip the spread mid calc and let BS handle it instead.
-  // NOTE: avg_price is intentionally de-prioritized below last_price — avg_price is a
-  // volume-weighted average of yesterday's trades and is often stale/wrong for deep ITM
-  // options early in the session. last_price at least reflects the most recent actual trade.
+  // Returns { bid, ask, isRealNBBO } — isRealNBBO=true only for live exchange NBBO.
+  // Synthetic fallbacks are flagged false so applyContracts defers to Black-Scholes.
+  // NOTE: avg_price is de-prioritized below last_price — it's a stale VWAP from
+  // yesterday's trades and is unreliable for deep ITM / wide-market options early in session.
   function extractBidAsk(row) {
     if (!row) return { bid: null, ask: null, isRealNBBO: false };
     const nbbo_bid = parseFloat(row.nbbo_bid);
@@ -1710,16 +1716,14 @@ async function fetchTicker(ticker) {
     const avg      = parseFloat(row.avg_price);
     const mid      = parseFloat(row.mid_volume);
 
-    // ✅ Best case: real live NBBO from the exchange
+    // ✅ Real live NBBO from the exchange
     if (nbbo_bid > 0 && nbbo_ask > 0) return { bid: nbbo_bid, ask: nbbo_ask, isRealNBBO: true };
 
-    // ⚠️ Stale fallbacks — flag as synthetic so spread mid defers to Black-Scholes
-    // Use last_price first (most recent actual trade) over avg_price (VWAP from yesterday)
+    // ⚠️ Stale fallbacks — spread mid defers to Black-Scholes when these are used
     if (last > 0) return { bid: last * 0.98, ask: last * 1.02, isRealNBBO: false };
     if (avg  > 0) return { bid: avg  * 0.98, ask: avg  * 1.02, isRealNBBO: false };
     if (mid  > 0) return { bid: mid  * 0.98, ask: mid  * 1.02, isRealNBBO: false };
 
-    // All UW quote fields null — no live data available for this strike
     return { bid: null, ask: null, isRealNBBO: false };
   }
 
