@@ -83,6 +83,8 @@
   tr.row:hover{background:var(--surface2)}
   tr.row-itm{background:rgba(255,61,90,.03)}
   tr.row-itm:hover{background:rgba(255,61,90,.07)}
+  tr.row-sell{outline:2px solid var(--yellow);outline-offset:-2px;background:rgba(245,200,66,0.07) !important}
+  tr.row-sell:hover{background:rgba(245,200,66,0.13) !important}
   tr.expiry-hdr td{background:var(--surface2);color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:1.5px;padding:8px 10px;border-top:2px solid var(--border)}
   td{padding:9px 10px;white-space:nowrap;vertical-align:middle}
 
@@ -405,6 +407,18 @@
   </table>
 </div>
 
+<!-- WATCH LIST -->
+<div style="padding:0 20px 20px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+      <input id="watchInput" class="search-input" placeholder="Add ticker…" style="width:120px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addWatchTicker()"/>
+      <button class="action-btn" onclick="addWatchTicker()" style="border-color:var(--accent);color:var(--accent)">+ ADD</button>
+    </div>
+  </div>
+  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+</div>
+
 <!-- EXPOSURE SUMMARY TABLE -->
 <div style="padding:0 20px 20px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:8px">
@@ -424,18 +438,6 @@
     </tr></thead>
     <tbody id="exposureBody"></tbody>
   </table>
-</div>
-
-<!-- WATCH LIST -->
-<div style="padding:0 20px 20px">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
-    <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
-      <input id="watchInput" class="search-input" placeholder="Add ticker…" style="width:120px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addWatchTicker()"/>
-      <button class="action-btn" onclick="addWatchTicker()" style="border-color:var(--accent);color:var(--accent)">+ ADD</button>
-    </div>
-  </div>
-  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
 </div>
 
 <div class="footer-note">
@@ -1130,7 +1132,8 @@ function renderTable() {
     const tickerCell = '<td><span class="ticker-name">' + p.ticker + '</span>' + noteHtml + ernHtml +
       '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
     const tr=document.createElement('tr');
-    tr.className=`row${itm?' row-itm':''}`;
+    const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
+    tr.className=`row${itm?' row-itm':''}${isSellBias?' row-sell':''}`;
     tr.innerHTML=tickerCell+`
       <td>${typeBadgeHtml}</td>
       <td>${strikesHtml}</td>
