@@ -192,6 +192,17 @@
   .ticker-refresh-btn:hover{color:var(--accent)}
   .storage-badge{font-size:9px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,232,138,.2);padding:2px 7px;border-radius:3px}
 
+  /* HEADER MARKET CARDS */
+  .hdr-market{display:flex;gap:6px;align-items:center}
+  .hdr-card{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 12px;min-width:80px;cursor:default;transition:border-color .15s}
+  .hdr-card:hover{border-color:var(--accent)}
+  .hdr-card-ticker{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
+  .hdr-card-row{display:flex;align-items:baseline;gap:6px}
+  .hdr-card-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;line-height:1.1;letter-spacing:-0.3px;color:var(--text)}
+  .hdr-card-chg{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
+  .hdr-card-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);animation:pulse 2s infinite;margin-left:3px;vertical-align:middle}
+  .hdr-card.stale .hdr-card-dot{background:var(--border);box-shadow:none;animation:none}
+
   .watch-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:130px;position:relative;transition:border-color .15s}
   .watch-card:hover{border-color:var(--accent)}
   .watch-card.has-position{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.04)}
@@ -262,6 +273,29 @@
     <div class="logo">ROLL<span>WATCH</span></div>
     <span class="version">v2.9</span>
     <div class="last-refresh" id="lastRefresh">Not yet refreshed — hit ⟳</div>
+    <div class="hdr-market" id="hdrMarket">
+      <div class="hdr-card stale" id="hdr-SPY" title="S&P 500 ETF">
+        <div class="hdr-card-ticker">SPY<span class="hdr-card-dot"></span></div>
+        <div class="hdr-card-row">
+          <div class="hdr-card-price price-neu">—</div>
+          <div class="hdr-card-chg price-neu">—</div>
+        </div>
+      </div>
+      <div class="hdr-card stale" id="hdr-QQQ" title="Nasdaq 100 ETF">
+        <div class="hdr-card-ticker">QQQ<span class="hdr-card-dot"></span></div>
+        <div class="hdr-card-row">
+          <div class="hdr-card-price price-neu">—</div>
+          <div class="hdr-card-chg price-neu">—</div>
+        </div>
+      </div>
+      <div class="hdr-card stale" id="hdr-BTC" title="Bitcoin (24h change)">
+        <div class="hdr-card-ticker">BTC<span class="hdr-card-dot"></span></div>
+        <div class="hdr-card-row">
+          <div class="hdr-card-price price-neu">—</div>
+          <div class="hdr-card-chg price-neu">—</div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="header-right">
     <div class="conn-badge"><div class="conn-dot"></div><span style="color:var(--green);font-size:10px">UW CONNECTED</span></div>
@@ -1399,7 +1433,87 @@ function updatePriceTicker() {
 }
 
 // ══════════════════════════════════════════
-// API FETCHING
+// HEADER MARKET CARDS — SPY / QQQ / BTC, auto-refresh every 60s
+// ══════════════════════════════════════════
+let marketPulseInterval = null;
+
+function setHdrCard(ticker, data) {
+  const card = document.getElementById('hdr-' + ticker);
+  if (!card) return;
+  card.classList.remove('stale');
+  const priceEl = card.querySelector('.hdr-card-price');
+  const chgEl   = card.querySelector('.hdr-card-chg');
+  if (!data) {
+    card.classList.add('stale');
+    priceEl.textContent = '—'; priceEl.className = 'hdr-card-price';
+    chgEl.textContent   = '—'; chgEl.className   = 'hdr-card-chg price-neu';
+    return;
+  }
+  const up  = data.pct >= 0;
+  const cls = up ? 'price-up' : 'price-dn';
+  const arr = up ? '▲' : '▼';
+  const isBtc = ticker === 'BTC';
+  priceEl.textContent = isBtc ? '$' + Math.round(data.price).toLocaleString() : '$' + data.price.toFixed(2);
+  priceEl.className   = 'hdr-card-price';
+  chgEl.textContent   = arr + Math.abs(data.pct).toFixed(2) + '%';
+  chgEl.className     = 'hdr-card-chg ' + cls;
+}
+
+async function fetchHdrPrice(ticker) {
+  try {
+    const v = await uw('/api/stock/' + ticker + '/stock-state');
+    const d = v && v.data;
+    const row = d ? (Array.isArray(d) ? d[0] : d) : null;
+    if (!row) return null;
+    const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+    const prev  = parseFloat(row.prev_close||row.open||price);
+    if (price <= 0) return null;
+    return { price, pct: prev > 0 ? ((price - prev) / prev) * 100 : 0 };
+  } catch(e) { return null; }
+}
+
+async function fetchBTCPrice() {
+  // Try UW first
+  try {
+    const v = await uw('/api/stock/BTC/stock-state');
+    const d = v && v.data;
+    const row = d ? (Array.isArray(d) ? d[0] : d) : null;
+    if (row) {
+      const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+      const prev  = parseFloat(row.prev_close||row.open||price);
+      if (price > 1000) return { price, pct: prev > 0 ? ((price - prev) / prev) * 100 : 0 };
+    }
+  } catch(e) {}
+  // Fallback: CoinGecko public API (no key, no CORS)
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',
+      { signal: AbortSignal.timeout(6000) });
+    if (r.ok) {
+      const j = await r.json();
+      const price = j && j.bitcoin && j.bitcoin.usd;
+      const pct   = j && j.bitcoin && j.bitcoin.usd_24h_change;
+      if (price) return { price, pct: pct || 0 };
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function refreshHdrMarket() {
+  const [spyData, qqqData, btcData] = await Promise.all([
+    fetchHdrPrice('SPY'),
+    fetchHdrPrice('QQQ'),
+    fetchBTCPrice(),
+  ]);
+  setHdrCard('SPY', spyData);
+  setHdrCard('QQQ', qqqData);
+  setHdrCard('BTC', btcData);
+}
+
+function startHdrMarket() {
+  refreshHdrMarket();
+  if (marketPulseInterval) clearInterval(marketPulseInterval);
+  marketPulseInterval = setInterval(refreshHdrMarket, 60000);
+}
 // ══════════════════════════════════════════
 
 // ── Request semaphore — caps concurrent UW calls to avoid rate limiting ──
@@ -3170,6 +3284,9 @@ driveLoad().then(function(loaded) {
 });
 
 // Earnings populated on demand via EXTRAS button
+
+// Start header market cards (SPY / QQQ / BTC) — independent 60s refresh
+startHdrMarket();
 
 // ══════════════════════════════════════════
 // DEBUG MODAL — multi-endpoint diagnostic
