@@ -3071,16 +3071,26 @@ function renderWatchList() {
   const grid = document.getElementById('watchGrid');
   const posTickers = new Set(POSITIONS.map(p => p.ticker));
 
-  // Build master list: watch-only first (sorted alpha), then position tickers (sorted alpha)
+  // Compute per-ticker close cost for sorting
+  const tickerCloseCost = {};
+  posTickers.forEach(t => {
+    const tPos = POSITIONS.filter(p => p.ticker === t);
+    tickerCloseCost[t] = tPos.reduce((sum, p) => {
+      const { mid } = getSpreadMid(p);
+      return sum + mid * 100 * p.cts;
+    }, 0);
+  });
+
+  // Build master list: position tickers first (sorted by close cost desc), then watch-only (sorted alpha)
   const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t)).sort();
-  const inPosition = [...posTickers].sort();
-  // Also include any watch-list tickers that happen to have positions (they stay in both)
-  const watchInPos = WATCHLIST.filter(t => posTickers.has(t)).sort();
-  // Final order: pure watch-only → watch+position → position-only (auto)
+  const inPosition = [...posTickers].sort((a, b) => (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0));
+  // Watch-list tickers that also have positions — keep in position group
+  const watchInPos = WATCHLIST.filter(t => posTickers.has(t));
+  // Final order: position-only (sorted by close cost) → watch+position (sorted by close cost) → pure watch-only (alpha)
   const allCards = [
+    ...inPosition.filter(t => !WATCHLIST.includes(t)),
+    ...inPosition.filter(t => WATCHLIST.includes(t)),
     ...watchOnly,
-    ...watchInPos,
-    ...inPosition.filter(t => !WATCHLIST.includes(t))
   ];
 
   grid.innerHTML = allCards.map(ticker => {
@@ -3106,6 +3116,17 @@ function renderWatchList() {
       ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
          <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
       : `<div class="wc-price" style="color:var(--muted)">—</div>`;
+
+    // Amount to close for position tickers
+    const closeCost = tickerCloseCost[ticker];
+    const closeHtml = hasPos && closeCost != null
+      ? (() => {
+          const closeColor = closeCost > 5000 ? '#ff64b4' : closeCost > 2000 ? 'var(--orange)' : 'var(--muted)';
+          return `<div style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.3px;text-transform:uppercase">To Close</div>
+                  <div style="font-size:13px;font-weight:700;color:${closeColor};line-height:1.1">$${Math.round(closeCost).toLocaleString()}</div>`;
+        })()
+      : `<div style="font-size:9px;color:transparent;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;user-select:none">To Close</div>
+         <div style="font-size:13px;font-weight:700;line-height:1.1;visibility:hidden">$0</div>`;
 
     const ivHtml = '';
 
@@ -3134,6 +3155,7 @@ function renderWatchList() {
       ${removeBtn}
       <div class="wc-ticker">${ticker}${TICKER_NOTES[ticker]?'<span class="note-dot" title="'+TICKER_NOTES[ticker].text.slice(0,60)+'"></span>':''}</div>
       ${priceHtml}
+      ${closeHtml}
       ${ivHtml}
       ${biasBtn}
     </div>`;
