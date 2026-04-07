@@ -104,7 +104,7 @@
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
-  .strike-range{color:var(--text);font-size:15px}
+  .strike-range{color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600}
   .dte-val{font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
@@ -833,23 +833,21 @@ function getSpreadMid(p) {
 
 function calcExtrinsic(p) {
   const stock = getLiveStock(p);
-  const { mid: spreadMid, isLive } = getSpreadMid(p);
+  const { mid: spreadMid, isLive, isBs } = getSpreadMid(p);
   if (isLongOption(p)) {
-    // Single-leg: intrinsic is simply how far ITM the strike is
     const rawIntrinsic = p.type === 'P'
       ? Math.max(0, p.short - stock)
       : Math.max(0, stock - p.short);
     const extrinsic = Math.max(0, spreadMid - rawIntrinsic);
-    return { value: extrinsic, mid: spreadMid, intrinsic: rawIntrinsic, isLive };
+    return { value: extrinsic, mid: spreadMid, intrinsic: rawIntrinsic, isLive, isBs };
   }
-  // Spread intrinsic = min(width, how far ITM the short is)
   const width = Math.abs(p.short - p.long);
   const rawIntrinsic = p.type === 'P'
     ? Math.max(0, p.short - stock)
     : Math.max(0, stock - p.short);
   const intrinsic = Math.min(width, rawIntrinsic);
   const extrinsic = Math.max(0, spreadMid - intrinsic);
-  return { value: extrinsic, mid: spreadMid, intrinsic, isLive };
+  return { value: extrinsic, mid: spreadMid, intrinsic, isLive, isBs };
 }
 function hasEarningsRisk(p){
   const e=earningsMap[p.ticker];
@@ -979,9 +977,14 @@ function renderTable() {
     }
 
     const dClass=delta>=THRESH_ROLL?'alert-red':delta>=THRESH_WATCH?'alert-orange':delta>=THRESH_RADAR?'alert-yellow':'alert-green';
+    // Delta staleness — check if refreshTs is from today or a prior session
+    const deltaRefreshTs = liveData[p.ticker] && liveData[p.ticker].refreshTs;
+    const isStaleSession = !deltaRefreshTs;
     const srcTag = src==='live'
       ? `<span style="color:var(--green);font-size:9px"> ●LIVE</span>`
-      : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
+      : isStaleSession
+        ? `<span style="color:var(--orange);font-size:9px" title="Delta from prior session — hit Refresh Live"> ~stale</span>`
+        : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
 
     const dteClass=getDTE(p)<=7?'dte-urgent':getDTE(p)<=21?'dte-near':'dte-val';
     const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
@@ -993,14 +996,15 @@ function renderTable() {
                    : ext.value < 0.50   ? 'var(--orange)'
                    : ext.value < 2.00   ? 'var(--yellow)'
                    : 'var(--green)';
-    const extHtml = `<div style="font-weight:600;color:${extColor}">$${ext.value.toFixed(2)}</div>
+    const extHtml = `<div style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:${extColor}">$${ext.value.toFixed(2)}</div>
       <div style="color:var(--muted);font-size:9px">mid $${ext.mid.toFixed(2)} · int $${ext.intrinsic.toFixed(2)}</div>`;
 
     // Spread mid timestamp — needs ext defined first
     const tickerTs  = liveData[p.ticker] && liveData[p.ticker].ts;        // real UW data time
     const refreshTs = liveData[p.ticker] && liveData[p.ticker].refreshTs; // last fetch attempt
+    const displayTs = tickerTs || refreshTs; // use either timestamp available
     const liveLabel = ext.isLive && !ext.isBs
-      ? (tickerTs  ? '●LIVE ' + tickerTs  : '●LIVE')
+      ? (displayTs ? '●LIVE ' + displayTs : '●LIVE')
       : ext.isBs
         ? (refreshTs ? '~BS '  + refreshTs : '~BS')
         : '~open';
@@ -1100,9 +1104,7 @@ function renderTable() {
         : '$' + p.collateral.toLocaleString();
 
     // Delta column label — for long options, high delta is good
-    const deltaLabel = isLong
-      ? `${delta.toFixed(2)}${srcTag}`
-      : `${delta.toFixed(2)}${srcTag}`;
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${srcTag}<div style="color:${deltaRefreshTs?'var(--muted)':'var(--orange)'};font-size:9px;font-weight:400">${deltaRefreshTs || '~stale'}</div>`;
 
     // Action buttons — long options get SELL (close) instead of ROLL
     const actionHtml = isLong
@@ -1126,18 +1128,18 @@ function renderTable() {
       <td>${strikesHtml}</td>
       <td style="color:var(--muted)">×${p.cts}</td>
       <td>
-        <div style="font-weight:600;color:var(--text)">$${ext.mid.toFixed(2)}</div>
-        <div style="font-size:10px;margin-top:1px">
-          <span style="color:${ext.isLive && !ext.isBs?'var(--green)':ext.isBs?'var(--yellow)':'var(--muted)'}">${liveLabel}</span>
-          <span style="color:var(--muted)"> · open $${Math.abs(p.open).toFixed(2)}</span>
+        <div style="display:flex;align-items:baseline;gap:5px">
+          <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:var(--text)">$${ext.mid.toFixed(2)}</span>
+          <span style="font-size:9px;color:${ext.isLive && !ext.isBs?'var(--green)':ext.isBs?'var(--yellow)':'var(--muted)'}">${liveLabel}</span>
         </div>
+        <div style="color:var(--muted);font-size:10px;margin-top:1px">open $${Math.abs(p.open).toFixed(2)}</div>
       </td>
       <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
       <td class="${dteClass}">
         ${getDTE(p)}d
         <div style="color:var(--muted);font-size:10px;font-weight:400">${p.expiry.slice(5).replace('-','/')}</div>
       </td>
-      <td class="${sClass}">$${stock.toFixed(2)}${chgHtml}</td>
+      <td class="${dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px">$${stock.toFixed(2)}${chgHtml}</td>
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
       <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}</td>
       <td>${extHtml}</td>
@@ -1583,6 +1585,11 @@ async function fetchEarningsOnly() {
 async function fetchTicker(ticker) {
   if (!liveData[ticker]) liveData[ticker] = {};
 
+  // Mark start of this fetch cycle — used by BS recalc to distinguish
+  // freshly-fetched live data from stale restored data
+  const cycleId = Date.now();
+  liveData[ticker]._cycleId = cycleId;
+
   const myPositions = POSITIONS.filter(p => p.ticker === ticker);
   const expiries = [...new Set(myPositions.map(p => p.expiry))];
 
@@ -1638,19 +1645,10 @@ async function fetchTicker(ticker) {
         const { bid, ask } = extractBidAsk(shortRow);
         if (bid != null) {
           liveData[ticker][`bid_${p.short}_${p.type}`] = bid;
-          liveData[ticker].ts = fetchTime; // real UW quote — stamp the time
+          liveData[ticker].ts = fetchTime;
         }
         if (ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = ask;
-        if (bid == null) {
-          // No UW quote — BS fallback (stock price may not be ready yet; recalc at end of fetchTicker)
-          const bsPrice = bsTheoPrice(ticker, p.short, p.type, p.expiry);
-          if (bsPrice > 0) {
-            const spread = Math.max(0.05, bsPrice * 0.04);
-            liveData[ticker][`bid_${p.short}_${p.type}`] = -(bsPrice - spread); // negative = BS marker
-            liveData[ticker][`ask_${p.short}_${p.type}`] = -(bsPrice + spread);
-          }
-        }
-        console.log(`[RW] ${ticker} ${p.expiry} short $${p.short}${p.type}: bid=${bid?.toFixed(2) ?? 'BS'} ask=${ask?.toFixed(2) ?? 'BS'} (sym match: ${!!bySymbol[shortSym]})`);
+        console.log(`[RW] ${ticker} ${p.expiry} short $${p.short}${p.type}: bid=${bid?.toFixed(2) ?? 'null'} ask=${ask?.toFixed(2) ?? 'null'} (sym match: ${!!bySymbol[shortSym]})`);
       } else {
         console.warn(`[RW] ${ticker} ${p.expiry} $${p.short}${p.type}: NO MATCH. sym=${shortSym}`);
       }
@@ -1658,39 +1656,17 @@ async function fetchTicker(ticker) {
         const { bid, ask } = extractBidAsk(longRow);
         if (bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = bid;
         if (ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = ask;
-        if (bid == null) {
-          const bsPrice = bsTheoPrice(ticker, p.long, p.type, p.expiry);
-          if (bsPrice > 0) {
-            const spread = Math.max(0.05, bsPrice * 0.04);
-            liveData[ticker][`bid_${p.long}_${p.type}`] = -(bsPrice - spread); // negative = BS marker
-            liveData[ticker][`ask_${p.long}_${p.type}`] = -(bsPrice + spread);
-          }
-        }
       }
 
-      // Determine if either leg used BS (negative values = BS marker)
-      const sBidRaw = liveData[ticker][`bid_${p.short}_${p.type}`];
-      const sAskRaw = liveData[ticker][`ask_${p.short}_${p.type}`];
-      const lBidRaw = liveData[ticker][`bid_${p.long}_${p.type}`];
-      const lAskRaw = liveData[ticker][`ask_${p.long}_${p.type}`];
-      const shortIsBS = sBidRaw != null && sBidRaw < 0;
-      const longIsBS  = lBidRaw != null && lBidRaw < 0;
-      const anyBS = shortIsBS || longIsBS;
+      // Compute live spread mid only if we have real NBBO for both legs
+      const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
+      const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
+      const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
+      const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
 
-      // Absolute values for calculation
-      const sBid = sBidRaw != null ? Math.abs(sBidRaw) : null;
-      const sAsk = sAskRaw != null ? Math.abs(sAskRaw) : null;
-      const lBid = lBidRaw != null ? Math.abs(lBidRaw) : null;
-      const lAsk = lAskRaw != null ? Math.abs(lAskRaw) : null;
-
-      // Also store abs values so getSpreadMid bid/ask lookups work correctly
-      if (sBid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = sBid;
-      if (sAsk != null) liveData[ticker][`ask_${p.short}_${p.type}`] = sAsk;
-      if (lBid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = lBid;
-      if (lAsk != null) liveData[ticker][`ask_${p.long}_${p.type}`] = lAsk;
-
-      const liveKey = `spreadMid_${p.short}_${p.long}_${p.type}`;
-      const bsKey   = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
+      const liveKey   = `spreadMid_${p.short}_${p.long}_${p.type}`;
+      const bsKey     = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
+      const liveKeyTs = `spreadMidTs_${p.short}_${p.long}_${p.type}`;
 
       if (sBid != null && sAsk != null && lBid != null && lAsk != null) {
         const shortMid = (sBid + sAsk) / 2;
@@ -1698,33 +1674,14 @@ async function fetchTicker(ticker) {
         const rawMid   = shortMid - longMid;
         const width    = Math.abs(p.short - p.long);
 
-        if (anyBS) {
-          // At least one leg used BS — clear stale live key, write to BS key
-          delete liveData[ticker][liveKey];
-          const bsMid = Math.min(Math.max(0, rawMid), width);
-          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
-        } else if (rawMid > 0 && rawMid <= width * 0.995) {
-          // Both legs real UW data, valid range
-          liveData[ticker][liveKey] = rawMid;
-          delete liveData[ticker][bsKey]; // clear old BS if we now have real data
-        } else if (rawMid > width * 0.995) {
-          // Exceeds max width — bad UW quote, use BS
-          delete liveData[ticker][liveKey];
-          const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
-          const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
-          const bsMid   = Math.min(bsShort - bsLong, width);
-          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
-          console.warn(`[RW] ${ticker} ${p.expiry} quote $${rawMid.toFixed(2)} exceeds width $${width} — BS mid $${bsMid.toFixed(2)}`);
-        } else {
-          // Inverted — use BS
-          delete liveData[ticker][liveKey];
-          const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
-          const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
-          const bsMid   = Math.min(Math.max(0, bsShort - bsLong), width);
-          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
-          console.warn(`[RW] ${ticker} ${p.expiry} spread inverted ($${rawMid.toFixed(2)}) — BS mid $${bsMid.toFixed(2)}`);
+        if (rawMid > 0 && rawMid <= width * 0.995) {
+          liveData[ticker][liveKey]   = rawMid;
+          liveData[ticker][liveKeyTs] = cycleId;
+          delete liveData[ticker][bsKey];
         }
+        // If rawMid invalid, leave blank — end-of-cycle BS recalc will handle it
       }
+      // If missing leg data — end-of-cycle BS recalc handles it
     });
   }
 
@@ -1819,19 +1776,43 @@ async function fetchTicker(ticker) {
   if (!liveData[ticker]) liveData[ticker] = {};
   liveData[ticker].refreshTs = refreshTime;
 
-  // Re-run BS fallback now that stock price is confirmed available
-  // (applyContracts may have computed BS=0 if stock price wasn't ready yet)
+  // Re-run BS fallback now that stock price is confirmed available.
+  // Uses cycleId to distinguish data fetched THIS cycle from stale restored data —
+  // ensures ~BS shows instead of ~open when UW has no NBBO for a strike.
   const myPos = POSITIONS.filter(p => p.ticker === ticker);
   myPos.forEach(p => {
-    const key = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
     const liveKey = `spreadMid_${p.short}_${p.long}_${p.type}`;
-    // Only recalc BS if there's no real live mid
-    if (liveData[ticker][liveKey] == null) {
+    const bsKey   = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
+    const liveKeyTs = `spreadMidTs_${p.short}_${p.long}_${p.type}`;
+
+    // A live mid is "real this cycle" only if it was written with the current cycleId
+    const hasRealLive = liveData[ticker][liveKey] != null &&
+                        liveData[ticker][liveKeyTs] === cycleId;
+
+    if (!hasRealLive) {
+      // Clear any stale live key from a previous session
+      delete liveData[ticker][liveKey];
+      delete liveData[ticker][liveKeyTs];
+      const S       = (livePrices[ticker] && livePrices[ticker].price) || 0;
       const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
-      const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
-      const width   = Math.abs(p.short - p.long);
-      const bsMid   = Math.min(Math.max(0, bsShort - bsLong), width);
-      if (bsMid > 0) liveData[ticker][key] = bsMid;
+      const bsLong  = p.long ? bsTheoPrice(ticker, p.long, p.type, p.expiry) : 0;
+      const width   = Math.abs(p.short - (p.long || 0));
+      let bsMid     = width > 0
+        ? Math.min(Math.max(0, bsShort - bsLong), width)
+        : Math.max(0, bsShort);
+
+      // Deep ITM fallback: if BS spread mid rounds near zero but position is clearly ITM,
+      // use intrinsic value (how far ITM the short is, capped at spread width)
+      if (bsMid < 0.01 && S > 0 && width > 0) {
+        const intrinsic = p.type === 'P'
+          ? Math.max(0, p.short - S)
+          : Math.max(0, S - p.short);
+        bsMid = Math.min(intrinsic, width);
+      }
+
+      if (bsMid > 0) {
+        liveData[ticker][bsKey] = bsMid;
+      }
     }
   });
 }
@@ -2236,7 +2217,11 @@ async function driveLoad() {
     data.positions.forEach(p => POSITIONS.push(p));
 
     if (Array.isArray(data.stocks))    { STOCKS    = data.stocks; }
-    if (Array.isArray(data.watchlist)) { WATCHLIST = data.watchlist; }
+    if (Array.isArray(data.watchlist)) {
+      // Merge — ensure defaults are always present even if Drive predates them
+      const merged = [...new Set([...['QQQ','SPY'], ...data.watchlist])];
+      WATCHLIST = merged;
+    }
     if (data.bias && typeof data.bias === 'object') { BIAS = data.bias; }
     if (Array.isArray(data.ccTracked)) { CC_TRACKED = new Set(data.ccTracked); }
     if (data.tickerNotes && typeof data.tickerNotes === 'object') { TICKER_NOTES = data.tickerNotes; }
@@ -2319,7 +2304,10 @@ function loadFromStorage() {
     const rawW = localStorage.getItem(WATCH_KEY);
     if (rawW) {
       const savedW = JSON.parse(rawW);
-      if (Array.isArray(savedW)) { WATCHLIST = savedW; }
+      if (Array.isArray(savedW)) {
+        const merged = [...new Set([...['QQQ','SPY'], ...savedW])];
+        WATCHLIST = merged;
+      }
     }
     const rawB = localStorage.getItem(BIAS_KEY);
     if (rawB) {
@@ -2857,7 +2845,7 @@ function renderExposure() {
 // ══════════════════════════════════════════
 const WATCH_KEY  = 'rollwatch_watchlist_v1';
 const BIAS_KEY   = 'rollwatch_bias_v1';
-let WATCHLIST = []; // user-added tickers (watch-only)
+let WATCHLIST = ['QQQ', 'SPY']; // default market benchmarks — user additions persist via storage
 let BIAS      = {}; // ticker -> 'bull' | 'bear' | 'neu'
 
 function saveWatchList() {
