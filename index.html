@@ -779,6 +779,17 @@ function getProfitLevel(p, liveGain) {
     return null;
   }
 
+  // Covered calls: % gain only — no delta trigger (CCs are sold at 0.20–0.30 delta
+  // intentionally, so delta-based profit flags fire immediately and are meaningless)
+  if (p.postype === 'covered_call') {
+    if (isLive) {
+      if (liveGain >= 75) return 'close';        // 75% decay — strong roll/close candidate
+      if (liveGain >= 50) return 'profit';       // 50% decay — primary roll trigger
+      if (liveGain >= 35) return 'watch_profit';
+    }
+    return null; // no delta fallback for CCs
+  }
+
   // Credit spread / spread_debit: only flag profit if NOT in roll territory
   const rollLevel = getAlertLevel(p);
   if (rollLevel === 'red' || rollLevel === 'orange') return null;
@@ -866,6 +877,25 @@ function getRollCost(p) {
   const { mid, isLive } = getSpreadMid(p);
   if (!isLive) return null;
   return (mid - Math.abs(p.open)) * 100 * p.cts; // positive = costs more than you received
+}
+
+// Returns the highest-priority CC roll trigger, or null if none firing
+function getCCRollTrigger(p) {
+  if (p.postype !== 'covered_call') return null;
+  const stock    = getLiveStock(p);
+  const dte      = getDTE(p);
+  const { mid, isLive } = getSpreadMid(p);
+  const openPrem = Math.abs(p.open);
+  const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
+  const distToStrike = p.short - stock; // positive = stock below strike (OTM = safe)
+
+  const strikeProx = p.short * 0.02; // 2% of strike price
+  if (stock > 0 && distToStrike <= strikeProx) return 'strike';   // T1: within 2% of strike — urgent
+  if (dte <= 21)                          return 'dte';      // T3: hard 21 DTE deadline
+  if (isLive && pctGain >= 50)           return 'profit';   // T2: 50% max profit
+  if (dte <= 30)                          return 'dte_watch';
+  if (isLive && pctGain >= 35)           return 'profit_watch';
+  return null;
 }
 
 // ══════════════════════════════════════════
@@ -1052,17 +1082,30 @@ function renderTable() {
       yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
       green:`<span class="pill pill-green"><span class="dot dot-green"></span>OK</span>`,
     };
-    let statusHtml=pills[level];
+    const ccRoll = getCCRollTrigger(p);
+    let statusHtml = p.postype === 'covered_call'
+      ? `<span class="pill pill-green"><span class="dot dot-green"></span>CC</span>`
+      : pills[level];
 
-    // Profit-side alert
-    const profitLevel = getProfitLevel(p, liveGain);
-    if (profitLevel === 'close') {
-      statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ${isLong?'SELL':'CLOSE'}</span>`;
-    } else if (profitLevel === 'profit') {
-      statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">🟦 TAKE PROFIT</span>`;
-    } else if (profitLevel === 'watch_profit') {
-      statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
+    // CC roll triggers (override profit pills for covered calls)
+    if (p.postype === 'covered_call') {
+      if (ccRoll === 'strike')        statusHtml += ` <span class="pill pill-red" style="margin-left:2px">🔔 ROLL NOW</span>`;
+      else if (ccRoll === 'dte')      statusHtml += ` <span class="pill pill-red" style="margin-left:2px">📅 21 DTE</span>`;
+      else if (ccRoll === 'profit')   statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
+      else if (ccRoll === 'dte_watch')       statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 30 DTE</span>`;
+      else if (ccRoll === 'profit_watch')    statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 35% DECAY</span>`;
+    } else {
+      // Profit-side alert for spreads/longs
+      const profitLevel = getProfitLevel(p, liveGain);
+      if (profitLevel === 'close') {
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ${isLong?'SELL':'CLOSE'}</span>`;
+      } else if (profitLevel === 'profit') {
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">🟦 TAKE PROFIT</span>`;
+      } else if (profitLevel === 'watch_profit') {
+        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
+      }
     }
+    const profitLevel = p.postype === 'covered_call' ? null : getProfitLevel(p, liveGain);
 
     if (itm)   statusHtml+=` <span class="pill pill-${isLong?'green':'red'}" style="margin-left:2px">ITM</span>`;
     if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ERN</span>`;
@@ -1116,16 +1159,26 @@ function renderTable() {
     // Delta column label — for long options, high delta is good
     const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${srcTag}<div style="color:${deltaRefreshTs?'var(--muted)':'var(--orange)'};font-size:9px;font-weight:400">${deltaRefreshTs || '~stale'}</div>`;
 
-    // Action buttons — long options get SELL (close) instead of ROLL
-    const actionHtml = isLong
-      ? profitLevel === 'close'
+    // Action buttons
+    const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+    let actionHtml;
+    if (p.postype === 'covered_call') {
+      // CC: show ROLL button when any trigger fires, otherwise just EDIT
+      const rollUrgent = ccRoll === 'strike' || ccRoll === 'dte' || ccRoll === 'profit';
+      actionHtml = rollUrgent
+        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
+        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+    } else if (isLong) {
+      actionHtml = profitLevel === 'close'
         ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ SELL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
-        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`
-      : (level==='red'||level==='orange')
-        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`
+        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+    } else {
+      actionHtml = (level==='red'||level==='orange')
+        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
         : profitLevel==='close'
           ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
           : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+    }
 
     const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
     const noteHtml = TICKER_NOTES[p.ticker] ? `<span class="note-dot" title="${TICKER_NOTES[p.ticker].text.slice(0,80).replace(/"/g,"'")}"></span>` : '';
@@ -1281,13 +1334,14 @@ function renderOndsCard() {
       const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
 
       // Three triggers — evaluate priority
-      const t1Fire = price > 0 && distToStrike <= 0.50;   // within $0.50 of strike
+      const strikeProx = p.short * 0.02; // 2% of strike
+      const t1Fire = price > 0 && distToStrike <= strikeProx;   // within 2% of strike
       const t2Fire = pctGain >= 50;                         // 50% of max profit
       const t3Fire = dte <= 21;                             // hard 21 DTE deadline
       const watchDTE = dte <= 30 && dte > 21;
       const watchProfit = pctGain >= 35 && pctGain < 50;
 
-      const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= 2 ? 'warn' : 'ok';
+      const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= p.short * 0.05 ? 'warn' : 'ok';
       const trigger2Class = t2Fire ? 'fire' : watchProfit ? 'warn' : 'ok';
       const trigger3Class = t3Fire ? 'fire' : watchDTE ? 'warn' : 'ok';
 
@@ -2548,6 +2602,7 @@ function savePosition() {
   renderTable();
   renderExposure();
   renderWatchList();
+  renderOndsCard();
 }
 
 function confirmClose(idx) {
@@ -2561,6 +2616,7 @@ function confirmClose(idx) {
     renderTable();
     renderExposure();
     renderWatchList();
+    renderOndsCard();
   }
 }
 
