@@ -15,7 +15,7 @@
     --teal:#00c8b4; --purple:#a78bfa; --blue:#3b9eff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-height:100vh}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:15px;min-height:100vh}
 
   /* HEADER */
   .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
@@ -23,7 +23,7 @@
   .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--accent);letter-spacing:-0.5px}
   .logo span{color:var(--muted);font-weight:400}
   .version{color:var(--muted);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:3px}
-  .last-refresh{color:var(--muted);font-size:10px}
+  .last-refresh{color:var(--muted);font-size:13px}
   .header-right{display:flex;align-items:center;gap:10px}
   .conn-badge{display:flex;align-items:center;gap:6px;font-size:10px}
   .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
@@ -37,10 +37,10 @@
   .btn-auto.on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
 
   /* STATS BAR */
-  .stats-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
-  .stat{background:var(--surface);padding:10px 8px;text-align:center}
-  .stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
-  .stat-lbl{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px}
+  .stats-bar{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .stat{background:var(--surface);padding:10px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .stat-val{font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+  .stat-lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
   .stat-red .stat-val{color:var(--red)}
   .stat-orange .stat-val{color:var(--orange)}
   .stat-yellow .stat-val{color:var(--yellow)}
@@ -54,8 +54,8 @@
   .flow-track{display:flex;gap:24px;white-space:nowrap;animation:marquee 40s linear infinite}
   .flow-track:hover{animation-play-state:paused}
   @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-  .flow-item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:15px;font-weight:600}
-  .flow-ticker-label{font-weight:800;color:var(--text);font-size:13px;letter-spacing:0.5px}
+  .flow-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:17px;font-weight:600}
+  .flow-ticker-label{font-family:'DM Sans',sans-serif;font-weight:800;color:var(--text);font-size:18px;letter-spacing:0.5px}
   .price-up{color:var(--green)}
   .price-dn{color:var(--red)}
   .price-neu{color:var(--muted)}
@@ -83,10 +83,10 @@
   tr.row:hover{background:var(--surface2)}
   tr.row-itm{background:rgba(255,61,90,.03)}
   tr.row-itm:hover{background:rgba(255,61,90,.07)}
-  tr.expiry-hdr td{background:var(--surface2);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:6px 10px;border-top:2px solid var(--border)}
-  td{padding:8px 10px;white-space:nowrap;vertical-align:middle}
+  tr.expiry-hdr td{background:var(--surface2);color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:1.5px;padding:8px 10px;border-top:2px solid var(--border)}
+  td{padding:9px 10px;white-space:nowrap;vertical-align:middle}
 
-  .ticker-name{font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.5px;text-transform:uppercase}
+  .ticker-name{font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.5px;text-transform:uppercase}
   .ern-warn{font-size:8px;color:var(--purple);display:block;margin-top:1px}
   .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
   /* Put Credit + Call Debit = BULLISH — light blue */
@@ -104,15 +104,15 @@
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
-  .strike-range{color:var(--text);font-size:13px}
+  .strike-range{color:var(--text);font-size:15px}
   .dte-val{font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
   .stock-itm{color:var(--red);font-weight:700}
   .stock-atm{color:var(--yellow);font-weight:700}
   .stock-otm{color:var(--green)}
-  .stock-chg{font-size:9px;display:block}
-  .delta-cell{font-weight:700;font-size:12px}
+  .stock-chg{font-size:11px;display:block}
+  .delta-cell{font-weight:700;font-size:15px}
   .alert-red{color:var(--red)}
   .alert-orange{color:var(--orange)}
   .alert-yellow{color:var(--yellow)}
@@ -143,14 +143,15 @@
   .action-btn.roll:hover{background:var(--orange-dim)}
   .action-btn.closebtn{border-color:rgba(0,232,138,.4);color:var(--green)}
   .action-btn.closebtn:hover{background:var(--green-dim)}
-  .bid-ask{font-size:10px;color:var(--muted)}
+  .bid-ask{font-size:11px;color:var(--muted)}
   .bid-ask b{color:var(--text)}
-  .roll-cost{font-size:10px;font-weight:600}
+  .roll-cost{font-size:13px;font-weight:600}
   .rc-pos{color:var(--green)}
   .rc-neg{color:var(--red)}
   .flow-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
   .fb-bull{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.25)}
   .fb-bear{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+  .fb-contra{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,200,66,.35)}
   .fb-neu{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   .spin{display:inline-block;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -185,24 +186,71 @@
   .btn-secondary:hover{border-color:var(--accent);color:var(--accent);opacity:1}
   .close-x{background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;transition:all .15s}
   .close-x:hover{color:var(--red);background:var(--red-dim)}
-  .edit-x{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 5px;border-radius:3px;line-height:1;transition:all .15s}
-  .edit-x:hover{color:var(--accent)}
+  .ticker-refresh-btn{background:transparent;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:1px 3px;border-radius:3px;line-height:1;vertical-align:middle;margin-left:2px}
+  .ticker-refresh-btn:hover{color:var(--accent)}
   .storage-badge{font-size:9px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,232,138,.2);padding:2px 7px;border-radius:3px}
 
   .watch-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:130px;position:relative;transition:border-color .15s}
   .watch-card:hover{border-color:var(--accent)}
   .watch-card.has-position{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.04)}
   .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)}
-  .watch-card .wc-price{font-size:12px;font-weight:600;margin-top:2px}
-  .watch-card .wc-change{font-size:10px;margin-top:1px}
+  .watch-card .wc-price{font-size:16px;font-weight:700;margin-top:4px}
+  .watch-card .wc-change{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:-0.5px}
   .watch-card .wc-iv{font-size:9px;color:var(--muted);margin-top:3px}
-  .watch-card .wc-pos{font-size:9px;margin-top:4px;padding:2px 6px;border-radius:3px;display:inline-block}
+  .watch-card .wc-pos{font-size:9px;padding:2px 6px;border-radius:3px;display:inline-block;position:absolute;top:6px;right:6px}
   .watch-card .wc-pos.in{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
   .watch-card .wc-pos.out{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
-  .watch-card .wc-remove{position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
+  .watch-card .wc-remove{position:absolute;top:28px;right:6px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
   .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
 
   .footer-note{text-align:center;color:var(--muted);font-size:9px;padding:16px;border-top:1px solid var(--border);letter-spacing:.5px}
+
+  /* NOTES SYSTEM */
+  .notes-fab{position:fixed;bottom:24px;right:24px;z-index:300;width:44px;height:44px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+  .notes-fab:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px rgba(0,212,255,.2)}
+  .notes-fab.has-notes{border-color:rgba(245,200,66,.5);color:var(--yellow)}
+  .notes-panel{position:fixed;bottom:80px;right:24px;z-index:300;width:360px;max-height:70vh;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}
+  .notes-panel.hidden{display:none}
+  .notes-panel-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .notes-panel-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--accent);letter-spacing:.5px}
+  .notes-list{overflow-y:auto;flex:1;padding:8px}
+  .note-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px}
+  .note-item-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+  .note-item-text{color:var(--muted);font-size:11px;line-height:1.6;white-space:pre-wrap}
+  .note-item-ts{color:var(--muted);font-size:9px;margin-top:4px}
+  .note-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--yellow);margin-left:4px;vertical-align:middle;flex-shrink:0}
+  .notes-empty{color:var(--muted);font-size:11px;text-align:center;padding:24px;line-height:1.8}
+  .note-textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 10px;border-radius:4px;width:100%;resize:vertical;min-height:70px;outline:none;line-height:1.6}
+  .note-textarea:focus{border-color:var(--yellow)}
+
+  /* P&L SUMMARY BAR */
+  .pnl-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .pnl-stat{background:var(--surface2);padding:8px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .pnl-stat-val{font-family:'DM Sans',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
+  .pnl-stat-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+  .pnl-progress-wrap{width:80%;height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin:4px auto 0}
+  .pnl-progress-bar{height:100%;border-radius:3px;transition:width .4s}
+
+  /* ONDS TRACKER CARD */
+  .onds-card{background:var(--surface);border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:16px 20px;margin:0 20px 12px;display:grid;grid-template-columns:auto 1fr repeat(3,auto);gap:0 24px;align-items:center}
+  .onds-ticker{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--accent);letter-spacing:-0.5px}
+  .onds-sub{color:var(--muted);font-size:10px;margin-top:2px}
+  .onds-metric{text-align:center}
+  .onds-metric-val{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;line-height:1}
+  .onds-metric-lbl{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+  .onds-trigger{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border)}
+  .onds-trigger.ok{border-color:rgba(0,232,138,.3);background:var(--green-dim);color:var(--green)}
+  .onds-trigger.warn{border-color:rgba(255,140,66,.4);background:var(--orange-dim);color:var(--orange)}
+  .onds-trigger.fire{border-color:rgba(255,61,90,.4);background:var(--red-dim);color:var(--red)}
+  .onds-cc-list{grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px}
+  .onds-cc-item{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:6px 12px;font-size:11px}
+
+  /* ROLL SUGGESTION INLINE */
+  .roll-sugg{font-size:10px;margin-top:4px;line-height:1.5}
+  .roll-sugg-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+  .roll-cr{color:var(--green);font-weight:700}
+  .roll-dr{color:var(--red);font-weight:700}
+  .roll-ev{color:var(--yellow);font-weight:700}
 </style>
 </head>
 <body>
@@ -220,7 +268,9 @@
     <button class="btn btn-secondary" onclick="exportPositions()" style="font-size:10px;padding:5px 10px">⬇ EXPORT</button>
     <button class="btn" onclick="showAddModal()" style="background:var(--green);font-size:11px">+ ADD</button>
     <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
-    <button class="btn btn-ghost" id="extrasBtn" onclick="fetchExtras()" style="font-size:10px;padding:5px 10px">⟳ EXTRAS</button>
+    <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ ERN</button>
+    <button class="btn btn-ghost" id="ivBtn" onclick="fetchIV()" style="font-size:10px;padding:5px 10px">⟳ IV</button>
+    <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px">⟳ FLOW</button>
     <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
   </div>
 </div>
@@ -232,13 +282,43 @@
   <div class="stat stat-green"><div class="stat-val" id="s-green">—</div><div class="stat-lbl">✅ Healthy</div></div>
   <div class="stat stat-accent"><div class="stat-val" id="s-total">59</div><div class="stat-lbl">Positions</div></div>
   <div class="stat"><div class="stat-val" id="s-itm" style="color:var(--red)">—</div><div class="stat-lbl">ITM</div></div>
-  <div class="stat"><div class="stat-val" id="s-collateral" style="color:var(--text);font-size:15px">$65.5K</div><div class="stat-lbl">Collateral</div></div>
-  <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple);font-size:18px">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
-  <div class="stat"><div class="stat-val" id="s-flow" style="color:var(--red);font-size:18px">—</div><div class="stat-lbl">⚠ Contra Flow</div></div>
-  <div class="stat" style="cursor:pointer" onclick="showBaselineModal()" title="Click to set baseline">
-    <div class="stat-val" id="s-portval" style="color:var(--text);font-size:13px">—</div>
-    <div id="s-portpnl" style="font-size:10px;color:var(--muted);margin-top:2px">click to set baseline</div>
+  <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple)">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
+  <div class="stat"><div class="stat-val" id="s-flow" style="color:var(--red)">—</div><div class="stat-lbl">⚠ Contra Flow</div></div>
+  <div class="stat" style="cursor:pointer" title="Click to set baseline">
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+      <div class="stat-val" id="s-portval" style="color:var(--text);font-size:24px;font-weight:800" onclick="showBaselineModal()">—</div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button onclick="adjustBaseline(1000)" title="+$1K" style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px;line-height:1;padding:2px 5px;border-radius:3px;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">▲</button>
+        <button onclick="adjustBaseline(-1000)" title="-$1K" style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px;line-height:1;padding:2px 5px;border-radius:3px;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">▼</button>
+      </div>
+    </div>
+    <div id="s-portpnl" style="font-size:10px;color:var(--muted);margin-top:2px;cursor:pointer" onclick="showBaselineModal()">click to set baseline</div>
     <div class="stat-lbl">Portfolio</div>
+  </div>
+</div>
+
+<!-- P&L SUMMARY BAR -->
+<div class="pnl-bar" id="pnlBar">
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-collected" style="color:var(--accent)">—</div>
+    <div class="pnl-stat-lbl">Premium Collected</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-toclose" style="color:var(--text)">—</div>
+    <div class="pnl-stat-lbl">Cost to Close</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-netpnl">—</div>
+    <div class="pnl-stat-lbl">Net P&amp;L (Options)</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-pct" style="color:var(--text)">—</div>
+    <div class="pnl-stat-lbl">% Max Profit Captured</div>
+    <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-bar-fill" style="width:0%;background:var(--green)"></div></div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-collateral" style="color:var(--muted)">—</div>
+    <div class="pnl-stat-lbl">Total Collateral at Risk</div>
   </div>
 </div>
 
@@ -262,27 +342,47 @@
   <button class="filter-btn" onclick="setFilter('flow',this)">⚠ CONTRA FLOW</button>
   <div class="sort-wrap">SORT:
     <select class="sort-select" id="sortSelect" onchange="renderTable()">
+      <option value="dte">DTE ↑</option>
       <option value="alert">Alert Level</option>
       <option value="expiry">Expiry Date</option>
-      <option value="dte">DTE ↑</option>
       <option value="collateral">Collateral ↓</option>
-      <option value="delta">Delta ↓</option>
       <option value="ticker">Ticker A-Z</option>
     </select>
   </div>
   <input class="search-input" type="text" id="searchInput" placeholder="Search ticker…" oninput="renderTable()"/>
+  <button class="filter-btn" onclick="showDebugModal()" style="border-color:rgba(167,139,250,.4);color:var(--purple);margin-left:4px" title="Diagnose UW endpoint data for a ticker">🔬 DBG</button>
 </div>
 
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>DTE</th>
+    <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
     <th>Stock $</th><th>Δ Short</th><th>IV</th><th>Extrinsic</th>
-    <th>Spread Mid</th><th>% Gain</th><th>Bid / Ask</th><th>Roll Cost</th><th>Collateral</th>
+    <th style="display:none">Bid / Ask</th><th>Collateral</th>
     <th>Status</th><th>Flow</th><th>Action</th>
   </tr></thead>
   <tbody id="tableBody"></tbody>
 </table>
+</div>
+
+<!-- ONDS TRACKER -->
+<div id="ondsCard" style="display:none">
+  <div style="padding:12px 20px 0;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase" id="ondsCardTitle">CC Position Tracker</div>
+  <div class="onds-card" id="ondsCardInner">
+    <div>
+      <div class="onds-ticker" id="onds-ticker-label">—</div>
+      <div class="onds-sub" id="onds-shares">— shares</div>
+      <div class="onds-sub" id="onds-basis">cost basis —</div>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div class="onds-metric"><div class="onds-metric-val" id="onds-price" style="color:var(--text)">—</div><div class="onds-metric-lbl">Current $</div></div>
+      <div class="onds-metric"><div class="onds-metric-val" id="onds-value" style="color:var(--accent)">—</div><div class="onds-metric-lbl">Mkt Value</div></div>
+      <div class="onds-metric"><div class="onds-metric-val" id="onds-gl">—</div><div class="onds-metric-lbl">Unreal G/L</div></div>
+      <div class="onds-metric"><div class="onds-metric-val" id="onds-prem" style="color:var(--green)">—</div><div class="onds-metric-lbl">CC Premium Banked</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px" id="onds-triggers"></div>
+    <div class="onds-cc-list" id="onds-cc-list"></div>
+  </div>
 </div>
 
 <div style="padding:0 20px 8px">
@@ -309,7 +409,7 @@
 <div style="padding:0 20px 20px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:8px">
     <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Ticker Exposure</div>
-    <span style="color:var(--muted);font-size:9px">ranked by collateral · close cost color: 🟢 &lt;25% · 🟠 25–50% · 🔴 &gt;50% of collateral</span>
+    <span style="color:var(--muted);font-size:9px">ranked by collateral · close cost color: 🟢 &lt;30% · ⬜ 30–40% · 🟠 40–60% · 🔴 &gt;60% of collateral</span>
   </div>
   <table style="width:100%;border-collapse:collapse">
     <thead><tr>
@@ -453,6 +553,16 @@
   </div>
 </div>
 
+<!-- FLOATING NOTES PANEL -->
+<button class="notes-fab" id="notesFab" onclick="toggleNotesPanel()" title="Ticker Notes">📝</button>
+<div class="notes-panel hidden" id="notesPanel">
+  <div class="notes-panel-header">
+    <span class="notes-panel-title">📝 TICKER NOTES</span>
+    <button onclick="toggleNotesPanel()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+  </div>
+  <div class="notes-list" id="notesList"></div>
+</div>
+
 <script>
 // ══════════════════════════════════════════
 // POSITIONS
@@ -559,13 +669,31 @@ function bsDelta(S,K,T,iv,type) {
   const r=0.043, d1=(Math.log(S/K)+(r+0.5*iv*iv)*T)/(iv*Math.sqrt(T));
   return type==='P'?normCDF(d1)-1:normCDF(d1);
 }
+// Black-Scholes theoretical option price — used as fallback when UW has no live quote
+function bsTheoPrice(ticker, strike, type, expiry) {
+  try {
+    const S  = (livePrices[ticker]&&livePrices[ticker].price) || 0;
+    if (S <= 0) return 0;
+    const T  = Math.max(1, Math.round((new Date(expiry) - new Date()) / 86400000)) / 365;
+    const iv = (liveData[ticker]&&liveData[ticker].iv) || 50; // % form
+    const ivD = Math.max(0.05, Math.min(iv / 100, 3));
+    const r  = 0.043;
+    const d1 = (Math.log(S / strike) + (r + 0.5 * ivD * ivD) * T) / (ivD * Math.sqrt(T));
+    const d2 = d1 - ivD * Math.sqrt(T);
+    if (type === 'P') {
+      return Math.max(0, strike * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1));
+    } else {
+      return Math.max(0, S * normCDF(d1) - strike * Math.exp(-r * T) * normCDF(d2));
+    }
+  } catch(e) { return 0; }
+}
 function getLiveStock(p) { return (livePrices[p.ticker]&&livePrices[p.ticker].price) || p.stock; }
 function getLiveIV(p) {
   // Try to match IV to position's specific DTE from term structure
   const term = liveData[p.ticker]&&liveData[p.ticker].iv_term;
   if (term && Object.keys(term).length) {
     const dtes = Object.keys(term).map(Number);
-    const closest = dtes.reduce((b, d) => Math.abs(d - p.dte) < Math.abs(b - p.dte) ? d : b, dtes[0]);
+    const closest = dtes.reduce((b, d) => Math.abs(d - getDTE(p)) < Math.abs(b - getDTE(p)) ? d : b, dtes[0]);
     const matched = term[closest];
     if (matched && matched > 1 && matched < 500) return matched;
   }
@@ -590,7 +718,7 @@ function isITM(p)        { const s=getLiveStock(p); return p.type==='P'?s<p.shor
 function getEffectiveDelta(p) {
   const key=`${p.short}_${p.type}`;
   if ((liveData[p.ticker]&&liveData[p.ticker][key]!==undefined)) return Math.abs(liveData[p.ticker][key]);
-  const S=getLiveStock(p), T=Math.max(p.dte,1)/365, iv=getLiveIV(p);
+  const S=getLiveStock(p), T=Math.max(getDTE(p),1)/365, iv=getLiveIV(p);
   const K = p.short; // always use the primary strike
   return Math.abs(bsDelta(S, K, T, iv, p.type));
 }
@@ -608,14 +736,14 @@ function getAlertLevel(p) {
     if (d < 0.15)  return 'red';    // nearly worthless / deep OTM
     if (d < 0.25)  return 'orange'; // fading fast
     if (d < 0.35)  return 'yellow'; // worth monitoring
-    if (isITM(p)&&p.dte<=7)  return 'red';
+    if (isITM(p)&&getDTE(p)<=7)  return 'red';
     return 'green';
   }
   if (d>=THRESH_ROLL)  return 'red';
   if (d>=THRESH_WATCH) return 'orange';
   if (d>=THRESH_RADAR) return 'yellow';
-  if (isITM(p)&&p.dte<=7)  return 'red';
-  if (isITM(p)&&p.dte<=21) return 'orange';
+  if (isITM(p)&&getDTE(p)<=7)  return 'red';
+  if (isITM(p)&&getDTE(p)<=21) return 'orange';
   return 'green';
 }
 function getAlertScore(l){return{red:4,orange:3,yellow:2,green:1}[l]||0}
@@ -667,43 +795,40 @@ function getProfitLevel(p, liveGain) {
 
 function getSpreadMid(p) {
   if (isLongOption(p)) {
-    // Single-leg: use the single strike mid directly
     const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
     const sAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
-    if (sBid != null && sAsk != null) return { mid: (sBid + sAsk) / 2, isLive: true };
-    return { mid: Math.abs(p.open), isLive: false };
+    if (sBid != null && sAsk != null) return { mid: (sBid + sAsk) / 2, isLive: true, isBs: false };
+    return { mid: Math.abs(p.open), isLive: false, isBs: false };
   }
-  // Try live Robinhood-style spread mid first (requires both legs)
-  const liveMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMid_${p.short}_${p.long}_${p.type}`]);
-  if (liveMid != null) return { mid: Math.max(0, liveMid), isLive: true };
 
-  // Partial fallback: if we have at least the short leg live, estimate spread mid
-  // by subtracting p.open's long-leg contribution from the live short mid
+  // Real UW data — two-leg spread mid computed from live NBBO
+  const liveMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMid_${p.short}_${p.long}_${p.type}`]);
+  if (liveMid != null) return { mid: Math.max(0, liveMid), isLive: true, isBs: false };
+
+  // BS fallback — stored under separate key so we can distinguish it
+  const bsMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMidBS_${p.short}_${p.long}_${p.type}`]);
+  if (bsMid != null) return { mid: Math.max(0, bsMid), isLive: false, isBs: true };
+
+  // Partial: short leg only
   const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
   const sAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
   const lBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.long}_${p.type}`]);
   const lAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.long}_${p.type}`]);
 
   if (sBid != null && sAsk != null && lBid != null && lAsk != null) {
-    // Both legs live — compute spread mid (shouldn't reach here, but safety net)
     const shortMid = (sBid + sAsk) / 2;
     const longMid  = (lBid + lAsk) / 2;
-    return { mid: Math.max(0, shortMid - longMid), isLive: true };
+    return { mid: Math.max(0, shortMid - longMid), isLive: true, isBs: false };
   }
   if (sBid != null && sAsk != null) {
-    // Only short leg — use short mid as upper bound of spread mid
-    // (long leg adds some value, so real spread mid is lower, but this is better than stale open)
     const shortMid = (sBid + sAsk) / 2;
-    // Use p.open's long-leg shortMid/longMid ratio to estimate long leg if available
     const openShort = Math.abs(p.shortMid || 0);
     const openLong  = Math.abs(p.longMid  || 0);
-    const longEst   = openShort > 0 && openLong > 0
-      ? shortMid * (openLong / openShort)  // scale long est proportionally
-      : 0;
-    return { mid: Math.max(0, shortMid - longEst), isLive: true };
+    const longEst   = openShort > 0 && openLong > 0 ? shortMid * (openLong / openShort) : 0;
+    return { mid: Math.max(0, shortMid - longEst), isLive: true, isBs: false };
   }
-  // Fall back to open premium
-  return { mid: Math.abs(p.open), isLive: false };
+  // Nothing — fall back to open premium
+  return { mid: Math.abs(p.open), isLive: false, isBs: false };
 }
 
 function calcExtrinsic(p) {
@@ -780,7 +905,7 @@ function getFiltered() {
         return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
       }
       case 'expiry':     return a.expiry.localeCompare(b.expiry);
-      case 'dte':        return a.dte-b.dte;
+      case 'dte':        return calcDTE(a.expiry)-calcDTE(b.expiry);
       case 'collateral': return b.collateral-a.collateral;
       case 'remain':     return b.remain-a.remain;
       case 'delta':      return getEffectiveDelta(b)-getEffectiveDelta(a);
@@ -796,7 +921,7 @@ function renderTable() {
   const body=document.getElementById('tableBody');
   body.innerHTML='';
   if (!positions.length) {
-    body.innerHTML='<tr><td colspan="17" style="text-align:center;padding:40px;color:var(--muted)">No positions match filter</td></tr>';
+    body.innerHTML='<tr><td colspan="16" style="text-align:center;padding:40px;color:var(--muted)">No positions match filter</td></tr>';
     updateStats(); return;
   }
   const sort=document.getElementById('sortSelect').value;
@@ -832,7 +957,7 @@ function renderTable() {
       const daysOut=Math.round((new Date(p.expiry)-new Date())/86400000);
       const hr=document.createElement('tr');
       hr.className='expiry-hdr';
-      hr.innerHTML=`<td colspan="17">📅 ${p.expiry} &nbsp;—&nbsp; ${daysOut}d out</td>`;
+      hr.innerHTML=`<td colspan="16">📅 ${p.expiry} &nbsp;—&nbsp; ${daysOut}d out</td>`;
       body.appendChild(hr); lastExpiry=p.expiry;
     }
 
@@ -842,22 +967,23 @@ function renderTable() {
       const priceStr = lp2 ? `$${lp2.price.toFixed(2)} ${lp2.pct>=0?'▲':'▼'}${Math.abs(lp2.pct).toFixed(2)}%` : '';
       const hr=document.createElement('tr');
       hr.className='expiry-hdr';
-      hr.innerHTML=`<td colspan="17" style="color:var(--accent)">
+      hr.innerHTML=`<td colspan="16" style="color:var(--accent)">
         <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:12px">${p.ticker}</span>
         <span style="color:var(--muted);margin-left:10px">${priceStr}</span>
         &nbsp;·&nbsp; <span style="color:var(--text)">${tt.count} position${tt.count>1?'s':''}</span>
         &nbsp;·&nbsp; <span style="color:var(--text)">${tt.cts} contracts</span>
         &nbsp;·&nbsp; <span style="color:var(--muted)">collateral</span> <span style="color:var(--text)">$${tt.collateral.toLocaleString()}</span>
-        &nbsp;·&nbsp; <span style="color:var(--muted)">to close</span> <span style="color:${tt.closeCost>tt.collateral*0.5?'var(--red)':tt.closeCost>tt.collateral*0.25?'var(--orange)':'var(--green)'}">$${tt.closeCost.toFixed(0)}</span>
+        &nbsp;·&nbsp; <span style="color:var(--muted)">to close</span> <span style="color:${tt.closeCost>tt.collateral*0.6?'var(--red)':tt.closeCost>tt.collateral*0.4?'var(--orange)':tt.closeCost<tt.collateral*0.3?'var(--green)':'var(--muted)'}">$${tt.closeCost.toFixed(0)}</span>
       </td>`;
       body.appendChild(hr); lastTicker=p.ticker;
     }
 
     const dClass=delta>=THRESH_ROLL?'alert-red':delta>=THRESH_WATCH?'alert-orange':delta>=THRESH_RADAR?'alert-yellow':'alert-green';
-    const srcTag=src==='live'
-      ?'<span style="color:var(--green);font-size:8px"> ●LIVE</span>'
-      :'<span style="color:var(--muted);font-size:8px"> ~BS</span>';
-    const dteClass=p.dte<=7?'dte-urgent':p.dte<=21?'dte-near':'dte-val';
+    const srcTag = src==='live'
+      ? `<span style="color:var(--green);font-size:9px"> ●LIVE</span>`
+      : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
+
+    const dteClass=getDTE(p)<=7?'dte-urgent':getDTE(p)<=21?'dte-near':'dte-val';
     const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
     const chgHtml=lp
       ?`<span class="stock-chg ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>`
@@ -869,19 +995,29 @@ function renderTable() {
                    : 'var(--green)';
     const extHtml = `<div style="font-weight:600;color:${extColor}">$${ext.value.toFixed(2)}</div>
       <div style="color:var(--muted);font-size:9px">mid $${ext.mid.toFixed(2)} · int $${ext.intrinsic.toFixed(2)}</div>`;
+
+    // Spread mid timestamp — needs ext defined first
+    const tickerTs  = liveData[p.ticker] && liveData[p.ticker].ts;        // real UW data time
+    const refreshTs = liveData[p.ticker] && liveData[p.ticker].refreshTs; // last fetch attempt
+    const liveLabel = ext.isLive && !ext.isBs
+      ? (tickerTs  ? '●LIVE ' + tickerTs  : '●LIVE')
+      : ext.isBs
+        ? (refreshTs ? '~BS '  + refreshTs : '~BS')
+        : '~open';
+    const liveGainTag = (ext.isLive && !ext.isBs) ? '●' : ext.isBs ? '~BS' : '~';
     const gainClass=p.gain>0?'pnl-pos':p.gain<-10?'pnl-neg':'pnl-neu';
 
     // % gain: uses calcLiveGain which handles both credit spreads (decay) and long options (appreciation)
     const openPrem = Math.abs(p.open);
     const liveGain = calcLiveGain(p);
     const liveGainClass = isLongOption(p)
-      ? (liveGain >= 60 ? 'pnl-pos' : liveGain >= 0 ? 'pnl-neu' : 'pnl-neg')
-      : (liveGain >= 60 ? 'pnl-pos' : liveGain >= 0 ? 'pnl-neu' : 'pnl-neg');
+      ? (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg')
+      : (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg');
     const liveGainStr = (liveGain >= 0 ? '+' : '') + liveGain.toFixed(1) + '%';
-    const liveGainTag = ext.isLive ? '●' : '~';
+
 
     const bidAsk=(sBid!=null||sAsk!=null)
-      ?`<div class="bid-ask" style="font-size:9px;line-height:1.6">
+      ?`<div class="bid-ask" style="font-size:11px;line-height:1.7">
           <span style="color:var(--muted)">S:</span> <b>${sBid!=null?'$'+sBid.toFixed(2):'—'}</b>/<b>${sAsk!=null?'$'+sAsk.toFixed(2):'—'}</b>
           ${lBid!=null||lAsk!=null?`<br><span style="color:var(--muted)">L:</span> <b>${lBid!=null?'$'+lBid.toFixed(2):'—'}</b>/<b>${lAsk!=null?'$'+lAsk.toFixed(2):'—'}</b>`:''}
         </div>`
@@ -921,11 +1057,11 @@ function renderTable() {
     if (flow) {
       const isContra = flow.isContra;
       const fc = isContra
-        ? 'fb-bear'
+        ? 'fb-contra'
         : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
       const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEU';
       const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
-      const contraTag = isContra?` <span style="color:var(--red);font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
+      const contraTag = isContra?` <span style="color:var(--yellow);font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
       flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
     }
 
@@ -979,25 +1115,33 @@ function renderTable() {
           ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
           : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
 
+    const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
+    const noteHtml = TICKER_NOTES[p.ticker] ? `<span class="note-dot" title="${TICKER_NOTES[p.ticker].text.slice(0,80).replace(/"/g,"'")}"></span>` : '';
+    const tickerCell = '<td><span class="ticker-name">' + p.ticker + '</span>' + noteHtml + ernHtml +
+      '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
     const tr=document.createElement('tr');
     tr.className=`row${itm?' row-itm':''}`;
-    tr.innerHTML=`
-      <td><span class="ticker-name">${p.ticker}</span>${eWarn?`<span class="ern-warn">⚠ ERN ${earningsMap[p.ticker]}</span>`:''}</td>
+    tr.innerHTML=tickerCell+`
       <td>${typeBadgeHtml}</td>
       <td>${strikesHtml}</td>
       <td style="color:var(--muted)">×${p.cts}</td>
-      <td class="${dteClass}">${p.dte}d</td>
+      <td>
+        <div style="font-weight:600;color:var(--text)">$${ext.mid.toFixed(2)}</div>
+        <div style="font-size:10px;margin-top:1px">
+          <span style="color:${ext.isLive && !ext.isBs?'var(--green)':ext.isBs?'var(--yellow)':'var(--muted)'}">${liveLabel}</span>
+          <span style="color:var(--muted)"> · open $${Math.abs(p.open).toFixed(2)}</span>
+        </div>
+      </td>
+      <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
+      <td class="${dteClass}">
+        ${getDTE(p)}d
+        <div style="color:var(--muted);font-size:10px;font-weight:400">${p.expiry.slice(5).replace('-','/')}</div>
+      </td>
       <td class="${sClass}">$${stock.toFixed(2)}${chgHtml}</td>
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
       <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}</td>
       <td>${extHtml}</td>
-      <td>
-        <div style="font-weight:600;color:var(--text)">$${ext.mid.toFixed(2)}<span style="color:var(--muted);font-size:8px;font-weight:400"> ${ext.isLive?'●LIVE':'~open'}</span></div>
-        <div style="color:var(--muted);font-size:9px">open $${Math.abs(p.open).toFixed(2)}</div>
-      </td>
-      <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
-      <td>${bidAsk}</td>
-      <td>${rcHtml}</td>
+      <td style="display:none">${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
       <td>${statusHtml}</td>
       <td>${flowHtml}</td>
@@ -1025,9 +1169,144 @@ function updateStats() {
   document.getElementById('s-green').textContent=cnt.green;
   document.getElementById('s-total').textContent=POSITIONS.length;
   document.getElementById('s-itm').textContent=itm||'—';
-  document.getElementById('s-collateral').textContent='$'+(col/1000).toFixed(1)+'K';
+  const colEl=document.getElementById('s-collateral'); if(colEl) colEl.textContent='$'+(col/1000).toFixed(1)+'K';
   document.getElementById('s-earnings').textContent=ern||'—';
   document.getElementById('s-flow').textContent=fl||'—';
+}
+
+// ══════════════════════════════════════════
+// P&L SUMMARY BAR
+// ══════════════════════════════════════════
+function updatePnlBar() {
+  let totalCollected = 0, totalToClose = 0, totalCollateral = 0;
+  POSITIONS.forEach(p => {
+    if (isLongOption(p)) return; // long options: skip from credit metrics
+    if (p.postype === 'covered_call') return;
+    const openPrem = Math.abs(p.open);
+    const { mid } = getSpreadMid(p);
+    totalCollected  += openPrem * 100 * p.cts;
+    totalToClose    += mid * 100 * p.cts;
+    totalCollateral += p.collateral;
+  });
+  const netPnL    = totalCollected - totalToClose;
+  const pctCaptured = totalCollected > 0 ? (netPnL / totalCollected) * 100 : 0;
+  const pctCapped = Math.max(0, Math.min(100, pctCaptured));
+  const pnlColor  = netPnL >= 0 ? 'var(--green)' : 'var(--red)';
+  const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 40 ? 'var(--yellow)' : 'var(--orange)';
+
+  const fmt = v => '$' + Math.round(Math.abs(v)).toLocaleString();
+  document.getElementById('pnl-collected').textContent = fmt(totalCollected);
+  document.getElementById('pnl-toclose').textContent   = fmt(totalToClose);
+  document.getElementById('pnl-netpnl').textContent    = (netPnL >= 0 ? '+' : '-') + fmt(netPnL);
+  document.getElementById('pnl-netpnl').style.color    = pnlColor;
+  document.getElementById('pnl-pct').textContent       = pctCaptured.toFixed(1) + '%';
+  document.getElementById('pnl-pct').style.color       = barColor;
+  document.getElementById('pnl-bar-fill').style.width  = pctCapped + '%';
+  document.getElementById('pnl-bar-fill').style.background = barColor;
+  document.getElementById('pnl-collateral').textContent = fmt(totalCollateral);
+}
+
+// ══════════════════════════════════════════
+// ONDS TRACKER CARD
+// ══════════════════════════════════════════
+function renderOndsCard() {
+  const card = document.getElementById('ondsCard');
+
+  // Collect all tracked stocks that have covered calls or are in STOCKS
+  const trackedTickers = [...CC_TRACKED];
+  const hasAny = trackedTickers.some(t =>
+    STOCKS.find(s => s.ticker === t) ||
+    POSITIONS.some(p => p.ticker === t && p.postype === 'covered_call')
+  );
+  if (!hasAny) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // For now render the first tracked ticker that has stock or CCs
+  // (if multiple tracked, renders them all stacked)
+  const inner = document.getElementById('ondsCardInner');
+
+  // Use the first tracked ticker as the primary display
+  const trackerTicker = trackedTickers.find(t =>
+    STOCKS.find(s => s.ticker === t) ||
+    POSITIONS.some(p => p.ticker === t && p.postype === 'covered_call')
+  ) || trackedTickers[0];
+
+  const ondsStock = STOCKS.find(s => s.ticker === trackerTicker);
+  const ondsCCs   = POSITIONS.filter(p => p.ticker === trackerTicker && p.postype === 'covered_call');
+
+  const lp      = livePrices[trackerTicker];
+  const price   = (lp && lp.price) || (ondsStock && ondsStock.cost) || 0;
+  const shares  = ondsStock ? ondsStock.shares : 0;
+  const basis   = ondsStock ? ondsStock.cost   : 0;
+  const value   = price * shares;
+  const gl      = (price - basis) * shares;
+  const glClass = gl >= 0 ? 'pnl-pos' : 'pnl-neg';
+
+  // Total CC premium banked (all-time open premium on ONDS CCs)
+  const premBanked = ondsCCs.reduce((s, p) => s + Math.abs(p.open) * 100 * p.cts, 0);
+
+  document.getElementById('onds-ticker-label').textContent = trackerTicker;
+  document.getElementById('ondsCardTitle').textContent     = trackerTicker + ' · CC Position Tracker';
+  document.getElementById('onds-shares').textContent = shares.toLocaleString() + ' shares';
+  document.getElementById('onds-basis').textContent  = 'cost basis $' + basis.toFixed(2);
+  document.getElementById('onds-price').textContent  = price > 0 ? '$' + price.toFixed(2) : '—';
+  document.getElementById('onds-value').textContent  = value > 0 ? '$' + (value/1000).toFixed(1) + 'K' : '—';
+  document.getElementById('onds-gl').className       = 'onds-metric-val ' + glClass;
+  document.getElementById('onds-gl').textContent     = price > 0 ? (gl >= 0 ? '+' : '') + '$' + Math.round(gl).toLocaleString() : '—';
+  document.getElementById('onds-prem').textContent   = premBanked > 0 ? '+$' + Math.round(premBanked).toLocaleString() : '—';
+
+  // ── Triggers ──
+  const triggerEl = document.getElementById('onds-triggers');
+  if (!ondsCCs.length) {
+    triggerEl.innerHTML = '<div style="color:var(--muted);font-size:10px">No active covered calls</div>';
+  } else {
+    triggerEl.innerHTML = ondsCCs.map(p => {
+      const dte      = getDTE(p);
+      const distToStrike = Math.abs(price - p.short);
+      const { mid }  = getSpreadMid(p);
+      const openPrem = Math.abs(p.open);
+      const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
+
+      // Three triggers — evaluate priority
+      const t1Fire = price > 0 && distToStrike <= 0.50;   // within $0.50 of strike
+      const t2Fire = pctGain >= 50;                         // 50% of max profit
+      const t3Fire = dte <= 21;                             // hard 21 DTE deadline
+      const watchDTE = dte <= 30 && dte > 21;
+      const watchProfit = pctGain >= 35 && pctGain < 50;
+
+      const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= 2 ? 'warn' : 'ok';
+      const trigger2Class = t2Fire ? 'fire' : watchProfit ? 'warn' : 'ok';
+      const trigger3Class = t3Fire ? 'fire' : watchDTE ? 'warn' : 'ok';
+
+      const mo = new Date(p.expiry + 'T12:00:00').toLocaleString('en-US',{month:'short'});
+      return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px">$${p.short} CC · ${mo} · ${dte}d · ×${p.cts}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} to strike</span>
+          <span class="onds-trigger ${trigger2Class}">💰 ${pctGain.toFixed(0)}% profit</span>
+          <span class="onds-trigger ${trigger3Class}">📅 ${dte}d DTE</span>
+        </div>`;
+    }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
+  }
+
+  // ── CC summary list ──
+  const ccListEl = document.getElementById('onds-cc-list');
+  if (!ondsCCs.length) { ccListEl.style.display = 'none'; return; }
+  ccListEl.style.display = 'flex';
+  ccListEl.innerHTML = ondsCCs.map(p => {
+    const dte = getDTE(p);
+    const { mid } = getSpreadMid(p);
+    const openPrem = Math.abs(p.open);
+    const pctGain = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
+    const mo = new Date(p.expiry + 'T12:00:00').toLocaleString('en-US',{month:'short'});
+    const pnlColor = pctGain >= 50 ? 'var(--green)' : pctGain >= 0 ? 'var(--text)' : 'var(--red)';
+    return `<div class="onds-cc-item">
+      <span style="color:var(--accent);font-weight:700">$${p.short}</span>
+      <span style="color:var(--muted)"> ${mo} ×${p.cts}</span>
+      <span style="color:var(--muted)"> · open $${openPrem.toFixed(2)}</span>
+      <span style="color:${pnlColor};font-weight:600"> · ${pctGain.toFixed(0)}% decay</span>
+      <span style="color:var(--muted)"> · ${dte}d</span>
+    </div>`;
+  }).join('');
 }
 
 function updatePriceTicker() {
@@ -1069,12 +1348,12 @@ function makeSemaphore(max) {
     }
   };
 }
-const uwSem = makeSemaphore(6); // max 6 concurrent UW requests
+const uwSem = makeSemaphore(4); // max 4 concurrent UW requests
 
 // ── Apps Script proxy — handles CORS so UW API works from local file ──
 const PROXY_URL = 'https://script.google.com/macros/s/AKfycbx6bii9j6bTsTQCK4QT5-zF4XGVRygiYdqExdb0QbFQJqu__l-gLjBr8gRUyGpZzAziow/exec';
 
-async function uw(path, expiry='', ms=15000) {
+async function uw(path, expiry='', ms=25000) {
   return uwSem(async () => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
@@ -1110,238 +1389,451 @@ function withTimeout(promise, ms=8000) {
 }
 
 async function fetchAll() {
-  const btn=document.getElementById('refreshBtn');
-  btn.disabled=true;
-  const posTickers=[...new Set(POSITIONS.map(p=>p.ticker))];
-  // Watch-only tickers — fetch price + IV but not full greeks
-  const watchOnly = WATCHLIST.filter(t => !posTickers.includes(t));
-  const tickers = posTickers;
-  let done=0;
+  const btn = document.getElementById('refreshBtn');
 
-  const updateProgress = () => {
-    btn.textContent=`⟳ ${done}/${tickers.length} tickers…`;
-  };
-  updateProgress();
+  // Second click while running = cancel
+  if (btn.dataset.running === '1') {
+    btn.dataset.cancel = '1';
+    btn.textContent = '⏳ CANCELLING…';
+    return;
+  }
+  btn.dataset.running = '1';
+  btn.dataset.cancel  = '0';
 
-  // Fetch position tickers with concurrency limit of 8 — avoids proxy timeout storms
-  const CONCURRENCY = 8;
-  for (let i = 0; i < tickers.length; i += CONCURRENCY) {
-    await Promise.all(tickers.slice(i, i + CONCURRENCY).map(async t => {
-      await fetchTicker(t);
-      done++; updateProgress();
-    }));
+  const posTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  const watchOnly  = WATCHLIST.filter(t => !posTickers.includes(t));
+  let done = 0;
+  const BATCH = 5;        // tickers per batch — keeps req/min well under UW rate limit
+  const BATCH_PAUSE = 45; // seconds to wait between batches (resets UW per-minute window)
+
+  btn.textContent = `⏳ 0/${posTickers.length} tickers…`;
+
+  for (let i = 0; i < posTickers.length; i++) {
+    if (btn.dataset.cancel === '1') break;
+
+    // After each full batch (except the first), pause so UW rate limits reset
+    if (i > 0 && i % BATCH === 0) {
+      for (let s = BATCH_PAUSE; s > 0; s--) {
+        if (btn.dataset.cancel === '1') break;
+        btn.textContent = `⏳ ${done}/${posTickers.length} · batch pause ${s}s…`;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      if (btn.dataset.cancel === '1') break;
+    }
+
+    const t = posTickers[i];
+    await fetchTicker(t);
+    done++;
+    btn.textContent = `⏳ ${done}/${posTickers.length} tickers…`;
+    renderTable();
+    updateStats();
+    updatePortfolioStat();
+    updatePriceTicker();
+    // Gap between individual tickers within a batch — spread requests over time
+    const isLastInBatch = (i + 1) % BATCH === 0;
+    if (i < posTickers.length - 1 && !isLastInBatch) {
+      await new Promise(r => setTimeout(r, 1500));
+    }
   }
 
-  // Interpolated IV for all position tickers — always fetch, overwrites greeks IV with more accurate value
-  await Promise.all(tickers.map(async t => {
-    try {
-      const iv = await uw(`/api/stock/${t}/interpolated-iv`);
-      const arr = Array.isArray(iv&&iv.data) ? iv.data : null;
-      if (arr && arr.length) {
-        if (!liveData[t]) liveData[t]={};
-        // Store full term structure keyed by DTE for per-expiry lookup
-        liveData[t].iv_term = {};
-        arr.forEach(r => {
-          const vol = parseFloat(r.volatility);
-          if (vol > 0 && vol < 10) liveData[t].iv_term[Number(r.days)] = vol * 100;
-        });
-        // Also store a fallback: the row closest to 30 DTE as a general IV
-        const target = 30;
-        const best = arr.reduce((b, r) => Math.abs(Number(r.days)-target) < Math.abs(Number(b.days)-target) ? r : b, arr[0]);
-        const vol = parseFloat(best.volatility);
-        if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
-      }
-    } catch(e) {}
-  }));
-
-  // Fetch stock prices for stock positions (e.g. ONDS) — not covered by fetchTicker
-  await Promise.all(STOCKS.map(async s => {
-    // Always fetch fresh price for stock positions — don't rely on options fetch
+  // ── Stock positions (ONDS etc.) ──
+  for (const s of STOCKS) {
+    if (btn.dataset.cancel === '1') break;
     try {
       const v = await uw(`/api/stock/${s.ticker}/stock-state`);
-      const d = v&&v.data;
+      const d = v?.data;
       const row = d ? (Array.isArray(d) ? d[0] : d) : null;
       if (row) {
         const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
         const prev  = parseFloat(row.prev_close||row.open||price);
-        if (price > 0) livePrices[s.ticker] = { price, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+        if (price > 0) livePrices[s.ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
       }
     } catch(e) {}
-  }));
+  }
+
+  // ── Watchlist-only tickers: price only ──
+  for (const t of watchOnly) {
+    if (btn.dataset.cancel === '1') break;
+    try {
+      const v = await uw(`/api/stock/${t}/stock-state`);
+      const d = v?.data;
+      const row = d ? (Array.isArray(d) ? d[0] : d) : null;
+      if (row) {
+        const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+        const prev  = parseFloat(row.prev_close||row.open||price);
+        if (price > 0) livePrices[t] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+      }
+    } catch(e) {}
+  }
+
+  const wasCancelled = btn.dataset.cancel === '1';
+  btn.dataset.running = '0';
+  btn.dataset.cancel  = '0';
 
   updatePriceTicker();
   renderTable();
   renderExposure();
   renderStocks();
+  renderOndsCard();
   renderWatchList();
   updatePortfolioStat();
-  btn.disabled=false; btn.textContent='⟳ REFRESH LIVE';
-  document.getElementById('lastRefresh').textContent='⏱ Refreshed '+new Date().toLocaleTimeString();
+  updatePnlBar();
+
+  btn.textContent = '⏳ REFRESH LIVE';
+  document.getElementById('lastRefresh').textContent =
+    '⏱ ' + new Date().toLocaleTimeString() +
+    (wasCancelled ? ` · ${done}/${posTickers.length} done` : ' · prices+Δ');
+  // Persist market data so it survives page reload
+  saveToStorage();
 }
 
+// ── Per-ticker manual refresh — click the ⟳ on any row ──
+async function refreshTicker(ticker, btnEl) {
+  if (btnEl) { btnEl.textContent = '⟳'; btnEl.style.color = 'var(--yellow)'; btnEl.disabled = true; }
+  await fetchTicker(ticker);
+  renderTable();
+  updateStats();
+  updatePortfolioStat();
+  updatePnlBar();
+  renderOndsCard();
+  updatePriceTicker();
+  saveToStorage(); // persist updated market data
+}
+ // ══════════════════════════════════════════
+// IV REFRESH — interpolated IV for all position + watchlist tickers
+// Run manually; not part of auto-refresh to save rate limit budget
 // ══════════════════════════════════════════
-// EXTRAS — watchlist prices + earnings (run on demand, not every refresh)
-// ══════════════════════════════════════════
-async function fetchExtras() {
-  const btn = document.getElementById('extrasBtn');
+async function fetchIV() {
+  const btn = document.getElementById('ivBtn');
   btn.disabled = true;
-  const posTickers = new Set(POSITIONS.map(p => p.ticker));
-  const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t));
-  const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  btn.textContent = '⟳ IV…';
 
-  // Watchlist-only prices + IV
-  btn.textContent = '⟳ Watch prices…';
-  await Promise.all(watchOnly.map(async t => {
-    if (!livePrices[t]) {
+  const posTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  const watchOnly  = WATCHLIST.filter(t => !posTickers.includes(t));
+  const allTickers = [...posTickers, ...watchOnly];
+
+  // Throttle IV calls — 3 at a time, with a small gap between batches
+  const CONCURRENCY = 3;
+  for (let i = 0; i < allTickers.length; i += CONCURRENCY) {
+    await Promise.all(allTickers.slice(i, i + CONCURRENCY).map(async t => {
       try {
-        const v = await uw(`/api/stock/${t}/stock-state`);
-        const d = v&&v.data;
-        const row = d ? (Array.isArray(d) ? d[0] : d) : null;
-        if (row) {
-          const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-          const prev  = parseFloat(row.prev_close||row.open||price);
-          if (price > 0) livePrices[t] = { price, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+        const iv = await uw(`/api/stock/${t}/interpolated-iv`);
+        const arr = Array.isArray(iv && iv.data) ? iv.data : null;
+        if (arr && arr.length) {
+          if (!liveData[t]) liveData[t] = {};
+          liveData[t].iv_term = {};
+          arr.forEach(r => {
+            const vol = parseFloat(r.volatility);
+            if (vol > 0 && vol < 10) liveData[t].iv_term[Number(r.days)] = vol * 100;
+          });
+          const target = 30;
+          const best = arr.reduce((b, r) => Math.abs(Number(r.days)-target) < Math.abs(Number(b.days)-target) ? r : b, arr[0]);
+          const vol = parseFloat(best.volatility);
+          if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
         }
       } catch(e) {}
-    }
-    try {
-      const iv = await uw(`/api/stock/${t}/interpolated-iv`);
-      const arr = Array.isArray(iv&&iv.data) ? iv.data : null;
-      if (arr && arr.length) {
-        if (!liveData[t]) liveData[t]={};
-        liveData[t].iv_term = {};
-        arr.forEach(r => {
-          const vol = parseFloat(r.volatility);
-          if (vol > 0 && vol < 10) liveData[t].iv_term[Number(r.days)] = vol * 100;
-        });
-        const target = 30;
-        const best = arr.reduce((b, r) => Math.abs(Number(r.days)-target) < Math.abs(Number(b.days)-target) ? r : b, arr[0]);
-        const vol = parseFloat(best.volatility);
-        if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
-      }
-    } catch(e) {}
-  }));
-
-  // Flow alerts
-  btn.textContent = '⟳ Flow…';
-  await withTimeout(fetchFlowAlerts(allTickers), 15000).catch(()=>{});
-
-  // Earnings
-  btn.textContent = '⟳ Earnings…';
-  await withTimeout(fetchEarnings(allTickers), 15000).catch(()=>{});
+    }));
+    // Small pause between batches to ease proxy load
+    if (i + CONCURRENCY < allTickers.length) await new Promise(r => setTimeout(r, 500));
+  }
 
   renderTable();
   renderWatchList();
-  updateStats();
-  updatePriceTicker();
   btn.disabled = false;
-  btn.textContent = '⟳ EXTRAS';
-  document.getElementById('lastRefresh').textContent += ' · extras ' + new Date().toLocaleTimeString();
+  btn.textContent = '⟳ IV';
+  document.getElementById('lastRefresh').textContent += ' · IV ' + new Date().toLocaleTimeString();
+}
+
+// ══════════════════════════════════════════
+// FLOW REFRESH — flow alerts + earnings for all position tickers
+// Run manually; not part of auto-refresh to save rate limit budget
+// ══════════════════════════════════════════
+async function fetchFlow() {
+  const btn = document.getElementById('flowBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ Flow…';
+
+  const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  await withTimeout(fetchFlowAlerts(allTickers), 20000).catch(() => {});
+
+  renderTable();
+  updateStats();
+  saveToStorage();
+  btn.disabled = false;
+  btn.textContent = '⟳ FLOW';
+  document.getElementById('lastRefresh').textContent += ' · flow ' + new Date().toLocaleTimeString();
+}
+
+async function fetchEarningsOnly() {
+  const btn = document.getElementById('ernBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ ERN…';
+
+  const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  await withTimeout(fetchEarnings(allTickers), 20000).catch(() => {});
+
+  renderTable();
+  updateStats();
+  saveToStorage();
+  btn.disabled = false;
+  btn.textContent = '⟳ ERN';
+  document.getElementById('lastRefresh').textContent += ' · ern ' + new Date().toLocaleTimeString();
 }
 
 async function fetchTicker(ticker) {
-  if (!liveData[ticker]) liveData[ticker]={};
+  if (!liveData[ticker]) liveData[ticker] = {};
 
-  const myPositions = POSITIONS.filter(p=>p.ticker===ticker);
-  const expiries = [...new Set(myPositions.map(p=>p.expiry))];
+  const myPositions = POSITIONS.filter(p => p.ticker === ticker);
+  const expiries = [...new Set(myPositions.map(p => p.expiry))];
 
-  // Helper to apply greeks response for a given expiry
+  // ── Helper: build OCC option symbol for a strike+type+expiry ──
+  // Format: TICKER + YYMMDD + C/P + 8-digit strike (strike * 1000, zero-padded)
+  function occSymbol(exp, type, strike) {
+    const yymmdd = exp.replace(/-/g, '').slice(2); // 2026-05-15 → 260515
+    const strikePadded = Math.round(strike * 1000).toString().padStart(8, '0');
+    return `${ticker}${yymmdd}${type}${strikePadded}`;
+  }
+
+  // ── Helper: apply greeks rows → delta ONLY (IV moved to fetchIV button) ──
   function applyGreeks(arr, requestedExpiry) {
     if (!arr.length) return;
-
-    // Detect stale UW response: if the returned expiry doesn't match what we asked for,
-    // UW is returning yesterday's EOD data. In that case skip delta/IV (use BS instead)
-    // but still extract bid/ask which remain useful for spread mid calculation.
     const returnedExpiry = arr[0] && arr[0].expiry;
     const isStale = returnedExpiry && returnedExpiry !== requestedExpiry;
     if (isStale) {
-      console.warn(`[RW] ${ticker} (${requestedExpiry}): UW returned stale data for ${returnedExpiry} — skipping delta/IV, keeping bid/ask`);
+      console.warn(`[RW] ${ticker} (${requestedExpiry}): greeks stale (got ${returnedExpiry}) — skipping delta`);
+      return;
     }
-
-    myPositions.filter(p=>p.expiry===requestedExpiry).forEach(p => {
-      const deltaKey = p.type==='C' ? 'call_delta' : 'put_delta';
-
-      const shortRow = arr.find(x=>Math.abs(Number((x&&x.strike))-p.short)<1e-6)
-                    || arr.find(x=>Number((x&&x.strike))===p.short);
-      const longRow  = arr.find(x=>Math.abs(Number((x&&x.strike))-p.long)<1e-6)
-                    || arr.find(x=>Number((x&&x.strike))===p.long);
-
-      if (shortRow) {
-        // Only trust delta and IV if the data is for the correct date
-        if (!isStale) {
-          if (shortRow[deltaKey] != null) liveData[ticker][`${p.short}_${p.type}`] = Number(shortRow[deltaKey]);
-          // UW greeks returns iv as a percentage already (e.g. 63.6)
-          if (shortRow.iv != null) liveData[ticker].iv = Number(shortRow.iv);
-        }
-        // Bid/ask are still useful even if stale (ballpark for spread mid)
-        if (shortRow.bid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = Number(shortRow.bid);
-        if (shortRow.ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = Number(shortRow.ask);
-      }
-
-      if (longRow) {
-        if (longRow.bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = Number(longRow.bid);
-        if (longRow.ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = Number(longRow.ask);
-      }
-
-      // Spread mid: short mid - long mid
-      const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
-      const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
-      const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
-      const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
-      if (sBid!=null && sAsk!=null && lBid!=null && lAsk!=null) {
-        const shortMid = (sBid + sAsk) / 2;
-        const longMid  = (lBid + lAsk) / 2;
-        liveData[ticker][`spreadMid_${p.short}_${p.long}_${p.type}`] = Math.max(0, shortMid - longMid);
+    myPositions.filter(p => p.expiry === requestedExpiry).forEach(p => {
+      const deltaKey = p.type === 'C' ? 'call_delta' : 'put_delta';
+      const shortRow = arr.find(x => Math.abs(Number(x.strike) - p.short) < 0.01)
+                    || arr.find(x => Number(x.strike) === p.short);
+      if (shortRow && shortRow[deltaKey] != null) {
+        liveData[ticker][`${p.short}_${p.type}`] = Math.abs(Number(shortRow[deltaKey]));
       }
     });
   }
 
-  // ── Fire greeks + price in parallel; IV fallback runs after ──
-  let greeksSetIV = false;
+  // ── Helper: apply option-contracts rows → live bid/ask + spread mid ──
+  function applyContracts(arr, requestedExpiry) {
+    if (!arr.length) return;
+    const fetchTime = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+    // Primary lookup: by OCC option_symbol
+    const bySymbol = {};
+    arr.forEach(x => { if (x.option_symbol) bySymbol[x.option_symbol] = x; });
+    // Secondary lookup: parse strike+type from the option_symbol string itself
+    const byStrikeType = {};
+    arr.forEach(x => {
+      if (!x.option_symbol) return;
+      const match = x.option_symbol.match(/([CP])(\d{8})$/);
+      if (match) byStrikeType[`${parseInt(match[2])/1000}_${match[1]}`] = x;
+    });
 
-  await Promise.all([
-    // 1. DELTA: greeks per expiry
-    ...expiries.map(async expiry => {
-      try {
-        const g = await uw(`/api/stock/${ticker}/greeks`, expiry);
-        const arr = Array.isArray(g&&g.data) ? g.data : [];
-        if (expiry === expiries[0]) {
-          console.log(`[RW] ${ticker} greeks (${expiry}) — ${arr.length} rows, sample:`, arr[0]);
+    myPositions.filter(p => p.expiry === requestedExpiry).forEach(p => {
+      const shortSym = occSymbol(p.expiry, p.type, p.short);
+      const longSym  = occSymbol(p.expiry, p.type, p.long);
+      const shortRow = bySymbol[shortSym] || byStrikeType[`${p.short}_${p.type}`];
+      const longRow  = bySymbol[longSym]  || byStrikeType[`${p.long}_${p.type}`];
+
+      if (shortRow) {
+        const { bid, ask } = extractBidAsk(shortRow);
+        if (bid != null) {
+          liveData[ticker][`bid_${p.short}_${p.type}`] = bid;
+          liveData[ticker].ts = fetchTime; // real UW quote — stamp the time
         }
-        applyGreeks(arr, expiry);
-        if (arr.length) greeksSetIV = true;
-      } catch(e) {
-        console.warn(`[RW] ${ticker} greeks fetch failed:`, e);
+        if (ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = ask;
+        if (bid == null) {
+          // No UW quote — BS fallback (stock price may not be ready yet; recalc at end of fetchTicker)
+          const bsPrice = bsTheoPrice(ticker, p.short, p.type, p.expiry);
+          if (bsPrice > 0) {
+            const spread = Math.max(0.05, bsPrice * 0.04);
+            liveData[ticker][`bid_${p.short}_${p.type}`] = -(bsPrice - spread); // negative = BS marker
+            liveData[ticker][`ask_${p.short}_${p.type}`] = -(bsPrice + spread);
+          }
+        }
+        console.log(`[RW] ${ticker} ${p.expiry} short $${p.short}${p.type}: bid=${bid?.toFixed(2) ?? 'BS'} ask=${ask?.toFixed(2) ?? 'BS'} (sym match: ${!!bySymbol[shortSym]})`);
+      } else {
+        console.warn(`[RW] ${ticker} ${p.expiry} $${p.short}${p.type}: NO MATCH. sym=${shortSym}`);
       }
-    }),
+      if (longRow) {
+        const { bid, ask } = extractBidAsk(longRow);
+        if (bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = bid;
+        if (ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = ask;
+        if (bid == null) {
+          const bsPrice = bsTheoPrice(ticker, p.long, p.type, p.expiry);
+          if (bsPrice > 0) {
+            const spread = Math.max(0.05, bsPrice * 0.04);
+            liveData[ticker][`bid_${p.long}_${p.type}`] = -(bsPrice - spread); // negative = BS marker
+            liveData[ticker][`ask_${p.long}_${p.type}`] = -(bsPrice + spread);
+          }
+        }
+      }
 
-    // 2. Stock price from stock-state (reliable prev_close for % change)
-    (async () => {
+      // Determine if either leg used BS (negative values = BS marker)
+      const sBidRaw = liveData[ticker][`bid_${p.short}_${p.type}`];
+      const sAskRaw = liveData[ticker][`ask_${p.short}_${p.type}`];
+      const lBidRaw = liveData[ticker][`bid_${p.long}_${p.type}`];
+      const lAskRaw = liveData[ticker][`ask_${p.long}_${p.type}`];
+      const shortIsBS = sBidRaw != null && sBidRaw < 0;
+      const longIsBS  = lBidRaw != null && lBidRaw < 0;
+      const anyBS = shortIsBS || longIsBS;
+
+      // Absolute values for calculation
+      const sBid = sBidRaw != null ? Math.abs(sBidRaw) : null;
+      const sAsk = sAskRaw != null ? Math.abs(sAskRaw) : null;
+      const lBid = lBidRaw != null ? Math.abs(lBidRaw) : null;
+      const lAsk = lAskRaw != null ? Math.abs(lAskRaw) : null;
+
+      // Also store abs values so getSpreadMid bid/ask lookups work correctly
+      if (sBid != null) liveData[ticker][`bid_${p.short}_${p.type}`] = sBid;
+      if (sAsk != null) liveData[ticker][`ask_${p.short}_${p.type}`] = sAsk;
+      if (lBid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = lBid;
+      if (lAsk != null) liveData[ticker][`ask_${p.long}_${p.type}`] = lAsk;
+
+      const liveKey = `spreadMid_${p.short}_${p.long}_${p.type}`;
+      const bsKey   = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
+
+      if (sBid != null && sAsk != null && lBid != null && lAsk != null) {
+        const shortMid = (sBid + sAsk) / 2;
+        const longMid  = (lBid + lAsk) / 2;
+        const rawMid   = shortMid - longMid;
+        const width    = Math.abs(p.short - p.long);
+
+        if (anyBS) {
+          // At least one leg used BS — clear stale live key, write to BS key
+          delete liveData[ticker][liveKey];
+          const bsMid = Math.min(Math.max(0, rawMid), width);
+          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
+        } else if (rawMid > 0 && rawMid <= width * 0.995) {
+          // Both legs real UW data, valid range
+          liveData[ticker][liveKey] = rawMid;
+          delete liveData[ticker][bsKey]; // clear old BS if we now have real data
+        } else if (rawMid > width * 0.995) {
+          // Exceeds max width — bad UW quote, use BS
+          delete liveData[ticker][liveKey];
+          const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
+          const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
+          const bsMid   = Math.min(bsShort - bsLong, width);
+          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
+          console.warn(`[RW] ${ticker} ${p.expiry} quote $${rawMid.toFixed(2)} exceeds width $${width} — BS mid $${bsMid.toFixed(2)}`);
+        } else {
+          // Inverted — use BS
+          delete liveData[ticker][liveKey];
+          const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
+          const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
+          const bsMid   = Math.min(Math.max(0, bsShort - bsLong), width);
+          if (bsMid > 0) liveData[ticker][bsKey] = bsMid;
+          console.warn(`[RW] ${ticker} ${p.expiry} spread inverted ($${rawMid.toFixed(2)}) — BS mid $${bsMid.toFixed(2)}`);
+        }
+      }
+    });
+  }
+
+  // ── Helper: extract best price from an option-contracts row ──
+  // Priority: nbbo mid → avg_price → last_price → mid_volume
+  // Skips zeros — a zero bid/ask means no market, not a real quote
+  function extractBidAsk(row) {
+    if (!row) return { bid: null, ask: null };
+    const nbbo_bid = parseFloat(row.nbbo_bid);
+    const nbbo_ask = parseFloat(row.nbbo_ask);
+    const avg      = parseFloat(row.avg_price);
+    const last     = parseFloat(row.last_price);
+    const mid      = parseFloat(row.mid_volume);
+
+    // Use NBBO if both are non-zero
+    if (nbbo_bid > 0 && nbbo_ask > 0) return { bid: nbbo_bid, ask: nbbo_ask };
+
+    // Use avg_price ±2% as synthetic bid/ask
+    if (avg > 0) return { bid: avg * 0.98, ask: avg * 1.02 };
+
+    // Use last_price ±2%
+    if (last > 0) return { bid: last * 0.98, ask: last * 1.02 };
+
+    // Use mid_volume ±2%
+    if (mid > 0) return { bid: mid * 0.98, ask: mid * 1.02 };
+
+    // All UW quote fields null — no live data available for this strike
+    return { bid: null, ask: null };
+  }
+
+  // ── Process each expiry sequentially to avoid timeout storms ──
+  // For each expiry: greeks then contracts, then move to next expiry.
+  // Stock price runs in parallel with the first expiry batch.
+  const stockPricePromise = (async () => {
+    try {
+      const v = await uw(`/api/stock/${ticker}/stock-state`);
+      const d = v?.data;
+      const row = Array.isArray(d) ? d[0] : d;
+      if (row) {
+        const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+        const prev  = parseFloat(row.prev_close||row.open||price);
+        if (price > 0) livePrices[ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+      }
+    } catch(e) {}
+    if (!livePrices[ticker]) {
       try {
-        const v = await uw(`/api/stock/${ticker}/stock-state`);
-        const d = v&&v.data;
-        const row = Array.isArray(d) ? d[0] : d;
-        if (row) {
-          const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-          const prev  = parseFloat(row.prev_close||row.open||price);
-          if (price>0) livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
+        const v = await uw(`/api/stock/${ticker}/options-volume`);
+        const d = v?.data?.[0];
+        if (d) {
+          const price = parseFloat(d.close||d.price||d.underlying_price||0);
+          const prev  = parseFloat(d.prev_close||d.open||price);
+          if (price > 0) livePrices[ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
         }
       } catch(e) {}
-      // Fallback to options-volume if stock-state gave nothing
-      if (!livePrices[ticker]) {
-        try {
-          const v = await uw(`/api/stock/${ticker}/options-volume`);
-          const d = v&&v.data&&v.data[0];
-          if (d) {
-            const price = parseFloat(d.close||d.price||d.underlying_price||0);
-            const prev  = parseFloat(d.prev_close||d.open||price);
-            if (price>0) livePrices[ticker]={price, change:price-prev, pct:prev>0?((price-prev)/prev)*100:0};
-          }
-        } catch(e) {}
-      }
-    })(),
-  ]);
+    }
+  })();
 
+  // Process expiries one at a time — greeks + contracts per expiry, sequentially
+  for (const expiry of expiries) {
+    await Promise.all([
+      // Greeks (delta) for this expiry
+      (async () => {
+        try {
+          const g = await uw(`/api/stock/${ticker}/greeks`, expiry);
+          const arr = Array.isArray(g?.data) ? g.data : [];
+          console.log(`[RW] ${ticker} greeks (${expiry}) — ${arr.length} rows`);
+          applyGreeks(arr, expiry);
+        } catch(e) {
+          console.warn(`[RW] ${ticker} greeks failed:`, e);
+        }
+      })(),
+      // Option-contracts (bid/ask) for this expiry
+      (async () => {
+        try {
+          const c = await uw(`/api/stock/${ticker}/option-contracts`, expiry);
+          const arr = Array.isArray(c?.data) ? c.data : [];
+          console.log(`[RW] ${ticker} option-contracts (${expiry}) — ${arr.length} rows`);
+          applyContracts(arr, expiry);
+        } catch(e) {
+          console.warn(`[RW] ${ticker} option-contracts failed:`, e);
+        }
+      })(),
+    ]);
+  }
+
+  // Stock price must complete before we do BS fallback recalcs below
+  await stockPricePromise;
+
+  // Stamp the refresh time on this ticker — always, regardless of data quality
+  // This lets the UI show "~BS 12:44" vs "~BS" (unknown when last tried)
+  const refreshTime = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+  if (!liveData[ticker]) liveData[ticker] = {};
+  liveData[ticker].refreshTs = refreshTime;
+
+  // Re-run BS fallback now that stock price is confirmed available
+  // (applyContracts may have computed BS=0 if stock price wasn't ready yet)
+  const myPos = POSITIONS.filter(p => p.ticker === ticker);
+  myPos.forEach(p => {
+    const key = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
+    const liveKey = `spreadMid_${p.short}_${p.long}_${p.type}`;
+    // Only recalc BS if there's no real live mid
+    if (liveData[ticker][liveKey] == null) {
+      const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
+      const bsLong  = bsTheoPrice(ticker, p.long,  p.type, p.expiry);
+      const width   = Math.abs(p.short - p.long);
+      const bsMid   = Math.min(Math.max(0, bsShort - bsLong), width);
+      if (bsMid > 0) liveData[ticker][key] = bsMid;
+    }
+  });
 }
 
 // Build normalized OCC contract ID for intraday endpoint
@@ -1354,25 +1846,39 @@ function buildOCCId(p) {
 async function fetchFlowAlerts(tickers) {
   await Promise.all(tickers.map(async t=>{
     try {
-      const r=await uw(`/api/stock/${t}/flow-recent`);
-      if (!(r&&r.data&&r.data.length)) return;
+      // Try flow-alerts endpoint first, fall back to flow-recent
+      let r = await uw(`/api/stock/${t}/flow-alerts`).catch(() => null);
+      if (!r || !(r.data && r.data.length)) {
+        r = await uw(`/api/stock/${t}/flow-recent`).catch(() => null);
+      }
+      if (!r || !(r.data && r.data.length)) {
+        console.log(`[RW] ${t} flow: no data from either endpoint`);
+        return;
+      }
+      console.log(`[RW] ${t} flow: ${r.data.length} rows, sample:`, JSON.stringify(r.data[0]).slice(0,200));
+
       let calls=0, puts=0, callCt=0, putCt=0;
       r.data.forEach(x=>{
-        const prem=parseFloat(x.total_premium||x.premium||0);
-        if ((x.option_type&&x.option_type.toLowerCase())==='call') { calls+=prem; callCt++; }
-        else { puts+=prem; putCt++; }
+        // Try multiple field name variations UW has used across API versions
+        const prem = parseFloat(
+          x.total_premium || x.premium || x.premium_value ||
+          x.notional || x.size || 0
+        );
+        const optType = (
+          x.option_type || x.call_put || x.type || x.side || ''
+        ).toLowerCase();
+        if (optType === 'call' || optType === 'c') { calls += prem; callCt++; }
+        else if (optType === 'put' || optType === 'p') { puts += prem; putCt++; }
       });
-      const total=calls+puts;
-      // Dynamic threshold: $200K for liquid large caps, $50K for smaller names
+
+      const total = calls + puts;
+      console.log(`[RW] ${t} flow: calls=$${(calls/1000).toFixed(0)}K puts=$${(puts/1000).toFixed(0)}K total=$${(total/1000).toFixed(0)}K`);
+
       const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
       const threshold = bigNames.includes(t) ? 200000 : 50000;
-      if (total < threshold) return;
+      if (total < threshold) { console.log(`[RW] ${t} flow: below threshold ($${threshold/1000}K)`); return; }
 
       const sentiment = calls>puts*1.4?'bull':puts>calls*1.4?'bear':'neu';
-
-      // Flag if flow is CONTRA to any of our positions on this ticker
-      // Put spread = short put = bearish flow AGAINST us
-      // Call spread = short call = bullish flow AGAINST us
       const myPos = POSITIONS.filter(p=>p.ticker===t);
       const hasShortPut  = myPos.some(p=>p.type==='P' && !isLongOption(p));
       const hasShortCall = myPos.some(p=>(p.type==='C'||p.postype==='covered_call') && !isLongOption(p));
@@ -1384,7 +1890,8 @@ async function fetchFlowAlerts(tickers) {
                     || (hasLongPut  && sentiment==='bull');
 
       flowData[t]={sentiment, premium:total, calls, puts, callCt, putCt, isContra};
-    } catch(e){}
+      console.log(`[RW] ${t} flow: ${sentiment} isContra=${isContra}`);
+    } catch(e){ console.warn(`[RW] ${t} flow error:`, e); }
   }));
 }
 
@@ -1444,11 +1951,12 @@ function showRollModal(idx) {
   const rollCost       = getRollCost(p);
 
   // ── DTE guidance ──
-  const dteAdvice = p.dte <= 14
+  const dte = getDTE(p);
+  const dteAdvice = dte <= 14
     ? { label:'URGENT', color:'var(--red)',    text:'Under 14 DTE — gamma risk accelerating. Roll now or let assignment risk mount.' }
-    : p.dte <= 30
+    : dte <= 30
     ? { label:'SOON',   color:'var(--orange)', text:'Under 30 DTE — theta decay slowing. Ideal time to roll before gamma picks up.' }
-    : p.dte <= 60
+    : dte <= 60
     ? { label:'OK',     color:'var(--yellow)', text:'30–60 DTE — some time remaining but worth acting if delta is elevated.' }
     : { label:'EARLY',  color:'var(--green)',  text:'60+ DTE — plenty of time. Consider whether IV expansion is worth waiting out.' };
 
@@ -1487,11 +1995,20 @@ function showRollModal(idx) {
     : `Maintain $${width} width — no reason to change if thesis and IV support it.`;
 
   document.getElementById('modalTitle').textContent = `↩ Roll Analysis — ${p.ticker} ${p.type==='P'?'PUT':'CALL'} $${p.short}/$${p.long}`;
+  const existingNote = TICKER_NOTES[p.ticker] || {};
   document.getElementById('modalBody').innerHTML = `
+    <div class="modal-section" style="color:var(--yellow)">📝 TICKER NOTE <span style="font-size:9px;color:var(--muted);font-weight:400;font-family:'JetBrains Mono',monospace">${existingNote.ts ? '· last updated ' + existingNote.ts : '· no note yet'}</span></div>
+    <div style="margin-bottom:4px">
+      <textarea class="note-textarea" id="rollModalNote" placeholder="e.g. Holding through earnings · thesis intact · reduce size on roll…">${existingNote.text || ''}</textarea>
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <button onclick="saveNote('${p.ticker}', document.getElementById('rollModalNote').value)" class="btn" style="background:var(--yellow);color:#000;font-size:10px;padding:5px 14px">💾 SAVE NOTE</button>
+        ${existingNote.text ? `<button onclick="saveNote('${p.ticker}',''); document.getElementById('rollModalNote').value=''" class="btn btn-danger" style="font-size:10px;padding:5px 10px">✕ CLEAR</button>` : ''}
+      </div>
+    </div>
     <div class="modal-section">POSITION SNAPSHOT</div>
     <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp?`$${lp.price.toFixed(2)} (${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%)`:`$${p.stock.toFixed(2)} (stale — refresh)`}</span></div>
     <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:var(--red)">${delta.toFixed(3)} (${getDeltaSource(p)==='live'?'●LIVE':'~BS'})</span></div>
-    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${p.dte}d — ${dteAdvice.label}</span></div>
+    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d — ${dteAdvice.label}</span></div>
     <div class="modal-row"><span class="modal-label">IV</span><span class="modal-val">${iv.toFixed(1)}%</span></div>
     <div class="modal-row"><span class="modal-label">Spread Mid / Open</span><span class="modal-val">$${spreadMid.toFixed(2)} ${isLive?'●LIVE':'~open'} vs $${openPrem.toFixed(2)} open ${liveGain>0?'(+'+liveGain.toFixed(1)+'% captured)':'('+liveGain.toFixed(1)+'% move against)'}</span></div>
     ${rollCost!==null?`<div class="modal-row"><span class="modal-label">Est. Close Cost</span><span class="modal-val" style="color:${rollCost>0?'var(--red)':'var(--green)'}">$${Math.abs(rollCost).toFixed(0)} ${rollCost>0?'debit to close':'credit to close'}</span></div>`:''}
@@ -1523,6 +2040,53 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">Sentiment</span><span class="modal-val" style="color:${flowColor}">${flow.sentiment.toUpperCase()}${contraText}</span></div>
     <div class="modal-row"><span class="modal-label">Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls / $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
     })():''}
+
+    <div class="modal-section">ROLL TARGETS <span style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:400;letter-spacing:0">~BS estimate · guideline only</span></div>
+    ${(()=>{
+      const S = getLiveStock(p);
+      const ivR = getLiveIV(p);
+      const today2 = new Date(); today2.setHours(0,0,0,0);
+      const curExp = new Date(p.expiry + 'T12:00:00');
+      const minDate = new Date(Math.max(today2.getTime() + 45*86400000, curExp.getTime() + 1));
+      function tf3(yr,mo){ let f=0; for(let i=1;i<=31;i++){const t=new Date(yr,mo,i);if(t.getMonth()!==mo)break;if(t.getDay()===5&&++f===3)return t;} return new Date(yr,mo,21); }
+      let rExp=null;
+      for(let m=0;m<8;m++){const d=new Date(minDate.getFullYear(),minDate.getMonth()+m,1);const tf=tf3(d.getFullYear(),d.getMonth());if(tf>=minDate){rExp=tf;break;}}
+      if(!rExp) rExp=tf3(minDate.getFullYear(),minDate.getMonth()+1);
+      const rExpStr = rExp.toISOString().slice(0,10);
+      const rT = Math.max(1, Math.round((rExp - today2)/86400000))/365;
+      const rDTE = Math.round((rExp - today2)/86400000);
+      const rMo = rExp.toLocaleString('en-US',{month:'long'});
+      const { mid: curMid } = getSpreadMid(p);
+      function snap(raw){ const step=S>200?5:S>50?2.5:S>20?1:0.5; return Math.round(raw/step)*step; }
+      function findDelta(tgt){
+        let lo=S*0.3,hi=S*1.5,best=p.short;
+        for(let i=0;i<50;i++){const m2=(lo+hi)/2;const d=Math.abs(bsDelta(S,m2,rT,ivR,p.type));if(Math.abs(d-tgt)<0.0005){best=m2;break;}if(p.type==='P'){if(d>tgt)hi=m2;else lo=m2;}else{if(d>tgt)lo=m2;else hi=m2;}best=m2;}
+        return snap(best);
+      }
+      function line(tgt, label, color){
+        const ns=findDelta(tgt), nl=p.type==='P'?ns-width:ns+width;
+        const nsp=bsTheoPrice(p.ticker,ns,p.type,rExpStr), nlp=bsTheoPrice(p.ticker,nl,p.type,rExpStr);
+        const nm=Math.max(0,nsp-nlp);
+        const rc=(nm-curMid)*100*p.cts;
+        const rcColor=rc>=0?'var(--green)':'var(--red)';
+        const rcLabel=rc>=0?`CR $${Math.abs(rc).toFixed(0)}`:`DR $${Math.abs(rc).toFixed(0)}`;
+        const strikes=p.type==='P'?`$${ns}/$${nl}P`:`$${ns}/$${nl}C`;
+        return `<div class="modal-row">
+          <span class="modal-label" style="color:${color}">${label} Δ${tgt.toFixed(2)}</span>
+          <span class="modal-val" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span style="font-size:14px;font-weight:700">${strikes}</span>
+            <span style="font-size:11px;color:var(--muted)">mid ~$${nm.toFixed(2)} · <span style="color:${rcColor};font-weight:700">${rcLabel} to roll</span></span>
+          </span>
+        </div>`;
+      }
+      return `
+    <div class="modal-row"><span class="modal-label">Target Expiry</span><span class="modal-val" style="color:var(--accent)">${rMo} ${rExp.getFullYear()} · ${rDTE}d out</span></div>
+    ${line(0.45,'Aggressive',   'var(--orange)')}
+    ${line(0.30,'Defensive',    'var(--green)')}
+    <div class="modal-row" style="padding-top:4px">
+      <span style="color:var(--muted);font-size:9px;line-height:1.5">CR = net credit received to roll · DR = debit paid · based on current spread mid vs BS-estimated new spread mid</span>
+    </div>`;
+    })()}
   `;
   document.getElementById('rollModal').classList.add('show');
 }
@@ -1538,8 +2102,8 @@ function toggleAuto() {
     clearInterval(autoTimer); autoTimer=null;
     btn.textContent='⏱ AUTO: OFF'; btn.classList.remove('on');
   } else {
-    fetchAll(); autoTimer=setInterval(fetchAll,5*60*1000);
-    btn.textContent='⏱ AUTO: 5MIN'; btn.classList.add('on');
+    fetchAll(); autoTimer=setInterval(fetchAll,15*60*1000);
+    btn.textContent='⏱ AUTO: 15MIN'; btn.classList.add('on');
   }
 }
 
@@ -1548,6 +2112,10 @@ function toggleAuto() {
 // ══════════════════════════════════════════
 const STORAGE_KEY       = 'rollwatch_positions_v2';
 const STOCK_STORAGE_KEY = 'rollwatch_stocks_v1';
+const CC_TRACK_KEY      = 'rollwatch_cctracked_v1';
+const NOTES_KEY         = 'rollwatch_notes_v1';
+let CC_TRACKED = new Set(['ONDS']);
+let TICKER_NOTES = {}; // ticker -> { text, ts }
 
 // Seed stock positions
 let STOCKS = [
@@ -1555,8 +2123,10 @@ let STOCKS = [
 ];
 
 function calcDTE(expiry) {
-  return Math.max(0, Math.round((new Date(expiry) - new Date()) / 86400000));
+  return Math.max(0, Math.round((new Date(expiry+'T00:00:00') - new Date()) / 86400000));
 }
+// Always compute live DTE from expiry — never trust the stored value which drifts
+function getDTE(p) { return calcDTE(p.expiry); }
 
 function calcCollateral(postype, short, long, cts, stockPrice, open) {
   if (postype === 'covered_call') {
@@ -1620,7 +2190,14 @@ function buildPayload() {
     stocks:            STOCKS,
     watchlist:         WATCHLIST,
     bias:              BIAS,
+    ccTracked:         [...CC_TRACKED],
+    tickerNotes:       TICKER_NOTES,
     portfolioBaseline: portfolioBaseline,
+    liveData:          liveData,
+    livePrices:        livePrices,
+    earningsMap:       earningsMap,
+    flowData:          flowData,
+    liveTs:            Date.now(),
     ts:                Date.now()
   };
 }
@@ -1661,8 +2238,29 @@ async function driveLoad() {
     if (Array.isArray(data.stocks))    { STOCKS    = data.stocks; }
     if (Array.isArray(data.watchlist)) { WATCHLIST = data.watchlist; }
     if (data.bias && typeof data.bias === 'object') { BIAS = data.bias; }
+    if (Array.isArray(data.ccTracked)) { CC_TRACKED = new Set(data.ccTracked); }
+    if (data.tickerNotes && typeof data.tickerNotes === 'object') { TICKER_NOTES = data.tickerNotes; }
     if (data.portfolioBaseline && data.portfolioBaseline.value) {
       portfolioBaseline = data.portfolioBaseline;
+    }
+    // Restore last-known market data so the dashboard shows previous state on load
+    if (data.liveData && typeof data.liveData === 'object') {
+      Object.assign(liveData, data.liveData);
+    }
+    if (data.livePrices && typeof data.livePrices === 'object') {
+      Object.assign(livePrices, data.livePrices);
+    }
+    if (data.earningsMap && typeof data.earningsMap === 'object') {
+      Object.assign(earningsMap, data.earningsMap);
+    }
+    if (data.flowData && typeof data.flowData === 'object') {
+      Object.assign(flowData, data.flowData);
+    }
+    // Show how stale the restored data is
+    if (data.liveTs) {
+      const mins = Math.round((Date.now() - data.liveTs) / 60000);
+      const staleLabel = mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
+      document.getElementById('lastRefresh').textContent = `⏱ restored · last live ${staleLabel}`;
     }
 
     setDriveBadge('☁ IN SYNC', '#00e88a');
@@ -1685,7 +2283,15 @@ function saveToStorage() {
     localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
     localStorage.setItem(WATCH_KEY,         JSON.stringify(WATCHLIST));
     localStorage.setItem(BIAS_KEY,          JSON.stringify(BIAS));
+    localStorage.setItem(CC_TRACK_KEY,      JSON.stringify([...CC_TRACKED]));
+    localStorage.setItem(NOTES_KEY,         JSON.stringify(TICKER_NOTES));
     if (portfolioBaseline) localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
+    // Save last-known market data so it survives a page reload
+    localStorage.setItem('rollwatch_livedata_v1',   JSON.stringify(liveData));
+    localStorage.setItem('rollwatch_liveprices_v1', JSON.stringify(livePrices));
+    localStorage.setItem('rollwatch_earnings_v1',   JSON.stringify(earningsMap));
+    localStorage.setItem('rollwatch_flow_v1',       JSON.stringify(flowData));
+    localStorage.setItem('rollwatch_livets_v1',     String(Date.now()));
     const badge = getStorageBadge();
     if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
     // Push full portable state to Drive — only after initial load is done
@@ -1720,10 +2326,47 @@ function loadFromStorage() {
       const savedB = JSON.parse(rawB);
       if (savedB && typeof savedB === 'object') { BIAS = savedB; }
     }
+    const rawCCT = localStorage.getItem(CC_TRACK_KEY);
+    if (rawCCT) {
+      const savedCCT = JSON.parse(rawCCT);
+      if (Array.isArray(savedCCT)) { CC_TRACKED = new Set(savedCCT); }
+    }
+    const rawNotes = localStorage.getItem(NOTES_KEY);
+    if (rawNotes) {
+      const savedNotes = JSON.parse(rawNotes);
+      if (savedNotes && typeof savedNotes === 'object') { TICKER_NOTES = savedNotes; }
+    }
     const rawP = localStorage.getItem(PORT_KEY);
     if (rawP) {
       const savedP = JSON.parse(rawP);
       if (savedP && savedP.value) { portfolioBaseline = savedP; }
+    }
+    // Restore last-known market data
+    const rawLd = localStorage.getItem('rollwatch_livedata_v1');
+    if (rawLd) {
+      const savedLd = JSON.parse(rawLd);
+      if (savedLd && typeof savedLd === 'object') Object.assign(liveData, savedLd);
+    }
+    const rawLp = localStorage.getItem('rollwatch_liveprices_v1');
+    if (rawLp) {
+      const savedLp = JSON.parse(rawLp);
+      if (savedLp && typeof savedLp === 'object') Object.assign(livePrices, savedLp);
+    }
+    const rawEr = localStorage.getItem('rollwatch_earnings_v1');
+    if (rawEr) {
+      const savedEr = JSON.parse(rawEr);
+      if (savedEr && typeof savedEr === 'object') Object.assign(earningsMap, savedEr);
+    }
+    const rawFl = localStorage.getItem('rollwatch_flow_v1');
+    if (rawFl) {
+      const savedFl = JSON.parse(rawFl);
+      if (savedFl && typeof savedFl === 'object') Object.assign(flowData, savedFl);
+    }
+    const rawLts = localStorage.getItem('rollwatch_livets_v1');
+    if (rawLts) {
+      const mins = Math.round((Date.now() - Number(rawLts)) / 60000);
+      const staleLabel = mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
+      document.getElementById('lastRefresh').textContent = `⏱ restored · last live ${staleLabel}`;
     }
   } catch(e) {}
   // NOTE: intentionally NOT calling saveToStorage() here —
@@ -1937,6 +2580,82 @@ document.getElementById('posModal').addEventListener('click', e => { if(e.target
 // ══════════════════════════════════════════
 let editingStockIdx = null;
 
+// ══════════════════════════════════════════
+// TICKER NOTES
+// ══════════════════════════════════════════
+function saveNote(ticker, text) {
+  if (!ticker) return;
+  if (!text.trim()) {
+    delete TICKER_NOTES[ticker];
+  } else {
+    TICKER_NOTES[ticker] = { text: text.trim(), ts: new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) };
+  }
+  saveToStorage();
+  renderNotesPanel();
+  updateNotesFab();
+  renderTable();
+  renderWatchList();
+}
+
+function toggleNotesPanel() {
+  const panel = document.getElementById('notesPanel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) renderNotesPanel();
+}
+
+function updateNotesFab() {
+  const fab = document.getElementById('notesFab');
+  const hasAny = Object.keys(TICKER_NOTES).length > 0;
+  fab.classList.toggle('has-notes', hasAny);
+  fab.title = hasAny ? `Ticker Notes (${Object.keys(TICKER_NOTES).length})` : 'Ticker Notes';
+}
+
+function renderNotesPanel() {
+  const list = document.getElementById('notesList');
+  const entries = Object.entries(TICKER_NOTES).sort((a,b) => a[0].localeCompare(b[0]));
+  if (!entries.length) {
+    list.innerHTML = `<div class="notes-empty">No ticker notes yet.<br>Click ↩ ROLL on any position<br>to add a note for that ticker.</div>`;
+    return;
+  }
+  list.innerHTML = entries.map(([ticker, n]) => `
+    <div class="note-item">
+      <div class="note-item-ticker">
+        <span>${ticker}</span>
+        <button onclick="openNoteFromPanel('${ticker}')" title="Edit"
+          style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:9px;padding:1px 6px;border-radius:3px;font-family:inherit"
+          onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✎ EDIT</button>
+      </div>
+      <div class="note-item-text">${n.text.replace(/</g,'&lt;')}</div>
+      <div class="note-item-ts">${n.ts}</div>
+    </div>`).join('');
+}
+
+function openNoteFromPanel(ticker) {
+  // Open a lightweight inline edit overlay within the notes panel
+  const list = document.getElementById('notesList');
+  const existing = TICKER_NOTES[ticker] || {};
+  list.innerHTML = `
+    <div style="padding:8px">
+      <div style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:8px">${ticker}</div>
+      <textarea class="note-textarea" id="notePanelInput" placeholder="Type your note here…">${existing.text || ''}</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="saveNote('${ticker}', document.getElementById('notePanelInput').value); " class="btn" style="flex:1;background:var(--yellow);color:#000;font-size:10px;padding:6px">SAVE</button>
+        ${existing.text ? `<button onclick="saveNote('${ticker}',''); " class="btn btn-danger" style="font-size:10px;padding:6px 10px">DELETE</button>` : ''}
+        <button onclick="renderNotesPanel()" class="btn btn-secondary" style="font-size:10px;padding:6px 10px">CANCEL</button>
+      </div>
+    </div>`;
+  document.getElementById('notePanelInput').focus();
+}
+
+function toggleCCTrack(ticker) {
+  if (CC_TRACKED.has(ticker)) { CC_TRACKED.delete(ticker); }
+  else { CC_TRACKED.add(ticker); }
+  saveToStorage();
+  renderStocks();
+  renderOndsCard();
+}
+
 function renderStocks() {
   const body = document.getElementById('stockBody');
   if (!STOCKS.length) {
@@ -1951,28 +2670,49 @@ function renderStocks() {
     const cost    = s.cost * s.shares;
     const gl      = value - cost;
     const glPct   = ((current - s.cost) / s.cost) * 100;
+    const dayGL   = lp ? (current - lp.open) * s.shares : null;
+    const dayGLPct = lp && lp.open > 0 ? ((current - lp.open) / lp.open) * 100 : null;
     totalValue   += value;
     totalCost    += cost;
     const glClass = gl >= 0 ? 'pnl-pos' : 'pnl-neg';
     const dayClass = lp ? (lp.pct >= 0 ? 'price-up' : 'price-dn') : 'price-neu';
-    return `<tr class="row">
-      <td><span class="ticker-name">${s.ticker}</span></td>
-      <td style="color:var(--text)">${s.shares.toLocaleString()}</td>
+    const dayGLClass = dayGL != null ? (dayGL >= 0 ? 'pnl-pos' : 'pnl-neg') : '';
+    const openHtml = lp && lp.open > 0
+      ? `<div style="color:var(--muted);font-size:11px">open $${lp.open.toFixed(2)}</div>`
+      : '';
+    const isTracked = CC_TRACKED.has(s.ticker);
+    const trackBtn = `<button onclick="toggleCCTrack('${s.ticker}')" title="${isTracked?'Remove from CC Tracker':'Add to CC Tracker'}"
+      style="background:${isTracked?'rgba(0,212,255,.12)':'transparent'};border:1px solid ${isTracked?'rgba(0,212,255,.4)':'var(--border)'};
+      color:${isTracked?'var(--accent)':'var(--muted)'};cursor:pointer;font-size:9px;font-weight:700;
+      padding:2px 6px;border-radius:3px;font-family:inherit;letter-spacing:.3px;white-space:nowrap;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+      onmouseout="this.style.borderColor='${isTracked?'rgba(0,212,255,.4)':'var(--border)'}';this.style.color='${isTracked?'var(--accent)':'var(--muted)'}'">
+      ${isTracked?'📌 CC':'📌'}
+    </button>`;
+    return `<tr class="row" style="font-size:17px">
+      <td><span class="ticker-name" style="font-size:19px;letter-spacing:1px">${s.ticker}</span></td>
+      <td style="color:var(--text);font-weight:600">${s.shares.toLocaleString()}</td>
       <td style="color:var(--muted)">$${s.cost.toFixed(2)}</td>
-      <td class="${lp?'stock-otm':'price-neu'}">$${current.toFixed(2)}</td>
-      <td style="color:var(--text)">$${(value/1000).toFixed(1)}K</td>
-      <td class="${glClass}">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</td>
-      <td class="${dayClass}">${lp?(lp.pct>=0?'▲':'▼')+Math.abs(lp.pct).toFixed(2)+'%':'—'}</td>
-      <td><button class="edit-x" onclick="showEditStockModal(${i})" title="Edit">✎</button> <button class="close-x" onclick="removeStock(${i})" title="Remove">✕</button></td>
+      <td class="${lp?'stock-otm':'price-neu'}" style="font-weight:600">
+        $${current.toFixed(2)}
+        ${openHtml}
+      </td>
+      <td style="color:var(--text);font-weight:700">$${(value/1000).toFixed(1)}K</td>
+      <td class="${glClass}" style="font-weight:700">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</td>
+      <td class="${dayClass}" style="font-weight:600">
+        ${lp?(lp.pct>=0?'▲':'▼')+Math.abs(lp.pct).toFixed(2)+'%':'—'}
+        ${dayGL!=null?`<div class="${dayGLClass}" style="font-size:11px">${dayGL>=0?'+':''}$${Math.round(Math.abs(dayGL)).toLocaleString()}</div>`:''}
+      </td>
+      <td style="white-space:nowrap">${trackBtn} <button class="edit-x" onclick="showEditStockModal(${i})" title="Edit">✎</button> <button class="close-x" onclick="removeStock(${i})" title="Remove">✕</button></td>
     </tr>`;
   }).join('');
 
   // Totals row
   const totalGL = totalValue - totalCost;
   const totalGLClass = totalGL >= 0 ? 'pnl-pos' : 'pnl-neg';
-  body.innerHTML += `<tr style="border-top:2px solid var(--border)">
-    <td colspan="4" style="color:var(--muted);font-size:10px;padding:8px 10px">TOTAL</td>
-    <td style="color:var(--text);font-weight:700">$${(totalValue/1000).toFixed(1)}K</td>
+  body.innerHTML += `<tr style="border-top:2px solid var(--border);font-size:17px">
+    <td colspan="4" style="color:var(--muted);font-size:11px;padding:8px 10px">TOTAL</td>
+    <td style="color:var(--text);font-weight:700;font-size:19px">$${(totalValue/1000).toFixed(1)}K</td>
     <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}</td>
     <td colspan="2"></td>
   </tr>`;
@@ -2061,19 +2801,21 @@ function renderExposure() {
   // Sort by collateral desc
   const sorted = Object.entries(totals).sort((a,b) => b[1].collateral - a[1].collateral);
 
+  let grandCloseCost = 0;
   body.innerHTML = sorted.map(([ticker, t]) => {
     const lp = livePrices[ticker];
     const closePct = t.collateral > 0 ? (t.closeCost / t.collateral) * 100 : 0;
     const concPct  = grandCollateral > 0 ? (t.collateral / grandCollateral) * 100 : 0;
-    const closeColor = closePct > 50 ? 'var(--red)' : closePct > 25 ? 'var(--orange)' : 'var(--green)';
+    const closeColor = closePct > 60 ? 'var(--red)' : closePct > 40 ? 'var(--orange)' : closePct < 30 ? 'var(--green)' : 'var(--muted)';
     const concColor  = concPct > 15 ? 'var(--red)' : concPct > 8 ? 'var(--orange)' : 'var(--muted)';
+    grandCloseCost += t.closeCost;
 
     // Alert summary badges
     const alertBadges = [
-      t.alerts.red    ? `<span style="color:var(--red);font-size:9px;font-weight:700">${t.alerts.red}🔴</span>` : '',
-      t.alerts.orange ? `<span style="color:var(--orange);font-size:9px;font-weight:700">${t.alerts.orange}🟠</span>` : '',
-      t.alerts.yellow ? `<span style="color:var(--yellow);font-size:9px;font-weight:700">${t.alerts.yellow}🟡</span>` : '',
-      t.alerts.green  ? `<span style="color:var(--green);font-size:9px;font-weight:700">${t.alerts.green}✅</span>` : '',
+      t.alerts.red    ? `<span style="color:var(--red);font-size:12px;font-weight:700">${t.alerts.red}🔴</span>` : '',
+      t.alerts.orange ? `<span style="color:var(--orange);font-size:12px;font-weight:700">${t.alerts.orange}🟠</span>` : '',
+      t.alerts.yellow ? `<span style="color:var(--yellow);font-size:12px;font-weight:700">${t.alerts.yellow}🟡</span>` : '',
+      t.alerts.green  ? `<span style="color:var(--green);font-size:12px;font-weight:700">${t.alerts.green}✅</span>` : '',
     ].filter(Boolean).join(' ');
 
     // Concentration bar
@@ -2082,7 +2824,7 @@ function renderExposure() {
       <div style="width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
         <div style="width:${barWidth}%;height:100%;background:${concColor};border-radius:2px"></div>
       </div>
-      <span style="color:${concColor};font-size:10px">${concPct.toFixed(1)}%</span>
+      <span style="color:${concColor};font-size:12px">${concPct.toFixed(1)}%</span>
     </div>`;
 
     return `<tr class="row">
@@ -2091,12 +2833,23 @@ function renderExposure() {
       <td style="color:var(--text)">${t.count}</td>
       <td style="color:var(--text)">${t.cts}</td>
       <td style="color:var(--text)">$${t.collateral.toLocaleString()}</td>
-      <td style="color:${closeColor};font-weight:600">$${t.closeCost.toFixed(0)}</td>
+      <td style="color:${closeColor};font-weight:600">$${Math.round(t.closeCost).toLocaleString()}</td>
       <td style="color:${closeColor}">${closePct.toFixed(1)}%</td>
       <td>${concBar}</td>
       <td>${alertBadges}</td>
     </tr>`;
   }).join('');
+
+  // Totals row
+  const grandClosePct = grandCollateral > 0 ? (grandCloseCost / grandCollateral) * 100 : 0;
+  const grandCloseColor = grandClosePct > 60 ? 'var(--red)' : grandClosePct > 40 ? 'var(--orange)' : grandClosePct < 30 ? 'var(--green)' : 'var(--muted)';
+  body.innerHTML += `<tr style="border-top:2px solid var(--border);background:var(--surface2)">
+    <td colspan="3" style="color:var(--muted);font-size:10px;padding:8px 10px;text-transform:uppercase;letter-spacing:1px">TOTAL</td>
+    <td style="color:var(--text);font-weight:700;font-size:15px">$${grandCollateral.toLocaleString()}</td>
+    <td style="color:${grandCloseColor};font-weight:700;font-size:15px">$${Math.round(grandCloseCost).toLocaleString()}</td>
+    <td style="color:${grandCloseColor};font-weight:700;font-size:15px">${grandClosePct.toFixed(1)}%</td>
+    <td colspan="2"></td>
+  </tr>`;
 }
 
 // ══════════════════════════════════════════
@@ -2132,7 +2885,7 @@ function removeWatchTicker(ticker) {
 
 function cycleBias(ticker) {
   const current = BIAS[ticker] || 'neu';
-  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : 'neu';
+  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : 'neu';
   saveWatchList();
   renderWatchList();
 }
@@ -2162,28 +2915,31 @@ function renderWatchList() {
     const bias     = BIAS[ticker] || 'neu';
     const isWatchOnly = isWatch && !hasPos;
 
-    // Card border/bg based on status
-    const cardStyle = isWatchOnly
-      ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'  // teal — watching, no position
-      : hasPos && isWatch
-        ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)' // purple — watching + in position
-        : 'border-color:var(--border);background:var(--surface);opacity:0.7';  // grey — position only (auto)
+    // Card border/bg — sell overrides everything with yellow
+    const isSell = bias === 'sell';
+    const cardStyle = isSell
+      ? 'border-color:var(--yellow);background:rgba(245,200,66,0.13)'
+      : isWatchOnly
+        ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'
+        : hasPos && isWatch
+          ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)'
+          : 'border-color:var(--border);background:var(--surface)';
 
     const priceHtml = lp
       ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
          <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
       : `<div class="wc-price" style="color:var(--muted)">—</div>`;
 
-    const ivHtml = iv ? `<div class="wc-iv">IV ${iv.toFixed(1)}%</div>` : '';
+    const ivHtml = '';
 
     const posBadge = hasPos
       ? `<span class="wc-pos in">${posCount} pos</span>`
       : `<span class="wc-pos out">watching</span>`;
 
     // Bias button
-    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':'var(--muted)';
-    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':'→ NEU';
-    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':'rgba(74,85,104,.15)';
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--yellow)':'var(--muted)';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NEU';
+    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--yellow-dim)':'rgba(74,85,104,.15)';
     const biasBtn   = `<button onclick="cycleBias('${ticker}')"
       style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
              font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
@@ -2197,11 +2953,11 @@ function renderWatchList() {
       : '';
 
     return `<div class="watch-card" style="${cardStyle}">
+      ${posBadge}
       ${removeBtn}
-      <div class="wc-ticker">${ticker}</div>
+      <div class="wc-ticker">${ticker}${TICKER_NOTES[ticker]?'<span class="note-dot" title="'+TICKER_NOTES[ticker].text.slice(0,60)+'"></span>':''}</div>
       ${priceHtml}
       ${ivHtml}
-      ${posBadge}
       ${biasBtn}
     </div>`;
   }).join('');
@@ -2267,6 +3023,16 @@ function saveBaseline() {
   updatePortfolioStat();
 }
 
+function adjustBaseline(delta) {
+  if (!portfolioBaseline) {
+    // Prompt to set a baseline first if none exists
+    showBaselineModal(); return;
+  }
+  portfolioBaseline.value = Math.max(0, portfolioBaseline.value + delta);
+  savePortfolio();
+  updatePortfolioStat();
+}
+
 function updatePortfolioStat() {
   const valEl = document.getElementById('s-portval');
   const pnlEl = document.getElementById('s-portpnl');
@@ -2296,7 +3062,6 @@ function updatePortfolioStat() {
 
   valEl.textContent = '$' + (currentEst/1000).toFixed(1) + 'K';
   valEl.style.color = 'var(--text)';
-  valEl.style.fontSize = '15px';
   pnlEl.innerHTML = `<span style="color:${color};font-weight:700">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span>
     <span style="color:var(--muted);font-size:8px"> since ${baseDate}</span>`;
 }
@@ -2316,8 +3081,11 @@ updateStats();
 renderTable();
 renderExposure();
 renderStocks();
+renderOndsCard();
 renderWatchList();
 updatePortfolioStat();
+updatePnlBar();
+updateNotesFab();
 
 // Attempt Drive load — if Drive has newer data, reload UI
 driveLoad().then(function(loaded) {
@@ -2327,108 +3095,218 @@ driveLoad().then(function(loaded) {
     renderTable();
     renderExposure();
     renderStocks();
+    renderOndsCard();
     renderWatchList();
   }
   // Always re-run portfolio stat after Drive resolves so baseline
   // is displayed correctly against final POSITIONS state
   updatePortfolioStat();
+  updatePnlBar();
+  updateNotesFab();
   driveReady = true; // now safe to auto-push on user changes
 });
 
 // Earnings populated on demand via EXTRAS button
 
 // ══════════════════════════════════════════
-// DEBUG MODAL
+// DEBUG MODAL — multi-endpoint diagnostic
 // ══════════════════════════════════════════
 async function showDebugModal() {
-  const ticker = prompt('Enter ticker to debug (e.g. META):');
+  const ticker = prompt('Enter ticker to debug (e.g. PLTR):');
   if (!ticker) return;
   const t = ticker.trim().toUpperCase();
-
   const myPos = POSITIONS.filter(p => p.ticker === t);
   const expiries = [...new Set(myPos.map(p => p.expiry))];
+  const firstExp = expiries[0] || '';
+  const firstPos = myPos[0];
 
-  let html = `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)">`;
-  html += `<div style="color:var(--accent);font-size:14px;font-weight:700;margin-bottom:12px">🔬 RAW UW DATA — ${t}</div>`;
-
-  // Show cached liveData
-  html += `<div style="color:var(--yellow);margin-bottom:6px">── Cached liveData[${t}] ──</div>`;
-  const cached = liveData[t];
-  if (cached && Object.keys(cached).length) {
-    Object.entries(cached).forEach(([k,v]) => {
-      html += `<div style="padding:2px 0"><span style="color:var(--muted)">${k}:</span> <span style="color:var(--green)">${v}</span></div>`;
-    });
-  } else {
-    html += `<div style="color:var(--orange)">Nothing cached — hit Refresh Live first, or wait for live fetch below.</div>`;
+  // Build OCC id for the first position's short strike
+  let occId = '';
+  if (firstPos) {
+    const exp = firstPos.expiry.replace(/-/g,'').slice(2); // YYMMDD
+    const strike = Math.round(firstPos.short * 1000).toString().padStart(8,'0');
+    occId = `${t}${exp}${firstPos.type}${strike}`;
   }
-
-  // Show computed delta per position
-  if (myPos.length) {
-    html += `<div style="color:var(--yellow);margin:12px 0 6px">── Computed deltas ──</div>`;
-    myPos.forEach(p => {
-      const d = getEffectiveDelta(p);
-      const src = getDeltaSource(p);
-      const rawKey = `${p.short}_${p.type}`;
-      const rawVal = cached ? cached[rawKey] : undefined;
-      html += `<div style="padding:2px 0">
-        <span style="color:var(--muted)">${p.expiry} ${p.type} $${p.short}/$${p.long}:</span>
-        delta=<span style="color:${d>=0.75?'var(--red)':d>=0.55?'var(--orange)':'var(--green)'}">${d.toFixed(4)}</span>
-        <span style="color:var(--muted);font-size:9px">(${src})</span>
-        raw liveData=${rawVal !== undefined ? rawVal : '—'}
-      </div>`;
-    });
-  }
-
-  html += `<div style="color:var(--yellow);margin:12px 0 6px">── Live fetch from UW greeks ──</div>`;
-  html += `<div id="dbg-live" style="color:var(--muted)">Fetching…</div>`;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:720px;max-width:96vw;max-height:86vh;overflow-y:auto">
-      ${html}
-      <button onclick="this.closest('[style]').remove()" style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:11px;padding:6px 14px;border-radius:4px;cursor:pointer;width:100%">CLOSE</button>
+    <div id="dbg-box" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:800px;max-width:96vw;max-height:90vh;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)">
+      <div style="color:var(--accent);font-size:14px;font-weight:700;margin-bottom:4px">🔬 UW ENDPOINT DIAGNOSTIC — ${t}</div>
+      <div style="color:var(--muted);font-size:9px;margin-bottom:14px">
+        Positions: ${myPos.length} &nbsp;·&nbsp; Expiries: ${expiries.join(', ')||'none'} &nbsp;·&nbsp; OCC sample: ${occId||'n/a'}
+      </div>
+      <div id="dbg-results">
+        <div style="color:var(--yellow)">Running ${firstExp ? 5 : 3} endpoint tests… this may take 10–20s</div>
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:11px;padding:6px 14px;border-radius:4px;cursor:pointer;width:100%">CLOSE</button>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
-  const liveEl = overlay.querySelector('#dbg-live');
-  try {
-    const results = await Promise.all(expiries.map(async expiry => {
-      try {
-        const g = await uw(`/api/stock/${t}/greeks`, expiry);
-        return { expiry, ok: true, data: g };
-      } catch(e) {
-        return { expiry, ok: false, err: String(e) };
-      }
-    }));
+  const out = overlay.querySelector('#dbg-results');
 
-    let liveHtml = '';
-    results.forEach(r => {
-      liveHtml += `<div style="color:var(--accent);margin:8px 0 4px;font-weight:700">Expiry: ${r.expiry}</div>`;
-      if (!r.ok) {
-        liveHtml += `<div style="color:var(--red)">ERROR: ${r.err}</div>`;
-        return;
-      }
-      const arr = Array.isArray(r.data && r.data.data) ? r.data.data : [];
-      if (!arr.length) {
-        liveHtml += `<div style="color:var(--red)">Empty data array. Full response:</div>`;
-        liveHtml += `<pre style="font-size:9px;color:var(--muted);background:var(--bg);padding:6px;border-radius:3px;white-space:pre-wrap;word-break:break-all">${JSON.stringify(r.data).slice(0, 500)}</pre>`;
-        return;
-      }
-      const myStrikes = new Set(myPos.filter(p => p.expiry === r.expiry).flatMap(p => [p.short, p.long]));
-      const matching = arr.filter(x => myStrikes.has(Number(x.strike)));
-      const shown = matching.length ? matching : arr.slice(0, 3);
-      liveHtml += `<div style="color:var(--muted);font-size:9px">${arr.length} rows returned — ${matching.length ? matching.length + ' strike(s) matched' : 'NO STRIKE MATCH — showing first 3 rows'}</div>`;
-      shown.forEach(row => {
-        liveHtml += `<pre style="font-size:9px;color:var(--text);background:var(--bg);padding:6px;border-radius:3px;margin:3px 0;white-space:pre-wrap;word-break:break-all">${JSON.stringify(row, null, 2)}</pre>`;
-      });
-    });
-    liveEl.innerHTML = liveHtml || '<span style="color:var(--muted)">No expiries to fetch.</span>';
-  } catch(e) {
-    liveEl.innerHTML = `<span style="color:var(--red)">Fetch failed: ${e}</span>`;
+  function section(title, color='var(--yellow)') {
+    return `<div style="color:${color};margin:14px 0 5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:3px">${title}</div>`;
   }
+  function pre(obj) {
+    const s = JSON.stringify(obj, null, 2);
+    return `<pre style="font-size:9px;color:var(--text);background:var(--bg);padding:8px;border-radius:3px;margin:3px 0;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto">${s.slice(0,1500)}${s.length>1500?'\n…truncated':''}
+</pre>`;
+  }
+  function badge(label, ok) {
+    return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${ok?'var(--green-dim)':'var(--red-dim)'};color:${ok?'var(--green)':'var(--red)'};border:1px solid ${ok?'rgba(0,232,138,.3)':'rgba(255,61,90,.3)'}">${label}</span>`;
+  }
+
+  // Run all tests in parallel
+  const tests = [
+    // 1. greeks with expiry filter
+    firstExp ? (async () => {
+      let html = section(`1. /api/stock/${t}/greeks?expiry=${firstExp}`);
+      try {
+        const r = await uw(`/api/stock/${t}/greeks`, firstExp);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        const myStrikes = new Set(myPos.flatMap(p=>[p.short,p.long]));
+        const matched = arr.filter(x => myStrikes.has(Number(x.strike)));
+        html += badge(arr.length + ' rows', arr.length > 0);
+        html += ` ${badge(matched.length + ' strikes matched', matched.length > 0)}`;
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields in first row: ${Object.keys(arr[0]).join(', ')}</div>`;
+          html += `<div style="color:var(--muted);font-size:9px">Sample bid/ask: bid=${arr[0].bid ?? '❌null'} ask=${arr[0].ask ?? '❌null'} call_delta=${arr[0].call_delta ?? 'n/a'} put_delta=${arr[0].put_delta ?? 'n/a'}</div>`;
+          if (matched.length) html += pre(matched[0]);
+          else html += pre(arr[0]);
+        } else {
+          html += pre(r);
+        }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })() : Promise.resolve(''),
+
+    // 2. greeks WITHOUT expiry — see what comes back
+    (async () => {
+      let html = section(`2. /api/stock/${t}/greeks (no expiry filter)`);
+      try {
+        const r = await uw(`/api/stock/${t}/greeks`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+          html += `<div style="color:var(--muted);font-size:9px">Sample bid/ask: bid=${arr[0].bid ?? '❌null'} ask=${arr[0].ask ?? '❌null'}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 3. option-contracts endpoint — show OCC symbol match diagnostic
+    firstExp ? (async () => {
+      let html = section(`3. /api/stock/${t}/option-contracts?expiry=${firstExp}`);
+      try {
+        const r = await uw(`/api/stock/${t}/option-contracts`, firstExp);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+
+        if (arr.length) {
+          // Build OCC symbols for all positions on this expiry
+          const posForExp = myPos.filter(p => p.expiry === firstExp);
+          const builtSymbols = posForExp.flatMap(p => {
+            const yymmdd = firstExp.replace(/-/g,'').slice(2);
+            const mkSym = (strike) => `${t}${yymmdd}${p.type}${Math.round(strike*1000).toString().padStart(8,'0')}`;
+            return [mkSym(p.short), mkSym(p.long)].filter(Boolean);
+          });
+          const uwSymbols = arr.map(x => x.option_symbol).filter(Boolean);
+          const matched = builtSymbols.filter(s => uwSymbols.includes(s));
+
+          html += ` ${badge(matched.length + '/' + builtSymbols.length + ' OCC syms matched', matched.length > 0)}`;
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+
+          // Show what we built vs what UW has
+          html += `<div style="color:var(--yellow);font-size:9px;margin:4px 0">We built: ${builtSymbols.join(', ')}</div>`;
+          html += `<div style="color:var(--muted);font-size:9px">UW sample symbols: ${uwSymbols.slice(0,6).join(', ')}</div>`;
+
+          // Show matched rows with nbbo data
+          const matchedRows = arr.filter(x => builtSymbols.includes(x.option_symbol));
+          if (matchedRows.length) {
+            matchedRows.forEach(row => {
+              html += `<div style="color:var(--green);font-size:9px;margin:4px 0">✓ MATCHED ${row.option_symbol}: nbbo_bid=${row.nbbo_bid} nbbo_ask=${row.nbbo_ask} last_price=${row.last_price} mid_volume=${row.mid_volume}</div>`;
+              html += pre(row);
+            });
+          } else {
+            html += `<div style="color:var(--orange);font-size:9px;margin:4px 0">No OCC match — showing first row for reference:</div>`;
+            html += pre(arr[0]);
+          }
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })() : Promise.resolve(''),
+
+    // 4. OCC intraday for the short strike
+    occId ? (async () => {
+      let html = section(`4. /api/option/${occId}/intraday`);
+      try {
+        const r = await uw(`/api/option/${occId}/intraday`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+          const last = arr[arr.length-1];
+          html += `<div style="color:var(--muted);font-size:9px">Latest: bid=${last.bid ?? '❌null'} ask=${last.ask ?? '❌null'} price=${last.price ?? last.close ?? 'n/a'}</div>`;
+          html += pre(last);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })() : Promise.resolve('<div style="color:var(--muted)">4. Skipped — no position to build OCC id</div>'),
+
+    // 5. options-volume — another candidate for live quotes
+    (async () => {
+      let html = section(`5. /api/stock/${t}/options-volume`);
+      try {
+        const r = await uw(`/api/stock/${t}/options-volume`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 6. flow-alerts endpoint
+    (async () => {
+      let html = section(`6. /api/stock/${t}/flow-alerts`);
+      try {
+        const r = await uw(`/api/stock/${t}/flow-alerts`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 7. flow-recent endpoint
+    (async () => {
+      let html = section(`7. /api/stock/${t}/flow-recent`);
+      try {
+        const r = await uw(`/api/stock/${t}/flow-recent`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+  ];
+
+  const results = await Promise.all(tests);
+  out.innerHTML = results.join('');
 }
+
 
 </script>
 </body>
