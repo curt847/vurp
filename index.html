@@ -807,7 +807,8 @@ function getProfitLevel(p, liveGain) {
 }
 
 function getSpreadMid(p) {
-  if (isLongOption(p)) {
+  if (isLongOption(p) || p.postype === 'covered_call') {
+    // Single-leg: use short strike bid/ask mid directly — no long leg to net out
     const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
     const sAsk = (liveData[p.ticker]&&liveData[p.ticker][`ask_${p.short}_${p.type}`]);
     if (sBid != null && sAsk != null) return { mid: (sBid + sAsk) / 2, isLive: true, isBs: false };
