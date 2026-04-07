@@ -439,7 +439,7 @@
 </div>
 
 <div class="footer-note">
-  ROLLWATCH v2.1 — Spreads: ≥0.75 🔴 ROLL | 0.65–0.75 🟠 WATCH | 0.55–0.65 🟡 RADAR — Long Options: &lt;0.15Δ 🔴 FADING | &lt;0.25Δ 🟠 WATCH — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.) — Positions stored locally in browser
+  ROLLWATCH v2.1 — Spreads: ≥0.75 🔴 ROLL | 0.65–0.75 🟠 WATCH | 0.55–0.65 🟡 RADAR — Long Options: &lt;0.15Δ 🔴 FADING | &lt;0.25Δ 🟠 WATCH — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 PROFIT | ≤0.30Δ 🔷 RADAR — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.) — Positions stored locally in browser
 </div>
 
 <div class="modal-overlay" id="rollModal">
@@ -641,9 +641,9 @@ const THRESH_CLOSE  = 75; // ⭐ close now
 const THRESH_PROFIT = 60; // 🟦 strong close candidate
 const THRESH_WATCH_PROFIT = 45; // 🔷 on radar for closing
 // Delta equivalents (fallback when no open price)
-const THRESH_DELTA_CLOSE  = 0.10;
-const THRESH_DELTA_PROFIT = 0.15;
-const THRESH_DELTA_WATCH_PROFIT = 0.20;
+const THRESH_DELTA_CLOSE  = 0.20;
+const THRESH_DELTA_PROFIT = 0.25;
+const THRESH_DELTA_WATCH_PROFIT = 0.30;
 const UW_BASE      = 'https://api.unusualwhales.com';
 const UW_HDRS      = {'Authorization':`Bearer ${UW_API_KEY}`,'UW-CLIENT-API-ID':'100001'};
 
