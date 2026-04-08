@@ -441,8 +441,11 @@
   </table>
 </div>
 
-<!-- WATCH LIST (UI removed; WATCHLIST array retained for internal data use) -->
-<div id="watchGrid" style="display:none"></div>
+<!-- WATCH LIST -->
+<div style="margin:24px 20px 20px;border-top:2px solid var(--border)"></div>
+<div style="padding:0 20px 20px">
+  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+</div>
 
 <!-- EXPOSURE SUMMARY TABLE -->
 <div style="padding:0 20px 20px">
@@ -1711,6 +1714,12 @@ async function fetchAll() {
 async function refreshTicker(ticker, btnEl) {
   if (btnEl) { btnEl.textContent = '⟳'; btnEl.style.color = 'var(--yellow)'; btnEl.disabled = true; }
   await fetchTicker(ticker);
+  // Correct pct using Yahoo (same as fetchAll) so day-change % matches Robinhood
+  const yq = await fetchYahooQuote(ticker);
+  if (yq && livePrices[ticker]) {
+    livePrices[ticker].pct = yq.pct;
+    livePrices[ticker].change = livePrices[ticker].price * yq.pct / 100;
+  }
   renderTable();
   updateStats();
   updatePortfolioStat();
@@ -2870,6 +2879,32 @@ function toggleCCTrack(ticker) {
   renderOndsCard();
 }
 
+async function refreshStockPrice(ticker, btnEl) {
+  if (btnEl) { btnEl.textContent = '⟳'; btnEl.style.color = 'var(--yellow)'; btnEl.disabled = true; }
+  try {
+    // Fetch price from UW stock-state
+    const v = await uw(`/api/stock/${ticker}/stock-state`);
+    const d = v?.data;
+    const row = Array.isArray(d) ? d[0] : d;
+    if (row) {
+      const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+      const prev  = parseFloat(row.prev_close ?? 0) || 0;
+      if (price > 0) livePrices[ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
+    }
+    // Correct pct via Yahoo (matches Robinhood day-change %)
+    const yq = await fetchYahooQuote(ticker);
+    if (yq && livePrices[ticker]) {
+      livePrices[ticker].pct    = yq.pct;
+      livePrices[ticker].change = livePrices[ticker].price * yq.pct / 100;
+    }
+  } catch(e) {}
+  renderStocks();
+  updatePortfolioStat();
+  updatePriceTicker();
+  saveToStorage();
+  if (btnEl) { btnEl.textContent = '⟳'; btnEl.style.color = ''; btnEl.disabled = false; }
+}
+
 function renderStocks() {
   const body = document.getElementById('stockBody');
   if (!STOCKS.length) {
@@ -2904,7 +2939,7 @@ function renderStocks() {
       ${isTracked?'📌 CC':'📌'}
     </button>`;
     return `<tr class="row" style="font-size:17px">
-      <td><span class="ticker-name" style="font-size:19px;letter-spacing:1px">${s.ticker}</span></td>
+      <td><span class="ticker-name" style="font-size:19px;letter-spacing:1px">${s.ticker}</span><button onclick="refreshStockPrice('${s.ticker}',this)" class="ticker-refresh-btn" title="Refresh price">⟳</button></td>
       <td style="color:var(--text);font-weight:600">${s.shares.toLocaleString()}</td>
       <td style="color:var(--muted)">$${s.cost.toFixed(2)}</td>
       <td class="${lp?'stock-otm':'price-neu'}" style="font-weight:600">
