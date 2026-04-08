@@ -83,8 +83,8 @@
   tr.row:hover{background:var(--surface2)}
   tr.row-itm{background:rgba(255,61,90,.03)}
   tr.row-itm:hover{background:rgba(255,61,90,.07)}
-  tr.row-sell{outline:2px solid var(--yellow);outline-offset:-2px;background:rgba(245,200,66,0.07) !important}
-  tr.row-sell:hover{background:rgba(245,200,66,0.13) !important}
+  tr.row-sell{outline:2px solid var(--orange);outline-offset:-2px;background:rgba(255,140,66,0.07) !important}
+  tr.row-sell:hover{background:rgba(255,140,66,0.13) !important}
   tr.expiry-hdr td{background:var(--surface2);color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:1.5px;padding:8px 10px;border-top:2px solid var(--border)}
   td{padding:9px 10px;white-space:nowrap;vertical-align:middle}
 
@@ -1887,11 +1887,23 @@ async function fetchTicker(ticker) {
       if (match) byStrikeType[`${parseInt(match[2])/1000}_${match[1]}`] = x;
     });
 
+    // Normalize short/long in case a position was saved with inverted strikes.
+    // Returns { short, long } with legs in the correct premium direction.
+    function normLegs(p) {
+      if (!p.long) return { short: p.short, long: p.long };
+      const needsShortHigher = (p.type === 'P' && p.postype === 'spread_credit') || (p.type === 'C' && p.postype === 'spread_debit');
+      const needsShortLower  = (p.type === 'C' && p.postype === 'spread_credit') || (p.type === 'P' && p.postype === 'spread_debit');
+      if (needsShortHigher && p.short < p.long) return { short: p.long, long: p.short };
+      if (needsShortLower  && p.short > p.long) return { short: p.long, long: p.short };
+      return { short: p.short, long: p.long };
+    }
+
     myPositions.filter(p => p.expiry === requestedExpiry).forEach(p => {
-      const shortSym = occSymbol(p.expiry, p.type, p.short);
-      const longSym  = occSymbol(p.expiry, p.type, p.long);
-      const shortRow = bySymbol[shortSym] || byStrikeType[`${p.short}_${p.type}`];
-      const longRow  = bySymbol[longSym]  || byStrikeType[`${p.long}_${p.type}`];
+      const { short: pShort, long: pLong } = normLegs(p);
+      const shortSym = occSymbol(p.expiry, p.type, pShort);
+      const longSym  = occSymbol(p.expiry, p.type, pLong);
+      const shortRow = bySymbol[shortSym] || byStrikeType[`${pShort}_${p.type}`];
+      const longRow  = bySymbol[longSym]  || byStrikeType[`${pLong}_${p.type}`];
 
       let shortIsRealNBBO = false;
       let longIsRealNBBO  = false;
@@ -1900,30 +1912,32 @@ async function fetchTicker(ticker) {
         const { bid, ask, isRealNBBO } = extractBidAsk(shortRow);
         shortIsRealNBBO = isRealNBBO;
         if (bid != null) {
-          liveData[ticker][`bid_${p.short}_${p.type}`] = bid;
+          liveData[ticker][`bid_${pShort}_${p.type}`] = bid;
           liveData[ticker].ts = fetchTime;
         }
-        if (ask != null) liveData[ticker][`ask_${p.short}_${p.type}`] = ask;
-        liveData[ticker][`nbbo_${p.short}_${p.type}`] = isRealNBBO;
-        console.log(`[RW] ${ticker} ${p.expiry} short $${p.short}${p.type}: bid=${bid?.toFixed(2) ?? 'null'} ask=${ask?.toFixed(2) ?? 'null'} realNBBO=${isRealNBBO} (sym match: ${!!bySymbol[shortSym]})`);
+        if (ask != null) liveData[ticker][`ask_${pShort}_${p.type}`] = ask;
+        liveData[ticker][`nbbo_${pShort}_${p.type}`] = isRealNBBO;
+        console.log(`[RW] ${ticker} ${p.expiry} short $${pShort}${p.type}: bid=${bid?.toFixed(2) ?? 'null'} ask=${ask?.toFixed(2) ?? 'null'} realNBBO=${isRealNBBO} (sym match: ${!!bySymbol[shortSym]})`);
       } else {
-        console.warn(`[RW] ${ticker} ${p.expiry} $${p.short}${p.type}: NO MATCH. sym=${shortSym}`);
+        console.warn(`[RW] ${ticker} ${p.expiry} $${pShort}${p.type}: NO MATCH. sym=${shortSym}`);
       }
       if (longRow) {
         const { bid, ask, isRealNBBO } = extractBidAsk(longRow);
         longIsRealNBBO = isRealNBBO;
-        if (bid != null) liveData[ticker][`bid_${p.long}_${p.type}`] = bid;
-        if (ask != null) liveData[ticker][`ask_${p.long}_${p.type}`] = ask;
-        liveData[ticker][`nbbo_${p.long}_${p.type}`] = isRealNBBO;
+        if (bid != null) liveData[ticker][`bid_${pLong}_${p.type}`] = bid;
+        if (ask != null) liveData[ticker][`ask_${pLong}_${p.type}`] = ask;
+        liveData[ticker][`nbbo_${pLong}_${p.type}`] = isRealNBBO;
       }
 
       // Compute live spread mid ONLY when both legs have real NBBO quotes.
       // Synthetic fallbacks are too unreliable — Black-Scholes (end of cycle) handles it.
-      const sBid = liveData[ticker][`bid_${p.short}_${p.type}`];
-      const sAsk = liveData[ticker][`ask_${p.short}_${p.type}`];
-      const lBid = liveData[ticker][`bid_${p.long}_${p.type}`];
-      const lAsk = liveData[ticker][`ask_${p.long}_${p.type}`];
+      const sBid = liveData[ticker][`bid_${pShort}_${p.type}`];
+      const sAsk = liveData[ticker][`ask_${pShort}_${p.type}`];
+      const lBid = liveData[ticker][`bid_${pLong}_${p.type}`];
+      const lAsk = liveData[ticker][`ask_${pLong}_${p.type}`];
 
+      // Keys are always stored with p.short/p.long as entered — normLegs only affects
+      // which OCC symbols we look up and which bid/ask keys we write.
       const liveKey   = `spreadMid_${p.short}_${p.long}_${p.type}`;
       const bsKey     = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
       const liveKeyTs = `spreadMidTs_${p.short}_${p.long}_${p.type}`;
@@ -1933,8 +1947,8 @@ async function fetchTicker(ticker) {
       if (bothRealNBBO && sBid != null && sAsk != null && lBid != null && lAsk != null) {
         const shortMid = (sBid + sAsk) / 2;
         const longMid  = (lBid + lAsk) / 2;
-        const rawMid   = shortMid - longMid;
-        const width    = Math.abs(p.short - p.long);
+        const rawMid   = shortMid - longMid;  // always positive after normLegs
+        const width    = Math.abs(pShort - pLong);
 
         if (rawMid > 0 && rawMid <= width * 0.995) {
           liveData[ticker][liveKey]   = rawMid;
@@ -2040,7 +2054,17 @@ async function fetchTicker(ticker) {
   // Uses cycleId to distinguish data fetched THIS cycle from stale restored data —
   // ensures ~BS shows instead of ~open when UW has no NBBO for a strike.
   const myPos = POSITIONS.filter(p => p.ticker === ticker);
+  // Reuse the same leg-normalization as applyContracts
+  function normLegsBS(p) {
+    if (!p.long) return { short: p.short, long: p.long };
+    const needsShortHigher = (p.type === 'P' && p.postype === 'spread_credit') || (p.type === 'C' && p.postype === 'spread_debit');
+    const needsShortLower  = (p.type === 'C' && p.postype === 'spread_credit') || (p.type === 'P' && p.postype === 'spread_debit');
+    if (needsShortHigher && p.short < p.long) return { short: p.long, long: p.short };
+    if (needsShortLower  && p.short > p.long) return { short: p.long, long: p.short };
+    return { short: p.short, long: p.long };
+  }
   myPos.forEach(p => {
+    const { short: pShort, long: pLong } = normLegsBS(p);
     const liveKey = `spreadMid_${p.short}_${p.long}_${p.type}`;
     const bsKey   = `spreadMidBS_${p.short}_${p.long}_${p.type}`;
     const liveKeyTs = `spreadMidTs_${p.short}_${p.long}_${p.type}`;
@@ -2054,9 +2078,9 @@ async function fetchTicker(ticker) {
       delete liveData[ticker][liveKey];
       delete liveData[ticker][liveKeyTs];
       const S       = (livePrices[ticker] && livePrices[ticker].price) || 0;
-      const bsShort = bsTheoPrice(ticker, p.short, p.type, p.expiry);
-      const bsLong  = p.long ? bsTheoPrice(ticker, p.long, p.type, p.expiry) : 0;
-      const width   = Math.abs(p.short - (p.long || 0));
+      const bsShort = bsTheoPrice(ticker, pShort, p.type, p.expiry);
+      const bsLong  = pLong ? bsTheoPrice(ticker, pLong, p.type, p.expiry) : 0;
+      const width   = Math.abs(pShort - (pLong || 0));
       let bsMid     = width > 0
         ? Math.min(Math.max(0, bsShort - bsLong), width)
         : Math.max(0, bsShort);
@@ -2065,8 +2089,8 @@ async function fetchTicker(ticker) {
       // use intrinsic value (how far ITM the short is, capped at spread width)
       if (bsMid < 0.01 && S > 0 && width > 0) {
         const intrinsic = p.type === 'P'
-          ? Math.max(0, p.short - S)
-          : Math.max(0, S - p.short);
+          ? Math.max(0, pShort - S)
+          : Math.max(0, S - pShort);
         bsMid = Math.min(intrinsic, width);
       }
 
@@ -2730,11 +2754,23 @@ function savePosition() {
   const isDebit    = postype === 'spread_debit' || isSingleLeg;
   const todayStr   = new Date().toISOString().slice(0,10);
 
+  // Auto-correct inverted strike order before storing.
+  // P-CR / C-DB: short > long (sell higher put / buy lower call)
+  // C-CR / P-DB: short < long (sell lower call / buy higher put)
+  let corrShort = short;
+  let corrLong  = (postype === 'covered_call' || isSingleLeg) ? 0 : long;
+  if (corrLong !== 0) {
+    const needsShortHigher = (type === 'P' && postype === 'spread_credit') || (type === 'C' && postype === 'spread_debit');
+    const needsShortLower  = (type === 'C' && postype === 'spread_credit') || (type === 'P' && postype === 'spread_debit');
+    if (needsShortHigher && corrShort < corrLong) { [corrShort, corrLong] = [corrLong, corrShort]; }
+    if (needsShortLower  && corrShort > corrLong) { [corrShort, corrLong] = [corrLong, corrShort]; }
+  }
+
   const pos = {
     ticker, type, postype: postype || 'spread_credit',
-    short, long: (postype==='covered_call' || isSingleLeg) ? 0 : long,
+    short: corrShort, long: corrLong,
     cts, dte, expiry,
-    stock: liveStockNow || short,
+    stock: liveStockNow || corrShort,
     // openStock: stock price at time of entry — captured now if live, else fetched in background
     openStock:     liveStockNow || null,
     openStockDate: liveStockNow ? todayStr : null,
@@ -3200,16 +3236,22 @@ function renderWatchList() {
          <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
       : `<div class="wc-price" style="color:var(--muted)">—</div>`;
 
-    // Amount to close for position tickers
-    const closeCost = tickerCloseCost[ticker];
-    const closeHtml = hasPos && closeCost != null
-      ? (() => {
-          const closeColor = closeCost > 5000 ? '#ff64b4' : closeCost > 2000 ? 'var(--orange)' : 'var(--muted)';
-          return `<div style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.3px;text-transform:uppercase">To Close</div>
-                  <div style="font-size:13px;font-weight:700;color:${closeColor};line-height:1.1">$${Math.round(closeCost).toLocaleString()}</div>`;
-        })()
-      : `<div style="font-size:9px;color:transparent;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;user-select:none">To Close</div>
-         <div style="font-size:13px;font-weight:700;line-height:1.1;visibility:hidden">$0</div>`;
+    // Amount to close + collateral for position tickers
+    const closeCost  = tickerCloseCost[ticker];
+    const collateral = tickerCollateral[ticker] || 0;
+    const closeHtml = (() => {
+      const closeColor = hasPos && closeCost > 5000 ? '#ff64b4' : closeCost > 2000 ? 'var(--orange)' : 'var(--muted)';
+      const collColor  = collateral > 3000 ? 'var(--accent)' : 'var(--muted)';
+      const hide = !hasPos ? 'color:transparent' : '';
+      return `<div style="margin-top:3px;display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:9px;${hide};letter-spacing:.3px;text-transform:uppercase">To Close</span>
+                <span style="font-size:9px;${hide};letter-spacing:.3px;text-transform:uppercase">Coll</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:13px;font-weight:700;color:${hasPos ? closeColor : 'transparent'};line-height:1.1">$${Math.round(closeCost||0).toLocaleString()}</span>
+                <span style="font-size:13px;font-weight:700;color:${hasPos ? collColor : 'transparent'};line-height:1.1">$${(collateral/1000).toFixed(1)}K</span>
+              </div>`;
+    })();
 
     const ivHtml = '';
 
@@ -3218,9 +3260,9 @@ function renderWatchList() {
       : `<span class="wc-pos out">watching</span>`;
 
     // Bias button
-    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--yellow)':'var(--muted)';
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
     const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NEUTRAL';
-    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--yellow-dim)':'rgba(74,85,104,.15)';
+    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':'rgba(74,85,104,.15)';
     const biasBtn   = `<button onclick="cycleBias('${ticker}')"
       style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
              font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
@@ -3241,21 +3283,22 @@ function renderWatchList() {
              color:${hasNote ? 'var(--yellow)' : 'var(--muted)'};
              font-size:9px;font-family:inherit;font-weight:700;letter-spacing:.4px;
              cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s"
-      onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--yellow)';this.style.background='rgba(245,200,66,0.2)'"
+      onmouseover="this.style.borderColor='rgba(245,200,66,0.7)';this.style.color='var(--yellow)';this.style.background='rgba(245,200,66,0.2)'"
       onmouseout="this.style.borderColor='${hasNote ? 'rgba(245,200,66,0.55)' : 'var(--border)'}';this.style.color='${hasNote ? 'var(--yellow)' : 'var(--muted)'}';this.style.background='${hasNote ? 'rgba(245,200,66,0.2)' : 'rgba(74,85,104,.1)'}'">
       📝 ${hasNote ? 'NOTE' : 'ADD NOTE'}
     </button>`;
 
     // Ticker label: bull/bear/sell bias wins over note; note only shows if no bias
+    // All variants share identical padding/border structure to prevent layout shift
     const tickerLabel = bias === 'bull'
       ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(0,232,138,0.13);color:var(--green)">${ticker}</div>`
       : bias === 'bear'
         ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,61,90,0.13);color:var(--red)">${ticker}</div>`
         : isSell
-          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.13);color:var(--yellow)">${ticker}</div>`
+          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,140,66,0.13);color:var(--orange)">${ticker}</div>`
           : hasNote
-            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(167,139,250,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(167,139,250,0.09);color:var(--purple)">${ticker}</div>`
-            : `<div class="wc-ticker">${ticker}</div>`;
+            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.09);color:var(--yellow)">${ticker}</div>`
+            : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:3px;padding:1px 6px;margin-bottom:2px">${ticker}</div>`;
 
     return `<div class="watch-card" style="${cardStyle}">
       ${posBadge}
