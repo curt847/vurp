@@ -1463,14 +1463,45 @@ function setHdrCard(ticker, data) {
   chgEl.className     = 'hdr-card-chg ' + cls;
 }
 
+// Fetch price + correct day-change% from Yahoo Finance (uses standard prev regular-session close)
+async function fetchYahooQuote(ticker) {
+  // Route through Apps Script proxy (avoids CORS on local file)
+  // Proxy must handle action=quote — see Apps Script update below
+  try {
+    const r = await fetch(`${PROXY_URL}?action=quote&ticker=${encodeURIComponent(ticker)}`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j && j.price != null && j.pct != null) return { price: j.price, pct: j.pct };
+    return null;
+  } catch(e) { return null; }
+}
+
+// Bulk Yahoo quotes for multiple tickers — returns map of ticker→{price,pct}
+async function fetchYahooBulk(tickers) {
+  const results = {};
+  const BATCH = 10;
+  for (let i = 0; i < tickers.length; i += BATCH) {
+    const batch = tickers.slice(i, i + BATCH);
+    await Promise.all(batch.map(async t => {
+      const q = await fetchYahooQuote(t);
+      if (q) results[t] = q;
+    }));
+  }
+  return results;
+}
+
 async function fetchHdrPrice(ticker) {
+  // Try Yahoo first for correct prev-close % change
+  const yq = await fetchYahooQuote(ticker);
+  if (yq) return yq;
+  // Fallback to UW stock-state (price correct, pct may be slightly off)
   try {
     const v = await uw('/api/stock/' + ticker + '/stock-state');
     const d = v && v.data;
     const row = d ? (Array.isArray(d) ? d[0] : d) : null;
     if (!row) return null;
     const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-    const prev  = parseFloat(row.prev_close||row.open||price);
+    const prev = parseFloat(row.prev_close ?? 0) || 0;
     if (price <= 0) return null;
     return { price, pct: prev > 0 ? ((price - prev) / prev) * 100 : 0 };
   } catch(e) { return null; }
@@ -1484,7 +1515,7 @@ async function fetchBTCPrice() {
     const row = d ? (Array.isArray(d) ? d[0] : d) : null;
     if (row) {
       const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-      const prev  = parseFloat(row.prev_close||row.open||price);
+      const prev = parseFloat(row.prev_close ?? 0) || 0;
       if (price > 1000) return { price, pct: prev > 0 ? ((price - prev) / prev) * 100 : 0 };
     }
   } catch(e) {}
@@ -1631,7 +1662,7 @@ async function fetchAll() {
       const row = d ? (Array.isArray(d) ? d[0] : d) : null;
       if (row) {
         const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-        const prev  = parseFloat(row.prev_close||row.open||price);
+        const prev = parseFloat(row.prev_close ?? 0) || 0;
         if (price > 0) livePrices[s.ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
       }
     } catch(e) {}
@@ -1646,10 +1677,22 @@ async function fetchAll() {
       const row = d ? (Array.isArray(d) ? d[0] : d) : null;
       if (row) {
         const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-        const prev  = parseFloat(row.prev_close||row.open||price);
+        const prev = parseFloat(row.prev_close ?? 0) || 0;
         if (price > 0) livePrices[t] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
       }
     } catch(e) {}
+  }
+
+  // ── Correct pct for ALL tickers using Yahoo Finance (standard prev regular-session close) ──
+  if (btn.dataset.cancel !== '1') {
+    const allTickers = Object.keys(livePrices);
+    const yahooPcts = await fetchYahooBulk(allTickers);
+    for (const [t, yq] of Object.entries(yahooPcts)) {
+      if (livePrices[t]) {
+        livePrices[t].pct = yq.pct;
+        livePrices[t].change = livePrices[t].price * yq.pct / 100;
+      }
+    }
   }
 
   const wasCancelled = btn.dataset.cancel === '1';
@@ -1938,7 +1981,8 @@ async function fetchTicker(ticker) {
       const row = Array.isArray(d) ? d[0] : d;
       if (row) {
         const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-        const prev  = parseFloat(row.prev_close||row.open||price);
+        const prev = parseFloat(row.prev_close ?? 0) || 0;
+        // pct from UW prev_close may differ; Yahoo bulk call at end of fetchAll corrects it
         if (price > 0) livePrices[ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
       }
     } catch(e) {}
@@ -1948,7 +1992,7 @@ async function fetchTicker(ticker) {
         const d = v?.data?.[0];
         if (d) {
           const price = parseFloat(d.close||d.price||d.underlying_price||0);
-          const prev  = parseFloat(d.prev_close||d.open||price);
+          const prev = parseFloat(d.prev_close ?? 0) || 0;
           if (price > 0) livePrices[ticker] = { price, open: prev, change: price-prev, pct: prev>0?((price-prev)/prev)*100:0 };
         }
       } catch(e) {}
