@@ -3040,6 +3040,7 @@ function cycleBias(ticker) {
   BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : 'neu';
   saveWatchList();
   renderWatchList();
+  renderTable();
 }
 
 function renderWatchList() {
@@ -3088,10 +3089,14 @@ function renderWatchList() {
     const bias     = BIAS[ticker] || 'neu';
     const isWatchOnly = isWatch && !hasPos;
 
-    // Card border/bg — sell overrides everything with yellow
+    // Card border/bg — sell/bull/bear override everything with their color
     const isSell = bias === 'sell';
     const cardStyle = isSell
       ? 'border-color:var(--yellow);background:rgba(245,200,66,0.13)'
+      : bias === 'bull'
+        ? 'border-color:var(--green);background:rgba(0,232,138,0.10)'
+      : bias === 'bear'
+        ? 'border-color:var(--red);background:rgba(255,61,90,0.10)'
       : isWatchOnly
         ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'
         : hasPos && isWatch
