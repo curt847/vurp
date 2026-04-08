@@ -393,7 +393,7 @@
 <table>
   <thead><tr>
     <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
-    <th>Stock $</th><th>Δ Short</th><th>IV</th><th>Extrinsic</th>
+    <th>Stock $</th><th>Δ Short</th><th>IV / IVR</th><th>Extrinsic</th>
     <th>Leg Quotes</th><th>Collateral</th>
     <th>Status</th><th>Flow</th><th>Action</th>
   </tr></thead>
@@ -1052,10 +1052,10 @@ function renderTable() {
     const deltaRefreshTs = liveData[p.ticker] && liveData[p.ticker].refreshTs;
     const isStaleSession = !deltaRefreshTs;
     const srcTag = src==='live'
-      ? `<span style="color:var(--green);font-size:9px"> ●LIVE</span>`
+      ? `<span style="color:var(--green);font-size:9px"> ●LIVE ${deltaRefreshTs||''}</span>`
       : isStaleSession
         ? `<span style="color:var(--orange);font-size:9px" title="Delta from prior session — hit Refresh Live"> ~stale</span>`
-        : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
+        : `<span style="color:var(--muted);font-size:9px"> ~BS ${deltaRefreshTs||''}</span>`;
 
     const dteClass=getDTE(p)<=7?'dte-urgent':getDTE(p)<=21?'dte-near':'dte-val';
     const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
@@ -1063,9 +1063,10 @@ function renderTable() {
       ?`<span class="stock-chg ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>`
       :`<span class="stock-chg price-neu">as of 4/2</span>`;
     const ext = calcExtrinsic(p);
-    const extColor = ext.value === 0    ? 'var(--red)'
-                   : ext.value < 0.50   ? 'var(--orange)'
-                   : ext.value < 2.00   ? 'var(--yellow)'
+    const extPct = ext.mid > 0 ? ext.value / ext.mid : 0;
+    const extColor = extPct === 0      ? 'var(--red)'
+                   : extPct < 0.34     ? 'var(--orange)'
+                   : extPct < 0.67     ? 'var(--yellow)'
                    : 'var(--green)';
     const extHtml = `<div style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:${extColor}">$${ext.value.toFixed(2)}</div>
       <div style="color:var(--muted);font-size:9px">mid $${ext.mid.toFixed(2)} · int $${ext.intrinsic.toFixed(2)}</div>`;
@@ -1196,7 +1197,7 @@ function renderTable() {
         : '$' + p.collateral.toLocaleString();
 
     // Delta column label — for long options, high delta is good
-    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${srcTag}<div style="color:${deltaRefreshTs?'var(--muted)':'var(--orange)'};font-size:9px;font-weight:400">${deltaRefreshTs || '~stale'}</div>`;
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${srcTag}`;
 
     // Action buttons
     const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
@@ -1243,7 +1244,7 @@ function renderTable() {
       </td>
       <td class="${dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px">$${stock.toFixed(2)}${chgHtml}</td>
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
-      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}</td>
+      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; const c = ivr>=70?'var(--orange)':ivr>=50?'var(--yellow)':'var(--muted)'; return `<div style="font-size:11px;font-weight:600;color:${c}">IVR ${Math.round(ivr)}</div>`; })()}</td>
       <td>${extHtml}</td>
       <td>${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
@@ -1800,6 +1801,17 @@ async function fetchTicker(ticker) {
       if (shortRow && shortRow[deltaKey] != null) {
         liveData[ticker][`${p.short}_${p.type}`] = Math.abs(Number(shortRow[deltaKey]));
       }
+      // Also store long leg delta for spread delta calculation
+      if (p.long) {
+        const longRow = arr.find(x => Math.abs(Number(x.strike) - p.long) < 0.01)
+                     || arr.find(x => Number(x.strike) === p.long);
+        if (longRow && longRow[deltaKey] != null) {
+          liveData[ticker][`${p.long}_${p.type}`] = Math.abs(Number(longRow[deltaKey]));
+          console.log(`[RW] ${ticker} long leg Δ: strike=${p.long} delta=${Math.abs(Number(longRow[deltaKey])).toFixed(3)} (short=${p.short} delta=${liveData[ticker][`${p.short}_${p.type}`]?.toFixed(3)})`);
+        } else {
+          console.warn(`[RW] ${ticker} long leg Δ MISSING: strike=${p.long} not found in greeks (${arr.length} rows, strikes: ${arr.slice(0,5).map(x=>x.strike).join(',')}...)`);
+        }
+      }
     });
   }
 
@@ -1959,6 +1971,21 @@ async function fetchTicker(ticker) {
 
   // Stock price must complete before we do BS fallback recalcs below
   await stockPricePromise;
+
+  // Fetch IV rank — runs in parallel, non-blocking
+  (async () => {
+    try {
+      const r = await uw(`/api/stock/${ticker}/iv-rank`);
+      const arr = Array.isArray(r?.data) ? r.data : [];
+      if (arr.length) {
+        const ivr = parseFloat(arr[0].iv_rank_1y);
+        if (!isNaN(ivr)) {
+          if (!liveData[ticker]) liveData[ticker] = {};
+          liveData[ticker].ivr = ivr;
+        }
+      }
+    } catch(e) {}
+  })();
 
   // Stamp the refresh time on this ticker — always, regardless of data quality
   // This lets the UI show "~BS 12:44" vs "~BS" (unknown when last tried)
@@ -2149,8 +2176,9 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp ? `$${lp.price.toFixed(2)} <span style="font-size:13px;font-weight:500;color:${lp.pct>=0?'var(--green)':'var(--red)'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>` : `$${stock.toFixed(2)} <span style="font-size:12px;color:var(--muted)">(stale)</span>`}</span></div>
     ${p.openStock ? `<div class="modal-row"><span class="modal-label">Stock at Open</span><span class="modal-val" style="color:var(--muted)">$${p.openStock.toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${p.openStockDate||''}</span></span></div>${stockMoveHtml}` : ''}
     <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:${delta>=THRESH_ROLL?'var(--red)':delta>=THRESH_WATCH?'var(--orange)':'var(--yellow)'}">${delta.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">${getDeltaSource(p)==='live'?'●LIVE':'~BS'}</span></span></div>
+    ${(() => { const ld = p.long ? (liveData[p.ticker] && liveData[p.ticker][`${p.long}_${p.type}`]) : null; const sd = ld != null ? Math.abs(delta - ld) : null; return sd != null ? `<div class="modal-row"><span class="modal-label">Spread Delta</span><span class="modal-val" style="color:var(--muted)">${sd.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(short ${delta.toFixed(3)} − long ${ld.toFixed(3)})</span></span></div>` : ''; })()}
     <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d <span style="font-size:12px;font-weight:500;color:var(--muted)">· ${p.expiry}</span> <span style="font-size:12px;font-weight:500">— ${dteAdvice.label}</span></span></div>
-    <div class="modal-row"><span class="modal-label">IV</span><span class="modal-val">${iv.toFixed(1)}%</span></div>
+    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; const c=ivr>=70?'var(--orange)':ivr>=50?'var(--yellow)':'var(--muted)'; return `<span style="color:${c};font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
     <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()}</span></div>
 
@@ -3340,7 +3368,7 @@ async function showDebugModal() {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `
-    <div id="dbg-box" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:800px;max-width:96vw;max-height:90vh;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)">
+    <div id="dbg-box" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:800px;max-width:96vw;max-height:96vh;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)">
       <div style="color:var(--accent);font-size:14px;font-weight:700;margin-bottom:4px">🔬 UW ENDPOINT DIAGNOSTIC — ${t}</div>
       <div style="color:var(--muted);font-size:9px;margin-bottom:14px">
         Positions: ${myPos.length} &nbsp;·&nbsp; Expiries: ${expiries.join(', ')||'none'} &nbsp;·&nbsp; OCC sample: ${occId||'n/a'}
@@ -3360,8 +3388,7 @@ async function showDebugModal() {
   }
   function pre(obj) {
     const s = JSON.stringify(obj, null, 2);
-    return `<pre style="font-size:9px;color:var(--text);background:var(--bg);padding:8px;border-radius:3px;margin:3px 0;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto">${s.slice(0,1500)}${s.length>1500?'\n…truncated':''}
-</pre>`;
+    return `<pre style="font-size:9px;color:var(--text);background:var(--bg);padding:8px;border-radius:3px;margin:3px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto">${s.slice(0,1500)}${s.length>1500?'\n…truncated':''}</pre>`;
   }
   function badge(label, ok) {
     return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${ok?'var(--green-dim)':'var(--red-dim)'};color:${ok?'var(--green)':'var(--red)'};border:1px solid ${ok?'rgba(0,232,138,.3)':'rgba(255,61,90,.3)'}">${label}</span>`;
@@ -3507,6 +3534,93 @@ async function showDebugModal() {
           html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${Object.keys(arr[0]).join(', ')}</div>`;
           html += pre(arr[0]);
         } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 8. IV rank hunting — stock-state (may have ivr/iv_rank/iv_percentile)
+    (async () => {
+      let html = section(`8. /api/stock/${t}/stock-state (IV rank hunt)`, 'var(--purple)');
+      try {
+        const r = await uw(`/api/stock/${t}/stock-state`);
+        const d = r?.data;
+        const row = Array.isArray(d) ? d[0] : d;
+        if (row) {
+          const fields = Object.keys(row);
+          html += badge(fields.length + ' fields', true);
+          // Highlight any IV rank related fields
+          const ivFields = fields.filter(f => /iv|rank|percentile|impl|hist|vol.*rank|rvol/i.test(f));
+          html += ivFields.length
+            ? `<div style="color:var(--green);font-size:9px;margin:4px 0">🎯 IV-related fields: ${ivFields.join(', ')}</div>`
+            : `<div style="color:var(--orange);font-size:9px;margin:4px 0">⚠ No IV rank fields found</div>`;
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">All fields: ${fields.join(', ')}</div>`;
+          html += pre(row);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 9. interpolated-iv — may contain rank/percentile
+    (async () => {
+      let html = section(`9. /api/stock/${t}/interpolated-iv (IV rank hunt)`, 'var(--purple)');
+      try {
+        const r = await uw(`/api/stock/${t}/interpolated-iv`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          const fields = Object.keys(arr[0]);
+          const ivFields = fields.filter(f => /rank|percentile|hist|rvol/i.test(f));
+          html += ivFields.length
+            ? `<div style="color:var(--green);font-size:9px;margin:4px 0">🎯 IV-related fields: ${ivFields.join(', ')}</div>`
+            : `<div style="color:var(--orange);font-size:9px;margin:4px 0">⚠ No rank fields found</div>`;
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${fields.join(', ')}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 10. historical-iv — likely has rank/percentile
+    (async () => {
+      let html = section(`10. /api/stock/${t}/historical-iv (IV rank hunt)`, 'var(--purple)');
+      try {
+        const r = await uw(`/api/stock/${t}/historical-iv`);
+        const arr = Array.isArray(r?.data) ? r.data : [];
+        html += badge(arr.length + ' rows', arr.length > 0);
+        if (arr.length) {
+          const fields = Object.keys(arr[0]);
+          const ivFields = fields.filter(f => /rank|percentile|hist|rvol|iv/i.test(f));
+          html += ivFields.length
+            ? `<div style="color:var(--green);font-size:9px;margin:4px 0">🎯 IV-related fields: ${ivFields.join(', ')}</div>`
+            : `<div style="color:var(--orange);font-size:9px;margin:4px 0">⚠ No rank fields</div>`;
+          html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">Fields: ${fields.join(', ')}</div>`;
+          html += pre(arr[0]);
+        } else { html += pre(r); }
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 11. iv-rank — direct shot
+    (async () => {
+      let html = section(`11. /api/stock/${t}/iv-rank (direct)`, 'var(--purple)');
+      try {
+        const r = await uw(`/api/stock/${t}/iv-rank`);
+        html += badge('responded', true);
+        html += pre(r);
+      } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
+      return html;
+    })(),
+
+    // 12. iv-rank alternate spellings
+    (async () => {
+      let html = section(`12. /api/stock/${t}/ivrank + /api/stock/${t}/iv-percentile`, 'var(--purple)');
+      try {
+        const r1 = await uw(`/api/stock/${t}/ivrank`).catch(()=>null);
+        const r2 = await uw(`/api/stock/${t}/iv-percentile`).catch(()=>null);
+        const r3 = await uw(`/api/stock/${t}/volatility`).catch(()=>null);
+        html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">ivrank: ${r1 ? JSON.stringify(r1).slice(0,120) : '❌ error'}</div>`;
+        html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">iv-percentile: ${r2 ? JSON.stringify(r2).slice(0,120) : '❌ error'}</div>`;
+        html += `<div style="color:var(--muted);font-size:9px;margin:4px 0">volatility: ${r3 ? JSON.stringify(r3).slice(0,120) : '❌ error'}</div>`;
       } catch(e) { html += `<span style="color:var(--red)">ERROR: ${e}</span>`; }
       return html;
     })(),
