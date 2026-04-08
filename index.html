@@ -162,7 +162,7 @@
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
   .modal-overlay.show{display:flex}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
-  .modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:16px;color:var(--orange)}
+  .modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:16px;color:var(--orange)}
   .modal-section{color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px}
   .modal-row{display:flex;justify-content:space-between;padding:5px 0;font-size:11px}
   .modal-label{color:var(--muted)}
@@ -589,14 +589,18 @@
   </div>
 </div>
 
-<!-- FLOATING NOTES PANEL -->
-<button class="notes-fab" id="notesFab" onclick="toggleNotesPanel()" title="Ticker Notes">📝</button>
-<div class="notes-panel hidden" id="notesPanel">
-  <div class="notes-panel-header">
-    <span class="notes-panel-title">📝 TICKER NOTES</span>
-    <button onclick="toggleNotesPanel()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+<!-- INLINE NOTE MODAL (replaces floating panel) -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-title" id="noteModalTitle" style="color:var(--yellow)">📝 NOTE</div>
+    <div style="color:var(--muted);font-size:10px;margin-bottom:10px" id="noteModalTs"></div>
+    <textarea class="note-textarea" id="noteModalInput" placeholder="Type your note here…" style="min-height:100px"></textarea>
+    <div class="form-actions" style="margin-top:10px">
+      <button class="btn btn-secondary" onclick="closeNoteModal()">CANCEL</button>
+      <button class="btn btn-danger" id="noteModalDeleteBtn" onclick="deleteNoteModal()" style="display:none">✕ CLEAR</button>
+      <button class="btn" onclick="saveNoteModal()" style="background:var(--yellow);color:#000">💾 SAVE</button>
+    </div>
   </div>
-  <div class="notes-list" id="notesList"></div>
 </div>
 
 <script>
@@ -1216,8 +1220,7 @@ function renderTable() {
     }
 
     const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
-    const noteHtml = TICKER_NOTES[p.ticker] ? `<span class="note-dot" title="${TICKER_NOTES[p.ticker].text.slice(0,80).replace(/"/g,"'")}"></span>` : '';
-    const tickerCell = '<td><span class="ticker-name">' + p.ticker + '</span>' + noteHtml + ernHtml +
+    const tickerCell = '<td><span class="ticker-name">' + p.ticker + '</span>' + ernHtml +
       '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
     const tr=document.createElement('tr');
     const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
@@ -2105,111 +2108,59 @@ function showRollModal(idx) {
   const openPrem = Math.abs(p.open);
   const liveGain = calcLiveGain(p);
 
-  // ── Depth analysis ──
-  const itmAmount = p.type==='P' ? p.short - stock : stock - p.short;
-  const itmPct    = (itmAmount / p.short) * 100;
-  const isDeepITM = itmAmount > width;      // beyond the long strike — max loss zone
-  const isFullITM = itmAmount > 0 && itmAmount <= width; // between strikes
-  const isOTM     = itmAmount <= 0;
-
   // ── Roll credit feasibility ──
-  // If spread is trading near max value (close to width), rolling for credit is very hard
   const spreadPctOfMax = width > 0 ? (spreadMid / width) * 100 : 0;
-  const canRollCredit  = spreadPctOfMax < 60;  // rough: if spread < 60% of max, credit roll possible
   const rollCost       = getRollCost(p);
 
-  // ── DTE guidance ──
+  // ── DTE label for snapshot ──
   const dte = getDTE(p);
   const dteAdvice = dte <= 14
-    ? { label:'URGENT', color:'var(--red)',    text:'Under 14 DTE — gamma risk accelerating. Roll now or let assignment risk mount.' }
+    ? { label:'URGENT', color:'var(--red)'    }
     : dte <= 30
-    ? { label:'SOON',   color:'var(--orange)', text:'Under 30 DTE — theta decay slowing. Ideal time to roll before gamma picks up.' }
+    ? { label:'SOON',   color:'var(--orange)' }
     : dte <= 60
-    ? { label:'OK',     color:'var(--yellow)', text:'30–60 DTE — some time remaining but worth acting if delta is elevated.' }
-    : { label:'EARLY',  color:'var(--green)',  text:'60+ DTE — plenty of time. Consider whether IV expansion is worth waiting out.' };
-
-  // ── Strike / size guidance ──
-  let strikeGuidance, sizeGuidance;
-
-  if (isDeepITM) {
-    strikeGuidance = `Stock is $${itmAmount.toFixed(2)} through BOTH strikes (${itmPct.toFixed(1)}% ITM). Rolling ATM makes sense if you still hold the thesis — target the short near current stock price $${stock.toFixed(0)}.`;
-    sizeGuidance   = `⚠ Position is at max loss territory. Strongly consider reducing size on the roll — take ${p.cts > 1 ? Math.max(1, Math.floor(p.cts/2)) + ' contracts instead of ' + p.cts : 'partial assignment'} to cut exposure on a losing thesis.`;
-  } else if (isFullITM) {
-    const itmDepthPct = (itmAmount / width) * 100;
-    strikeGuidance = `Stock is ${itmDepthPct.toFixed(0)}% into the spread ($${itmAmount.toFixed(2)} ITM on short). If thesis intact, roll short strike to near current stock price ($${stock.toFixed(0)}) and keep long proportionally lower.`;
-    sizeGuidance   = p.cts > 2
-      ? `Consider rolling ${p.cts - 1} contracts instead of ${p.cts} — reduce concentration on a stressed position.`
-      : `Size (${p.cts} contract${p.cts>1?'s':''}) is manageable — keep same if thesis is strong.`;
-  } else {
-    strikeGuidance = `Stock is OTM by $${Math.abs(itmAmount).toFixed(2)}. If rolling due to delta creep rather than being ITM, consider rolling same strike for time, or down/up ${width} points to maintain structure.`;
-    sizeGuidance   = `Position near original structure — size (${p.cts} contract${p.cts>1?'s':''}) is fine to maintain on roll.`;
-  }
-
-  // ── Credit feasibility ──
-  let creditGuidance;
-  if (!isLive) {
-    creditGuidance = 'Refresh live data to assess roll credit feasibility.';
-  } else if (isDeepITM) {
-    creditGuidance = `⚠ Spread trading at $${spreadMid.toFixed(2)} vs $${width} max — ${spreadPctOfMax.toFixed(0)}% of max loss realized. Rolling for credit is very unlikely. Expect a debit roll or consider closing.`;
-  } else if (canRollCredit) {
-    creditGuidance = `Spread at $${spreadMid.toFixed(2)} (${spreadPctOfMax.toFixed(0)}% of max). Credit roll is feasible — target +30–45 DTE for best premium.`;
-  } else {
-    creditGuidance = `Spread at $${spreadMid.toFixed(2)} (${spreadPctOfMax.toFixed(0)}% of max). Credit roll will be difficult — scratch or small debit likely. Weigh cost vs risk reduction.`;
-  }
-
-  // ── Width guidance ──
-  const widthGuidance = isDeepITM
-    ? `Consider narrowing spread width below $${width} on the roll to reduce max loss exposure if taking fewer contracts.`
-    : `Maintain $${width} width — no reason to change if thesis and IV support it.`;
+    ? { label:'OK',     color:'var(--yellow)' }
+    : { label:'EARLY',  color:'var(--green)'  };
 
   document.getElementById('modalTitle').textContent = `↩ Roll Analysis — ${p.ticker} ${p.type==='P'?'PUT':'CALL'} $${p.short}/$${p.long}`;
-  const existingNote = TICKER_NOTES[p.ticker] || {};
+
+  // Stock move since open
+  const stockMoveHtml = (() => {
+    if (!p.openStock || !stock) return '';
+    const dollarMove = stock - p.openStock;
+    const pctMove = (dollarMove / p.openStock) * 100;
+    // For puts: stock dropping is bad (moves against); for calls: stock rising matters
+    const isBad = p.type === 'P' ? dollarMove < 0 : dollarMove > 0;
+    const moveColor = isBad ? 'var(--red)' : 'var(--green)';
+    const arrow = dollarMove >= 0 ? '▲' : '▼';
+    return `<div class="modal-row"><span class="modal-label" style="padding-left:12px">vs. now</span><span class="modal-val" style="color:${moveColor}">${arrow} $${Math.abs(dollarMove).toFixed(2)} · ${dollarMove>=0?'+':''}${pctMove.toFixed(1)}%</span></div>`;
+  })();
+
   document.getElementById('modalBody').innerHTML = `
-    <div class="modal-section" style="color:var(--yellow)">📝 TICKER NOTE <span style="font-size:9px;color:var(--muted);font-weight:400;font-family:'JetBrains Mono',monospace">${existingNote.ts ? '· last updated ' + existingNote.ts : '· no note yet'}</span></div>
-    <div style="margin-bottom:4px">
-      <textarea class="note-textarea" id="rollModalNote" placeholder="e.g. Holding through earnings · thesis intact · reduce size on roll…">${existingNote.text || ''}</textarea>
-      <div style="display:flex;gap:6px;margin-top:5px">
-        <button onclick="saveNote('${p.ticker}', document.getElementById('rollModalNote').value)" class="btn" style="background:var(--yellow);color:#000;font-size:10px;padding:5px 14px">💾 SAVE NOTE</button>
-        ${existingNote.text ? `<button onclick="saveNote('${p.ticker}',''); document.getElementById('rollModalNote').value=''" class="btn btn-danger" style="font-size:10px;padding:5px 10px">✕ CLEAR</button>` : ''}
-      </div>
-    </div>
-    <div class="modal-section">POSITION SNAPSHOT</div>
-    <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp?`$${lp.price.toFixed(2)} (${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%)`:`$${p.stock.toFixed(2)} (stale — refresh)`}</span></div>
-    <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:var(--red)">${delta.toFixed(3)} (${getDeltaSource(p)==='live'?'●LIVE':'~BS'})</span></div>
-    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d — ${dteAdvice.label}</span></div>
+    <style>
+      #rollModal .modal-row     { font-size:15px; padding:7px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+      #rollModal .modal-row:last-child { border-bottom:none; }
+      #rollModal .modal-label   { font-size:14px; color:var(--muted); flex-shrink:0; }
+      #rollModal .modal-val     { font-size:15px; font-weight:600; text-align:right; }
+      #rollModal .roll-divider  { border-top:2px solid var(--border); margin:10px 0 2px; }
+      #rollModal .row-tag       { font-size:12px; font-weight:400; color:var(--muted); margin-right:6px; }
+    </style>
+
+    <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp ? `$${lp.price.toFixed(2)} <span style="font-size:13px;font-weight:500;color:${lp.pct>=0?'var(--green)':'var(--red)'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>` : `$${stock.toFixed(2)} <span style="font-size:12px;color:var(--muted)">(stale)</span>`}</span></div>
+    ${p.openStock ? `<div class="modal-row"><span class="modal-label">Stock at Open</span><span class="modal-val" style="color:var(--muted)">$${p.openStock.toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${p.openStockDate||''}</span></span></div>${stockMoveHtml}` : ''}
+    <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:${delta>=THRESH_ROLL?'var(--red)':delta>=THRESH_WATCH?'var(--orange)':'var(--yellow)'}">${delta.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">${getDeltaSource(p)==='live'?'●LIVE':'~BS'}</span></span></div>
+    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d <span style="font-size:12px;font-weight:500;color:var(--muted)">· ${p.expiry}</span> <span style="font-size:12px;font-weight:500">— ${dteAdvice.label}</span></span></div>
     <div class="modal-row"><span class="modal-label">IV</span><span class="modal-val">${iv.toFixed(1)}%</span></div>
-    <div class="modal-row"><span class="modal-label">Spread Mid / Open</span><span class="modal-val">$${spreadMid.toFixed(2)} ${isLive?'●LIVE':'~open'} vs $${openPrem.toFixed(2)} open ${liveGain>0?'(+'+liveGain.toFixed(1)+'% captured)':'('+liveGain.toFixed(1)+'% move against)'}</span></div>
-    ${rollCost!==null?`<div class="modal-row"><span class="modal-label">Est. Close Cost</span><span class="modal-val" style="color:${rollCost>0?'var(--red)':'var(--green)'}">$${Math.abs(rollCost).toFixed(0)} ${rollCost>0?'debit to close':'credit to close'}</span></div>`:''}
+    <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
+    <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()}</span></div>
 
-    <div class="modal-section">DTE URGENCY</div>
-    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Assessment</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${dteAdvice.text}</span></div>
+    <div class="roll-divider"></div>
+    <div class="modal-row"><span class="modal-label">Open Price</span><span class="modal-val">$${openPrem.toFixed(2)}</span></div>
+    <div class="modal-row"><span class="modal-label"><span class="row-tag">${isLive?'●LIVE':'~BS'}</span>Current Price</span><span class="modal-val">$${spreadMid.toFixed(2)}</span></div>
+    <div class="modal-row"><span class="modal-label">${liveGain>=0?'Captured':'Move Against'}</span><span class="modal-val" style="color:${liveGain>=0?'var(--green)':'var(--red)'}">${liveGain>=0?'+':''}${liveGain.toFixed(1)}%</span></div>
+    ${rollCost!==null?`<div class="modal-row"><span class="modal-label">Est. Close Cost</span><span class="modal-val" style="color:${rollCost<=0?'var(--green)':'var(--red)'}">$${Math.abs(rollCost).toFixed(0)} ${rollCost<=0?'credit':'debit'}</span></div>`:''}
 
-    <div class="modal-section">DEPTH & STRIKE GUIDANCE</div>
-    <div class="modal-row"><span class="modal-label">Position Status</span><span class="modal-val" style="color:${isDeepITM?'var(--red)':isFullITM?'var(--orange)':'var(--green)'}">${isDeepITM?'⚠ BEYOND MAX LOSS':isFullITM?'BETWEEN STRIKES':'OTM'}</span></div>
-    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Strike</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${strikeGuidance}</span></div>
-
-    <div class="modal-section">ROLL FEASIBILITY</div>
-    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Credit?</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${creditGuidance}</span></div>
-    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Width</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${widthGuidance}</span></div>
-
-    <div class="modal-section">SIZE GUIDANCE</div>
-    <div class="modal-row" style="align-items:flex-start"><span class="modal-label" style="padding-top:2px">Contracts</span><span class="modal-val" style="text-align:right;max-width:280px;line-height:1.5">${sizeGuidance}</span></div>
-    <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()} × ${p.cts} contracts</span></div>
-
-    ${earningsMap[p.ticker]?`
-    <div class="modal-section">⚠ EARNINGS RISK</div>
-    <div class="modal-row"><span class="modal-label">Date</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]} — roll expiry past this date</span></div>`:''}
-
-    ${flow?(()=>{
-      const flowColor = flow.sentiment==='bull'?'var(--green)':flow.sentiment==='bear'?'var(--red)':'var(--muted)';
-      const contraText = flow.isContra ? ' ⚠ CONTRA your position' : ' — aligned with your position';
-      return `
-    <div class="modal-section">FLOW CONTEXT</div>
-    <div class="modal-row"><span class="modal-label">Sentiment</span><span class="modal-val" style="color:${flowColor}">${flow.sentiment.toUpperCase()}${contraText}</span></div>
-    <div class="modal-row"><span class="modal-label">Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls / $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
-    })():''}
-
-    <div class="modal-section">ROLL TARGETS <span style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:400;letter-spacing:0">~BS estimate · guideline only</span></div>
+    <div class="roll-divider"></div>
     ${(()=>{
       const S = getLiveStock(p);
       const ivR = getLiveIV(p);
@@ -2223,7 +2174,7 @@ function showRollModal(idx) {
       const rExpStr = rExp.toISOString().slice(0,10);
       const rT = Math.max(1, Math.round((rExp - today2)/86400000))/365;
       const rDTE = Math.round((rExp - today2)/86400000);
-      const rMo = rExp.toLocaleString('en-US',{month:'long'});
+      const rMo = rExp.toLocaleString('en-US',{month:'short'});
       const { mid: curMid } = getSpreadMid(p);
       function snap(raw){ const step=S>200?5:S>50?2.5:S>20?1:0.5; return Math.round(raw/step)*step; }
       function findDelta(tgt){
@@ -2241,20 +2192,30 @@ function showRollModal(idx) {
         const strikes=p.type==='P'?`$${ns}/$${nl}P`:`$${ns}/$${nl}C`;
         return `<div class="modal-row">
           <span class="modal-label" style="color:${color}">${label} Δ${tgt.toFixed(2)}</span>
-          <span class="modal-val" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-            <span style="font-size:14px;font-weight:700">${strikes}</span>
-            <span style="font-size:11px;color:var(--muted)">mid ~$${nm.toFixed(2)} · <span style="color:${rcColor};font-weight:700">${rcLabel} to roll</span></span>
+          <span class="modal-val" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+            <span style="font-size:16px;font-weight:700">${strikes}</span>
+            <span style="font-size:13px;color:var(--muted)">mid ~$${nm.toFixed(2)} · <span style="color:${rcColor};font-weight:700">${rcLabel}</span></span>
           </span>
         </div>`;
       }
       return `
-    <div class="modal-row"><span class="modal-label">Target Expiry</span><span class="modal-val" style="color:var(--accent)">${rMo} ${rExp.getFullYear()} · ${rDTE}d out</span></div>
-    ${line(0.45,'Aggressive',   'var(--orange)')}
-    ${line(0.30,'Defensive',    'var(--green)')}
-    <div class="modal-row" style="padding-top:4px">
-      <span style="color:var(--muted);font-size:9px;line-height:1.5">CR = net credit received to roll · DR = debit paid · based on current spread mid vs BS-estimated new spread mid</span>
-    </div>`;
+      <div class="modal-row"><span class="modal-label">Target Expiry</span><span class="modal-val" style="color:var(--accent)">${rMo} ${rExp.getFullYear()} <span style="font-size:13px;font-weight:400;color:var(--muted)">· ${rDTE}d out</span></span></div>
+      ${line(0.50,'Aggressive', 'var(--orange)')}
+      ${line(0.35,'Defensive',  'var(--green)')}`;
     })()}
+
+    ${earningsMap[p.ticker]?`
+    <div class="roll-divider"></div>
+    <div class="modal-row"><span class="modal-label">⚠ Earnings Risk</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]} — roll past this date</span></div>`:''}
+
+    ${flow?(()=>{
+      const flowColor = flow.sentiment==='bull'?'var(--green)':flow.sentiment==='bear'?'var(--red)':'var(--muted)';
+      const contraText = flow.isContra ? ' ⚠ CONTRA' : ' — aligned';
+      return `
+    <div class="roll-divider"></div>
+    <div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${flow.sentiment.toUpperCase()}${contraText}</span></div>
+    <div class="modal-row"><span class="modal-label">Flow Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls · $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
+    })():''}
   `;
   document.getElementById('rollModal').classList.add('show');
 }
@@ -2692,24 +2653,57 @@ function savePosition() {
   if (isNaN(open))                                    { err.textContent='Open premium required'; err.style.display='block'; return; }
   err.style.display = 'none';
 
-  const collateral = calcCollateral(postype, short, long, cts, (livePrices[ticker]&&livePrices[ticker].price) || short, open);
+  const liveStockNow = (livePrices[ticker] && livePrices[ticker].price) || null;
+  const collateral = calcCollateral(postype, short, long, cts, liveStockNow || short, open);
   const dte        = calcDTE(expiry);
   const isDebit    = postype === 'spread_debit' || isSingleLeg;
+  const todayStr   = new Date().toISOString().slice(0,10);
 
   const pos = {
     ticker, type, postype: postype || 'spread_credit',
     short, long: (postype==='covered_call' || isSingleLeg) ? 0 : long,
     cts, dte, expiry,
-    stock: (livePrices[ticker]&&livePrices[ticker].price) || short,
+    stock: liveStockNow || short,
+    // openStock: stock price at time of entry — captured now if live, else fetched in background
+    openStock:     liveStockNow || null,
+    openStockDate: liveStockNow ? todayStr : null,
     open: isDebit ? -Math.abs(open) : Math.abs(open), // debit stored as negative
     collateral, gain: 0, remain: 50,
     shortMid: open, longMid: 0,
   };
 
   if (editingIdx !== null) {
+    // On edit: preserve existing openStock if we already have one
+    const existing = POSITIONS[editingIdx];
+    if (existing && existing.openStock && !pos.openStock) {
+      pos.openStock     = existing.openStock;
+      pos.openStockDate = existing.openStockDate;
+    }
     POSITIONS[editingIdx] = pos;
   } else {
     POSITIONS.push(pos);
+    // If no live price yet, fetch it in the background and stamp it on
+    if (!liveStockNow) {
+      const posRef = pos; // closure ref
+      (async () => {
+        try {
+          const v = await uw(`/api/stock/${ticker}/stock-state`);
+          const d = v?.data;
+          const row = Array.isArray(d) ? d[0] : d;
+          if (row) {
+            const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
+            if (price > 0) {
+              posRef.openStock     = price;
+              posRef.openStockDate = new Date().toISOString().slice(0,10);
+              posRef.stock         = price;
+              livePrices[ticker]   = livePrices[ticker] || { price, open: price, change: 0, pct: 0 };
+              saveToStorage();
+              renderTable();
+            }
+          }
+        } catch(e) {}
+      })();
+    }
   }
 
   saveToStorage();
@@ -2768,62 +2762,43 @@ function saveNote(ticker, text) {
     TICKER_NOTES[ticker] = { text: text.trim(), ts: new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) };
   }
   saveToStorage();
-  renderNotesPanel();
-  updateNotesFab();
   renderTable();
   renderWatchList();
 }
 
-function toggleNotesPanel() {
-  const panel = document.getElementById('notesPanel');
-  panel.classList.toggle('hidden');
-  if (!panel.classList.contains('hidden')) renderNotesPanel();
-}
+let _noteModalTicker = null;
 
-function updateNotesFab() {
-  const fab = document.getElementById('notesFab');
-  const hasAny = Object.keys(TICKER_NOTES).length > 0;
-  fab.classList.toggle('has-notes', hasAny);
-  fab.title = hasAny ? `Ticker Notes (${Object.keys(TICKER_NOTES).length})` : 'Ticker Notes';
-}
-
-function renderNotesPanel() {
-  const list = document.getElementById('notesList');
-  const entries = Object.entries(TICKER_NOTES).sort((a,b) => a[0].localeCompare(b[0]));
-  if (!entries.length) {
-    list.innerHTML = `<div class="notes-empty">No ticker notes yet.<br>Click ↩ ROLL on any position<br>to add a note for that ticker.</div>`;
-    return;
-  }
-  list.innerHTML = entries.map(([ticker, n]) => `
-    <div class="note-item">
-      <div class="note-item-ticker">
-        <span>${ticker}</span>
-        <button onclick="openNoteFromPanel('${ticker}')" title="Edit"
-          style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:9px;padding:1px 6px;border-radius:3px;font-family:inherit"
-          onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-          onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✎ EDIT</button>
-      </div>
-      <div class="note-item-text">${n.text.replace(/</g,'&lt;')}</div>
-      <div class="note-item-ts">${n.ts}</div>
-    </div>`).join('');
-}
-
-function openNoteFromPanel(ticker) {
-  // Open a lightweight inline edit overlay within the notes panel
-  const list = document.getElementById('notesList');
+function openNoteModal(ticker) {
+  _noteModalTicker = ticker;
   const existing = TICKER_NOTES[ticker] || {};
-  list.innerHTML = `
-    <div style="padding:8px">
-      <div style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:8px">${ticker}</div>
-      <textarea class="note-textarea" id="notePanelInput" placeholder="Type your note here…">${existing.text || ''}</textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="saveNote('${ticker}', document.getElementById('notePanelInput').value); " class="btn" style="flex:1;background:var(--yellow);color:#000;font-size:10px;padding:6px">SAVE</button>
-        ${existing.text ? `<button onclick="saveNote('${ticker}',''); " class="btn btn-danger" style="font-size:10px;padding:6px 10px">DELETE</button>` : ''}
-        <button onclick="renderNotesPanel()" class="btn btn-secondary" style="font-size:10px;padding:6px 10px">CANCEL</button>
-      </div>
-    </div>`;
-  document.getElementById('notePanelInput').focus();
+  document.getElementById('noteModalTitle').textContent = `📝 NOTE — ${ticker}`;
+  document.getElementById('noteModalTs').textContent = existing.ts ? 'Last updated ' + existing.ts : '';
+  document.getElementById('noteModalInput').value = existing.text || '';
+  document.getElementById('noteModalDeleteBtn').style.display = existing.text ? 'inline-flex' : 'none';
+  document.getElementById('noteModal').classList.add('show');
+  setTimeout(() => document.getElementById('noteModalInput').focus(), 50);
 }
+
+function saveNoteModal() {
+  if (!_noteModalTicker) return;
+  saveNote(_noteModalTicker, document.getElementById('noteModalInput').value);
+  document.getElementById('noteModal').classList.remove('show');
+  _noteModalTicker = null;
+}
+
+function deleteNoteModal() {
+  if (!_noteModalTicker) return;
+  saveNote(_noteModalTicker, '');
+  document.getElementById('noteModal').classList.remove('show');
+  _noteModalTicker = null;
+}
+
+function closeNoteModal() {
+  document.getElementById('noteModal').classList.remove('show');
+  _noteModalTicker = null;
+}
+
+document.getElementById('noteModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeNoteModal(); });
 
 function toggleCCTrack(ticker) {
   if (CC_TRACKED.has(ticker)) { CC_TRACKED.delete(ticker); }
@@ -3081,9 +3056,20 @@ function renderWatchList() {
     }, 0);
   });
 
-  // Build master list: position tickers first (sorted by close cost desc), then watch-only (sorted alpha)
+  // Compute per-ticker collateral for tiebreaker
+  const tickerCollateral = {};
+  POSITIONS.forEach(p => {
+    if (!tickerCollateral[p.ticker]) tickerCollateral[p.ticker] = 0;
+    if (p.postype !== 'covered_call' && !isLongOption(p)) tickerCollateral[p.ticker] += p.collateral;
+  });
+
+  // Build master list: position tickers first (sorted by close cost desc, collateral as tiebreaker), then watch-only (sorted alpha)
   const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t)).sort();
-  const inPosition = [...posTickers].sort((a, b) => (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0));
+  const inPosition = [...posTickers].sort((a, b) => {
+    const ccDiff = (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0);
+    if (Math.abs(ccDiff) > 0.01) return ccDiff;
+    return (tickerCollateral[b] || 0) - (tickerCollateral[a] || 0);
+  });
   // Watch-list tickers that also have positions — keep in position group
   const watchInPos = WATCHLIST.filter(t => posTickers.has(t));
   // Final order: position-only (sorted by close cost) → watch+position (sorted by close cost) → pure watch-only (alpha)
@@ -3150,13 +3136,31 @@ function renderWatchList() {
       ? `<button class="wc-remove" onclick="removeWatchTicker('${ticker}')" title="Remove from watch list">✕</button>`
       : '';
 
+    const hasNote = !!TICKER_NOTES[ticker];
+    const noteBtn = `<button onclick="openNoteModal('${ticker}')" title="${hasNote ? (TICKER_NOTES[ticker].text.slice(0,80).replace(/'/g,"&#39;")) : 'Add note'}"
+      style="width:100%;margin-bottom:4px;padding:2px 6px;border-radius:3px;
+             background:${hasNote ? 'rgba(245,200,66,0.2)' : 'rgba(74,85,104,.1)'};
+             border:1px solid ${hasNote ? 'rgba(245,200,66,0.55)' : 'var(--border)'};
+             color:${hasNote ? 'var(--yellow)' : 'var(--muted)'};
+             font-size:9px;font-family:inherit;font-weight:700;letter-spacing:.4px;
+             cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--yellow)';this.style.background='rgba(245,200,66,0.2)'"
+      onmouseout="this.style.borderColor='${hasNote ? 'rgba(245,200,66,0.55)' : 'var(--border)'}';this.style.color='${hasNote ? 'var(--yellow)' : 'var(--muted)'}';this.style.background='${hasNote ? 'rgba(245,200,66,0.2)' : 'rgba(74,85,104,.1)'}'">
+      📝 ${hasNote ? 'NOTE' : 'ADD NOTE'}
+    </button>`;
+
+    const tickerLabel = hasNote
+      ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.07)">${ticker}</div>`
+      : `<div class="wc-ticker">${ticker}</div>`;
+
     return `<div class="watch-card" style="${cardStyle}">
       ${posBadge}
       ${removeBtn}
-      <div class="wc-ticker">${ticker}${TICKER_NOTES[ticker]?'<span class="note-dot" title="'+TICKER_NOTES[ticker].text.slice(0,60)+'"></span>':''}</div>
+      ${tickerLabel}
       ${priceHtml}
       ${closeHtml}
       ${ivHtml}
+      ${noteBtn}
       ${biasBtn}
     </div>`;
   }).join('');
@@ -3284,7 +3288,6 @@ renderOndsCard();
 renderWatchList();
 updatePortfolioStat();
 updatePnlBar();
-updateNotesFab();
 
 // Attempt Drive load — if Drive has newer data, reload UI
 driveLoad().then(function(loaded) {
@@ -3301,7 +3304,6 @@ driveLoad().then(function(loaded) {
   // is displayed correctly against final POSITIONS state
   updatePortfolioStat();
   updatePnlBar();
-  updateNotesFab();
   driveReady = true; // now safe to auto-push on user changes
 });
 
