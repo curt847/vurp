@@ -1052,10 +1052,10 @@ function renderTable() {
     const deltaRefreshTs = liveData[p.ticker] && liveData[p.ticker].refreshTs;
     const isStaleSession = !deltaRefreshTs;
     const srcTag = src==='live'
-      ? `<span style="color:var(--green);font-size:9px"> ●LIVE ${deltaRefreshTs||''}</span>`
+      ? `<span style="color:var(--text);font-size:9px"> ●LIVE</span>`
       : isStaleSession
         ? `<span style="color:var(--orange);font-size:9px" title="Delta from prior session — hit Refresh Live"> ~stale</span>`
-        : `<span style="color:var(--muted);font-size:9px"> ~BS ${deltaRefreshTs||''}</span>`;
+        : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
 
     const dteClass=getDTE(p)<=7?'dte-urgent':getDTE(p)<=21?'dte-near':'dte-val';
     const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
@@ -1197,7 +1197,7 @@ function renderTable() {
         : '$' + p.collateral.toLocaleString();
 
     // Delta column label — for long options, high delta is good
-    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${srcTag}`;
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--text);font-size:9px;font-weight:400;margin-top:1px">${src==='live' ? `●LIVE ${deltaRefreshTs||''}` : isStaleSession ? '~stale' : `~BS ${deltaRefreshTs||''}`}</div>`;
 
     // Action buttons
     const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
@@ -1231,11 +1231,11 @@ function renderTable() {
       <td>${strikesHtml}</td>
       <td style="color:var(--muted)">×${p.cts}</td>
       <td>
-        <div style="display:flex;align-items:baseline;gap:5px">
+        <div style="display:flex;align-items:baseline;gap:6px">
           <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:var(--text)">$${ext.mid.toFixed(2)}</span>
-          <span style="font-size:9px;color:${ext.isLive && !ext.isBs?'var(--green)':ext.isBs?'var(--yellow)':'var(--muted)'}">${liveLabel}</span>
+          <span style="color:var(--muted);font-size:10px">open $${Math.abs(p.open).toFixed(2)}</span>
         </div>
-        <div style="color:var(--muted);font-size:10px;margin-top:1px">open $${Math.abs(p.open).toFixed(2)}</div>
+        <div style="color:var(--text);font-size:9px;margin-top:1px">${liveLabel}</div>
       </td>
       <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
       <td class="${dteClass}">
@@ -1244,7 +1244,7 @@ function renderTable() {
       </td>
       <td class="${dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px">$${stock.toFixed(2)}${chgHtml}</td>
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
-      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; const c = ivr>=70?'var(--orange)':ivr>=50?'var(--yellow)':'var(--muted)'; return `<div style="font-size:11px;font-weight:600;color:${c}">IVR ${Math.round(ivr)}</div>`; })()}</td>
+      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; const c = ivr>=60?'var(--green)':ivr>=30?'var(--yellow)':'var(--orange)'; return `<div style="font-size:11px;font-weight:600;color:${c}">IVR ${Math.round(ivr)}</div>`; })()}</td>
       <td>${extHtml}</td>
       <td>${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
@@ -1718,6 +1718,20 @@ async function fetchIV() {
           if (vol > 0 && vol < 10) liveData[t].iv = vol * 100;
         }
       } catch(e) {}
+      // Also fetch IV rank for position tickers only (not watch-only)
+      if (posTickers.includes(t)) {
+        try {
+          const r = await uw(`/api/stock/${t}/iv-rank`);
+          const arr = Array.isArray(r?.data) ? r.data : [];
+          if (arr.length) {
+            const ivr = parseFloat(arr[0].iv_rank_1y);
+            if (!isNaN(ivr)) {
+              if (!liveData[t]) liveData[t] = {};
+              liveData[t].ivr = ivr;
+            }
+          }
+        } catch(e) {}
+      }
     }));
     // Small pause between batches to ease proxy load
     if (i + CONCURRENCY < allTickers.length) await new Promise(r => setTimeout(r, 500));
@@ -1972,21 +1986,6 @@ async function fetchTicker(ticker) {
   // Stock price must complete before we do BS fallback recalcs below
   await stockPricePromise;
 
-  // Fetch IV rank — runs in parallel, non-blocking
-  (async () => {
-    try {
-      const r = await uw(`/api/stock/${ticker}/iv-rank`);
-      const arr = Array.isArray(r?.data) ? r.data : [];
-      if (arr.length) {
-        const ivr = parseFloat(arr[0].iv_rank_1y);
-        if (!isNaN(ivr)) {
-          if (!liveData[ticker]) liveData[ticker] = {};
-          liveData[ticker].ivr = ivr;
-        }
-      }
-    } catch(e) {}
-  })();
-
   // Stamp the refresh time on this ticker — always, regardless of data quality
   // This lets the UI show "~BS 12:44" vs "~BS" (unknown when last tried)
   const refreshTime = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
@@ -2178,7 +2177,7 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:${delta>=THRESH_ROLL?'var(--red)':delta>=THRESH_WATCH?'var(--orange)':'var(--yellow)'}">${delta.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">${getDeltaSource(p)==='live'?'●LIVE':'~BS'}</span></span></div>
     ${(() => { const ld = p.long ? (liveData[p.ticker] && liveData[p.ticker][`${p.long}_${p.type}`]) : null; const sd = ld != null ? Math.abs(delta - ld) : null; return sd != null ? `<div class="modal-row"><span class="modal-label">Spread Delta</span><span class="modal-val" style="color:var(--muted)">${sd.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(short ${delta.toFixed(3)} − long ${ld.toFixed(3)})</span></span></div>` : ''; })()}
     <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d <span style="font-size:12px;font-weight:500;color:var(--muted)">· ${p.expiry}</span> <span style="font-size:12px;font-weight:500">— ${dteAdvice.label}</span></span></div>
-    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; const c=ivr>=70?'var(--orange)':ivr>=50?'var(--yellow)':'var(--muted)'; return `<span style="color:${c};font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
+    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; const c=ivr>=60?'var(--green)':ivr>=30?'var(--yellow)':'var(--orange)'; return `<span style="color:${c};font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
     <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()}</span></div>
 
