@@ -950,8 +950,8 @@ function getFiltered() {
       case 'orange':   return getAlertLevel(p)==='orange';
       case 'yellow':   return getAlertLevel(p)==='yellow';
       case 'green':    return getAlertLevel(p)==='green';
-      case 'close':    return getProfitLevel(p, calcLiveGain(p)) === 'close';
-      case 'profit':   return ['close','profit','watch_profit'].includes(getProfitLevel(p, calcLiveGain(p)));
+      case 'close':    { const g=calcLiveGain(p); return getProfitLevel(p,g)==='close' && g>=70; }
+      case 'profit':   { const g=calcLiveGain(p); const lv=getProfitLevel(p,g); return (lv==='close'&&g>=70)||(lv==='profit'&&g>=50)||lv==='watch_profit'; }
       case 'calls':    return p.type==='C';
       case 'puts':     return p.type==='P';
       case 'itm':      return isITM(p);
@@ -1109,12 +1109,12 @@ function renderTable() {
       red:`<span class="pill pill-red"><span class="dot dot-red"></span>FADING</span>`,
       orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
       yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
-      green:`<span class="pill pill-green"><span class="dot dot-green"></span>OK</span>`,
+      green:``,
     } : {
       red:`<span class="pill pill-red"><span class="dot dot-red"></span>ROLL NOW</span>`,
       orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
       yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
-      green:`<span class="pill pill-green"><span class="dot dot-green"></span>OK</span>`,
+      green:``,
     };
     const ccRoll = getCCRollTrigger(p);
     let statusHtml = p.postype === 'covered_call'
@@ -1131,10 +1131,10 @@ function renderTable() {
     } else {
       // Profit-side alert for spreads/longs
       const profitLevel = getProfitLevel(p, liveGain);
-      if (profitLevel === 'close') {
-        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ${isLong?'SELL':'CLOSE'}</span>`;
-      } else if (profitLevel === 'profit') {
-        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">🟦 TAKE PROFIT</span>`;
+      if (profitLevel === 'close' && liveGain >= 70) {
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ${isLong?'SELL':'CLOSE'}</span>`;
+      } else if (profitLevel === 'profit' && liveGain >= 50) {
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ TAKE PROFIT</span>`;
       } else if (profitLevel === 'watch_profit') {
         statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
       }
