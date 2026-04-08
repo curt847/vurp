@@ -393,7 +393,7 @@
 <table>
   <thead><tr>
     <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
-    <th>Stock $</th><th>Δ Short</th><th>IV / IVR</th><th>Extrinsic</th>
+    <th>Stock $</th><th>Δ Short</th><th>Extrinsic</th><th>IV / IVR</th>
     <th>Leg Quotes</th><th>Collateral</th>
     <th>Status</th><th>Flow</th><th>Action</th>
   </tr></thead>
@@ -441,17 +441,8 @@
   </table>
 </div>
 
-<!-- WATCH LIST -->
-<div style="padding:0 20px 20px">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
-    <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
-      <input id="watchInput" class="search-input" placeholder="Add ticker…" style="width:120px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addWatchTicker()"/>
-      <button class="action-btn" onclick="addWatchTicker()" style="border-color:var(--accent);color:var(--accent)">+ ADD</button>
-    </div>
-  </div>
-  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-</div>
+<!-- WATCH LIST (UI removed; WATCHLIST array retained for internal data use) -->
+<div id="watchGrid" style="display:none"></div>
 
 <!-- EXPOSURE SUMMARY TABLE -->
 <div style="padding:0 20px 20px">
@@ -1156,7 +1147,7 @@ function renderTable() {
       const fc = isContra
         ? 'fb-contra'
         : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
-      const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEU';
+      const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEUTRAL';
       const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
       const contraTag = isContra?` <span style="color:var(--yellow);font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
       flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
@@ -1244,8 +1235,8 @@ function renderTable() {
       </td>
       <td class="${dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px">$${stock.toFixed(2)}${chgHtml}</td>
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
-      <td class="${iv>=80?'iv-high':'iv-val'}">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; const c = ivr>=60?'var(--green)':ivr>=30?'var(--yellow)':'var(--orange)'; return `<div style="font-size:11px;font-weight:600;color:${c}">IVR ${Math.round(ivr)}</div>`; })()}</td>
       <td>${extHtml}</td>
+      <td class="iv-val">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; return `<div style="font-size:11px;font-weight:600;color:var(--muted)">IVR ${Math.round(ivr)}</div>`; })()}</td>
       <td>${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
       <td>${statusHtml}</td>
@@ -2221,7 +2212,7 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:${delta>=THRESH_ROLL?'var(--red)':delta>=THRESH_WATCH?'var(--orange)':'var(--yellow)'}">${delta.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">${getDeltaSource(p)==='live'?'●LIVE':'~BS'}</span></span></div>
     ${(() => { const ld = p.long ? (liveData[p.ticker] && liveData[p.ticker][`${p.long}_${p.type}`]) : null; const sd = ld != null ? Math.abs(delta - ld) : null; return sd != null ? `<div class="modal-row"><span class="modal-label">Spread Delta</span><span class="modal-val" style="color:var(--muted)">${sd.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(short ${delta.toFixed(3)} − long ${ld.toFixed(3)})</span></span></div>` : ''; })()}
     <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d <span style="font-size:12px;font-weight:500;color:var(--muted)">· ${p.expiry}</span> <span style="font-size:12px;font-weight:500">— ${dteAdvice.label}</span></span></div>
-    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; const c=ivr>=60?'var(--green)':ivr>=30?'var(--yellow)':'var(--orange)'; return `<span style="color:${c};font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
+    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; return `<span style="color:var(--muted);font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
     <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">$${p.collateral.toLocaleString()}</span></div>
 
@@ -3089,7 +3080,8 @@ function saveWatchList() {
 }
 
 function addWatchTicker() {
-  const input  = document.getElementById('watchInput');
+  const input = document.getElementById('watchInput');
+  if (!input) return;
   const ticker = input.value.trim().toUpperCase();
   if (!ticker) return;
   if (WATCHLIST.includes(ticker)) { input.value=''; return; }
@@ -3160,19 +3152,13 @@ function renderWatchList() {
     const bias     = BIAS[ticker] || 'neu';
     const isWatchOnly = isWatch && !hasPos;
 
-    // Card border/bg — sell/bull/bear override everything with their color
+    // Card border/bg — neutral; bias is shown on ticker label only
     const isSell = bias === 'sell';
-    const cardStyle = isSell
-      ? 'border-color:var(--yellow);background:rgba(245,200,66,0.13)'
-      : bias === 'bull'
-        ? 'border-color:var(--green);background:rgba(0,232,138,0.10)'
-      : bias === 'bear'
-        ? 'border-color:var(--red);background:rgba(255,61,90,0.10)'
-      : isWatchOnly
-        ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'
-        : hasPos && isWatch
-          ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)'
-          : 'border-color:var(--border);background:var(--surface)';
+    const cardStyle = isWatchOnly
+      ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'
+      : hasPos && isWatch
+        ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)'
+        : 'border-color:var(--border);background:var(--surface)';
 
     const priceHtml = lp
       ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
@@ -3198,7 +3184,7 @@ function renderWatchList() {
 
     // Bias button
     const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--yellow)':'var(--muted)';
-    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NEU';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NEUTRAL';
     const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--yellow-dim)':'rgba(74,85,104,.15)';
     const biasBtn   = `<button onclick="cycleBias('${ticker}')"
       style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
@@ -3225,9 +3211,16 @@ function renderWatchList() {
       📝 ${hasNote ? 'NOTE' : 'ADD NOTE'}
     </button>`;
 
-    const tickerLabel = hasNote
-      ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.07)">${ticker}</div>`
-      : `<div class="wc-ticker">${ticker}</div>`;
+    // Ticker label: bull/bear/sell bias wins over note; note only shows if no bias
+    const tickerLabel = bias === 'bull'
+      ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(0,232,138,0.13);color:var(--green)">${ticker}</div>`
+      : bias === 'bear'
+        ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,61,90,0.13);color:var(--red)">${ticker}</div>`
+        : isSell
+          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.13);color:var(--yellow)">${ticker}</div>`
+          : hasNote
+            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(167,139,250,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(167,139,250,0.09);color:var(--purple)">${ticker}</div>`
+            : `<div class="wc-ticker">${ticker}</div>`;
 
     return `<div class="watch-card" style="${cardStyle}">
       ${posBadge}
