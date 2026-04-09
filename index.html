@@ -266,6 +266,126 @@
   .roll-cr{color:var(--green);font-weight:700}
   .roll-dr{color:var(--red);font-weight:700}
   .roll-ev{color:var(--yellow);font-weight:700}
+
+  /* ═══════════════════════════════════════════
+     MOBILE VIEW — hidden on desktop, never
+     interferes with any desktop functionality
+     ═══════════════════════════════════════════ */
+  #mobileView { display: none }
+
+  @media (max-width: 768px) {
+    /* Hide all desktop chrome */
+    .stats-bar, .pnl-bar, .flow-bar, .controls,
+    .table-wrap, #ondsCard, .notes-fab, .notes-panel,
+    .footer-note, .modal-overlay,
+    div[style*="Stock Positions"], div[style*="Watch List"],
+    div[style*="Ticker Exposure"] { display: none !important }
+
+    /* Slim down the header */
+    .header { flex-wrap: wrap; gap: 6px; padding: 8px 12px }
+    .header-right { display: none !important }
+    .hdr-market { gap: 4px }
+    .hdr-card { padding: 3px 8px; min-width: 64px }
+    .hdr-card-price { font-size: 12px }
+    .hdr-card-chg { font-size: 11px }
+    .hdr-card-ticker { font-size: 10px }
+    .last-refresh { font-size: 11px }
+    .logo { font-size: 17px }
+
+    /* Show the mobile panel */
+    #mobileView { display: block; padding: 8px 10px 40px }
+
+    /* Mobile refresh bar */
+    .mob-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 4px 10px; gap: 8px;
+    }
+    .mob-title {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .mob-refresh {
+      background: var(--accent); color: #000; border: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      font-weight: 700; padding: 7px 14px; border-radius: 4px; cursor: pointer;
+    }
+    .mob-search {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; padding: 6px 10px; border-radius: 4px;
+      outline: none; flex: 1; max-width: 140px;
+    }
+    .mob-search:focus { border-color: var(--accent) }
+
+    /* Mini stats strip */
+    .mob-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: var(--border); border-radius: 6px;
+      overflow: hidden; margin-bottom: 10px;
+    }
+    .mob-stat {
+      background: var(--surface); padding: 8px 4px; text-align: center;
+    }
+    .mob-stat-val {
+      font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 800;
+      line-height: 1;
+    }
+    .mob-stat-lbl {
+      color: var(--muted); font-size: 9px; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-top: 2px;
+    }
+
+    /* Position cards */
+    .mob-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; margin-bottom: 7px;
+      position: relative;
+    }
+    .mob-card.alert-red   { border-left: 3px solid var(--red);    background: rgba(255,61,90,.04) }
+    .mob-card.alert-orange{ border-left: 3px solid var(--orange);  background: rgba(255,140,66,.04) }
+    .mob-card.alert-yellow{ border-left: 3px solid var(--yellow);  background: rgba(245,200,66,.04) }
+    .mob-card.alert-green { border-left: 3px solid var(--green);   background: rgba(0,232,138,.02) }
+
+    .mob-card-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .mob-ticker {
+      font-family: 'DM Sans', sans-serif; font-weight: 700;
+      font-size: 18px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .mob-delta {
+      font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      font-size: 18px;
+    }
+    .mob-card-mid {
+      display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .mob-strikes {
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+      font-size: 14px; color: var(--text);
+    }
+    .mob-expiry {
+      font-size: 11px; color: var(--muted);
+    }
+    .mob-card-bot {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 4px;
+    }
+    .mob-price {
+      font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600;
+    }
+    .mob-badge-row { display: flex; align-items: center; gap: 5px }
+    .mob-dte { font-size: 11px; color: var(--muted) }
+
+    /* Expiry group header for mobile */
+    .mob-group-hdr {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--muted); padding: 10px 2px 4px;
+      border-bottom: 1px solid var(--border); margin-bottom: 6px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -488,6 +608,37 @@
 
 <div class="footer-note">
   ROLLWATCH v2.1 — Spreads: ≥0.75 🔴 ROLL | 0.65–0.75 🟠 WATCH | 0.55–0.65 🟡 RADAR — Long Options: &lt;0.15Δ 🔴 FADING | &lt;0.25Δ 🟠 WATCH — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 PROFIT | ≤0.30Δ 🔷 RADAR — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.) — Positions stored locally in browser
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MOBILE VIEW — read-only cards, desktop never sees this
+     ═══════════════════════════════════════════════════════ -->
+<div id="mobileView">
+  <div class="mob-toolbar">
+    <span class="mob-title">Positions</span>
+    <input class="mob-search" type="text" id="mobSearch" placeholder="Search…"
+      oninput="renderMobile()" />
+    <button class="mob-refresh" onclick="fetchAll()">⟳ LIVE</button>
+  </div>
+  <div class="mob-stats">
+    <div class="mob-stat">
+      <div class="mob-stat-val" id="mob-red" style="color:var(--red)">—</div>
+      <div class="mob-stat-lbl">🔴 Roll</div>
+    </div>
+    <div class="mob-stat">
+      <div class="mob-stat-val" id="mob-orange" style="color:var(--orange)">—</div>
+      <div class="mob-stat-lbl">🟠 Watch</div>
+    </div>
+    <div class="mob-stat">
+      <div class="mob-stat-val" id="mob-yellow" style="color:var(--yellow)">—</div>
+      <div class="mob-stat-lbl">🟡 Radar</div>
+    </div>
+    <div class="mob-stat">
+      <div class="mob-stat-val" id="mob-total" style="color:var(--accent)">—</div>
+      <div class="mob-stat-lbl">Total</div>
+    </div>
+  </div>
+  <div id="mobCards"></div>
 </div>
 
 <div class="modal-overlay" id="rollModal">
@@ -1275,7 +1426,6 @@ function updateStats() {
   let col=0,itm=0,ern=0,fl=0;
   POSITIONS.forEach(p=>{
     cnt[getAlertLevel(p)]++;
-    // Only count spread collateral, not covered call or long option cost basis
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
@@ -1290,6 +1440,89 @@ function updateStats() {
   const colEl=document.getElementById('s-collateral'); if(colEl) colEl.textContent='$'+(col/1000).toFixed(1)+'K';
   document.getElementById('s-earnings').textContent=ern||'—';
   document.getElementById('s-flow').textContent=fl||'—';
+  renderMobile();
+}
+
+// ══════════════════════════════════════════
+// MOBILE CARD RENDERER (read-only)
+// Only active on screens ≤768px — zero effect on desktop
+// ══════════════════════════════════════════
+function renderMobile() {
+  const container = document.getElementById('mobCards');
+  if (!container) return;
+  const q = (document.getElementById('mobSearch')?.value || '').trim().toUpperCase();
+  const cnt = {red:0,orange:0,yellow:0,green:0};
+  POSITIONS.forEach(p => cnt[getAlertLevel(p)]++);
+  const mobRed=document.getElementById('mob-red'), mobOrange=document.getElementById('mob-orange');
+  const mobYellow=document.getElementById('mob-yellow'), mobTotal=document.getElementById('mob-total');
+  if(mobRed) mobRed.textContent=cnt.red||'—';
+  if(mobOrange) mobOrange.textContent=cnt.orange||'—';
+  if(mobYellow) mobYellow.textContent=cnt.yellow||'—';
+  if(mobTotal) mobTotal.textContent=POSITIONS.length;
+  let positions = POSITIONS.filter(p => !q || p.ticker.includes(q));
+  const alertOrder = {red:0,orange:1,yellow:2,green:3};
+  positions.sort((a,b) => {
+    const la=getAlertLevel(a), lb=getAlertLevel(b);
+    if(alertOrder[la]!==alertOrder[lb]) return alertOrder[la]-alertOrder[lb];
+    return getDTE(a)-getDTE(b);
+  });
+  if (!positions.length) {
+    container.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px">No positions found</div>';
+    return;
+  }
+  function typeLabel(p) {
+    if(p.postype==='covered_call') return 'CC';
+    if(p.postype==='long_call') return 'LC';
+    if(p.postype==='long_put') return 'LP';
+    if(p.type==='P'&&p.open>0) return 'PCS';
+    if(p.type==='C'&&p.open>0) return 'CCS';
+    if(p.type==='P') return 'PDS';
+    return 'CDS';
+  }
+  function typeBadgeClass(p) {
+    if(p.postype==='covered_call') return 'type-cc';
+    if(p.postype==='long_call') return 'type-long-c';
+    if(p.postype==='long_put') return 'type-long-p';
+    if(p.type==='P'&&p.open>0) return 'type-P-cr';
+    if(p.type==='C'&&p.open>0) return 'type-C-cr';
+    if(p.type==='P') return 'type-P-db';
+    return 'type-C-db';
+  }
+  const levelLabels = {red:'🔴 Roll Now',orange:'🟠 Watch',yellow:'🟡 Radar',green:'✅ Healthy'};
+  let html='', lastLevel=null;
+  positions.forEach(p => {
+    const level=getAlertLevel(p), delta=getEffectiveDelta(p);
+    const stock=getLiveStock(p), dte=getDTE(p), itm=isITM(p), src=getDeltaSource(p);
+    if(level!==lastLevel) { html+=`<div class="mob-group-hdr">${levelLabels[level]}</div>`; lastLevel=level; }
+    const dColor=level==='red'?'var(--red)':level==='orange'?'var(--orange)':level==='yellow'?'var(--yellow)':'var(--green)';
+    const sColor=itm?'var(--red)':stock<=p.short*1.05?'var(--yellow)':'var(--green)';
+    const strikes=p.long?`${p.short}/${p.long}`:`${p.short}`;
+    const exp=p.expiry?p.expiry.slice(5):'—';
+    const dteColor=dte<=14?'var(--red)':dte<=21?'var(--orange)':'var(--muted)';
+    html+=`
+      <div class="mob-card alert-${level}">
+        <div class="mob-card-top">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="mob-ticker">${p.ticker}</span>
+            <span class="type-badge ${typeBadgeClass(p)}">${typeLabel(p)}</span>
+          </div>
+          <span class="mob-delta" style="color:${dColor}">${delta.toFixed(2)}Δ<span style="font-size:10px;color:var(--muted);font-weight:400"> ${src==='live'?'●':'~'}</span></span>
+        </div>
+        <div class="mob-card-mid">
+          <span class="mob-strikes">${p.type} ${strikes}</span>
+          <span class="mob-expiry">${exp} · <span style="color:${dteColor}">${dte}d</span></span>
+        </div>
+        <div class="mob-card-bot">
+          <span class="mob-price" style="color:${sColor}">$${stock.toFixed(2)}</span>
+          <div class="mob-badge-row">
+            ${itm?'<span class="pill pill-red">ITM</span>':''}
+            ${p.cts>1?`<span style="font-size:11px;color:var(--muted)">${p.cts}ct</span>`:''}
+            ${hasEarningsRisk(p)?'<span class="pill pill-purple">ERN</span>':''}
+          </div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML=html;
 }
 
 // ══════════════════════════════════════════
