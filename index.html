@@ -834,12 +834,12 @@ function getRollTrigger(p) {
 }
 // Profit-side thresholds (% gain)
 const THRESH_CLOSE  = 75; // ⭐ close now
-const THRESH_PROFIT = 60; // 🟦 strong close candidate
-const THRESH_WATCH_PROFIT = 45; // 🔷 on radar for closing
+const THRESH_PROFIT = 65; // 🟦 strong close candidate
+const THRESH_WATCH_PROFIT = 50; // 🔷 on radar for closing
 // Delta equivalents (fallback when no open price)
-const THRESH_DELTA_CLOSE  = 0.20;
-const THRESH_DELTA_PROFIT = 0.25;
-const THRESH_DELTA_WATCH_PROFIT = 0.30;
+const THRESH_DELTA_CLOSE  = 0.10;
+const THRESH_DELTA_PROFIT = 0.15;
+const THRESH_DELTA_WATCH_PROFIT = 0.20;
 const UW_BASE      = 'https://api.unusualwhales.com';
 const UW_HDRS      = {'Authorization':`Bearer ${UW_API_KEY}`,'UW-CLIENT-API-ID':'100001'};
 
