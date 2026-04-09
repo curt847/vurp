@@ -130,6 +130,7 @@
   .pill-yellow{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,200,66,.3)}
   .pill-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.2)}
   .pill-purple{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+  .pill-conviction{background:#ffffff;color:#1a0a2e;border:1px solid rgba(167,139,250,.6);font-weight:800;letter-spacing:.5px}
   /* Profit pills — blue spectrum */
   .pill-close{background:rgba(59,158,255,.15);color:#3b9eff;border:1px solid rgba(59,158,255,.4);animation:glow-blue 1.5s ease-in-out infinite}
   .pill-profit{background:rgba(59,158,255,.1);color:#3b9eff;border:1px solid rgba(59,158,255,.3)}
@@ -199,7 +200,7 @@
   .hdr-card-ticker{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
   .hdr-card-row{display:flex;align-items:baseline;gap:6px}
   .hdr-card-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;line-height:1.1;letter-spacing:-0.3px;color:var(--text)}
-  .hdr-card-chg{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
+  .hdr-card-chg{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600}
   .hdr-card-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);animation:pulse 2s infinite;margin-left:3px;vertical-align:middle}
   .hdr-card.stale .hdr-card-dot{background:var(--border);box-shadow:none;animation:none}
 
@@ -237,7 +238,7 @@
   .note-textarea:focus{border-color:var(--yellow)}
 
   /* P&L SUMMARY BAR */
-  .pnl-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .pnl-bar{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
   .pnl-stat{background:var(--surface2);padding:8px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .pnl-stat-val{font-family:'DM Sans',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
   .pnl-stat-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}
@@ -464,6 +465,10 @@
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-toclose" style="color:var(--text)">—</div>
     <div class="pnl-stat-lbl">Cost to Close</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-toclose-45d" style="color:var(--yellow)">—</div>
+    <div class="pnl-stat-lbl">Cost to Close &#8804;45d</div>
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-netpnl">—</div>
@@ -722,6 +727,13 @@
     <div id="posCollateralPreview" style="color:var(--muted);font-size:10px;margin-bottom:10px;display:none">
       📐 Cost Basis / Collateral: <span id="collateralCalc" style="color:var(--accent);font-weight:700"></span>
     </div>
+    <label id="conviction-hold-group" style="display:flex;align-items:flex-start;gap:10px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.25);border-radius:6px;padding:10px 12px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="f-conviction" style="margin-top:2px;accent-color:var(--purple);flex-shrink:0;width:14px;height:14px"/>
+      <div>
+        <div style="color:var(--purple);font-size:11px;font-weight:700;letter-spacing:.5px">&#127919; CONVICTION HOLD</div>
+        <div style="color:var(--muted);font-size:10px;margin-top:2px;line-height:1.5">Binary / thesis play &#8212; bumps roll threshold +0.10 (hard cap 0.85). Suppresses ROLL button unless truly extreme. Shows &#127919; HOLD badge.</div>
+      </div>
+    </label>
     <div id="posFormError" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="closePosModal()">CANCEL</button>
@@ -818,7 +830,7 @@ const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // Roll trigger: relative drift from entryDelta + absolute cap, whichever fires first
 // Yellow = trigger - 0.05, Red = trigger
 const DTE_BANDS = [
-  { maxDte: 30,  drift: 0.12, cap: 0.55 },  // <30 DTE
+  { maxDte: 30,  drift: 0.12, cap: 0.60 },  // <30 DTE
   { maxDte: 60,  drift: 0.18, cap: 0.65 },  // 30-60 DTE
   { maxDte: 9999,drift: 0.25, cap: 0.75 },  // >60 DTE
 ];
@@ -830,7 +842,9 @@ function getRollTrigger(p) {
   const band = getDteBand(dte);
   const base = typeof p.entryDelta === 'number' ? p.entryDelta : 0.30; // fallback
   const relative = base + band.drift;
-  return Math.min(relative, band.cap); // whichever is more conservative
+  const normal = Math.min(relative, band.cap);
+  if (p.convictionHold) return Math.min(normal + 0.15, 0.85);
+  return normal;
 }
 // Profit-side thresholds (% gain)
 const THRESH_CLOSE  = 75; // ⭐ close now
@@ -931,10 +945,11 @@ function getAlertLevel(p) {
 
   // Long options: delta FADING is the concern — opposite of spread roll logic
   if (isLongOption(p)) {
+    // ITM near expiry is GOOD for long options — green, not red
+    if (isITM(p) && dte <= 7) return 'green';
     if (d < 0.15) return 'red';
     if (d < 0.25) return 'orange';
     if (d < 0.35) return 'yellow';
-    if (isITM(p) && dte <= 7) return 'red';
     return 'green';
   }
 
@@ -1050,10 +1065,12 @@ function getSpreadMid(p) {
     const openShort = Math.abs(p.shortMid || 0);
     const openLong  = Math.abs(p.longMid  || 0);
     const longEst   = openShort > 0 && openLong > 0 ? shortMid * (openLong / openShort) : 0;
-    return { mid: Math.max(0, shortMid - longEst), isLive: true, isBs: false };
+    const spreadWidth = p.long ? Math.abs(p.short - p.long) : Infinity;
+    return { mid: Math.min(Math.max(0, shortMid - longEst), spreadWidth), isLive: true, isBs: false };
   }
   // Nothing — fall back to open premium
-  return { mid: Math.abs(p.open), isLive: false, isBs: false };
+  const width = p.long ? Math.abs(p.short - p.long) : Infinity;
+  return { mid: Math.min(Math.abs(p.open), width), isLive: false, isBs: false };
 }
 
 function calcExtrinsic(p) {
@@ -1136,7 +1153,17 @@ function getFiltered() {
       case 'puts':     return p.type==='P';
       case 'itm':      return isITM(p);
       case 'earnings': return hasEarningsRisk(p);
-      case 'flow':     return hasFlowSignal(p) && (flowData[p.ticker]&&flowData[p.ticker].isContra);
+      case 'flow':     {
+        const _fd = flowData[p.ticker];
+        if (!hasFlowSignal(p) || !_fd) return false;
+        const _s = _fd.sentiment;
+        const _cc = p.postype==='covered_call';
+        return (_s==='bear' && p.type==='P' && !isLongOption(p) && !_cc)
+            || (_s==='bull' && p.type==='C' && !isLongOption(p) && !_cc)
+            || (_s==='bull' && _cc)
+            || (_s==='bear' && p.postype==='long_call')
+            || (_s==='bull' && p.postype==='long_put');
+      }
       default:         return true;
     }
   });
@@ -1148,7 +1175,7 @@ function getFiltered() {
         return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
       }
       case 'expiry':     return a.expiry.localeCompare(b.expiry);
-      case 'dte':        return calcDTE(a.expiry)-calcDTE(b.expiry);
+      case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); return dteDiff!==0?dteDiff:a.ticker.localeCompare(b.ticker); }
       case 'collateral': return b.collateral-a.collateral;
       case 'remain':     return b.remain-a.remain;
       case 'delta':      return getEffectiveDelta(b)-getEffectiveDelta(a);
@@ -1287,8 +1314,10 @@ function renderTable() {
       :'<span style="color:var(--muted)">—</span>';
 
     const isLong = isLongOption(p);
+    const longRedLabel = isLong && isITM(p) && getDTE(p) <= 7 ? 'EXPIRING' : 'FADING';
     const pills = isLong ? {
-      red:`<span class="pill pill-red"><span class="dot dot-red"></span>FADING</span>`,
+      red:`<span class="pill pill-red"><span class="dot dot-red"></span>${longRedLabel}</span>`,
+      green_expiring:`<span class="pill pill-green"><span class="dot dot-green"></span>EXPIRING</span>`,
       orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
       yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
       green:``,
@@ -1301,7 +1330,7 @@ function renderTable() {
     const ccRoll = getCCRollTrigger(p);
     let statusHtml = p.postype === 'covered_call'
       ? `<span class="pill pill-green"><span class="dot dot-green"></span>CC</span>`
-      : pills[level];
+      : (isLong && isITM(p) && getDTE(p) <= 7) ? pills['green_expiring'] : pills[level];
 
     // CC roll triggers (override profit pills for covered calls)
     if (p.postype === 'covered_call') {
@@ -1325,10 +1354,22 @@ function renderTable() {
 
     if (itm)   statusHtml+=` <span class="pill pill-${isLong?'green':'red'}" style="margin-left:2px">ITM</span>`;
     if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ERN</span>`;
+    if (p.convictionHold) { statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,''); statusHtml = `<span class="pill pill-conviction">&#127919; HOLD</span> ` + statusHtml; }
 
     let flowHtml='<span style="color:var(--muted);font-size:10px">—</span>';
     if (flow) {
-      const isContra = flow.isContra;
+      // Per-position contra: is this specific position working against the flow?
+      const _sent = flow.sentiment;
+      const _isCC = p.postype === 'covered_call';
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
+      const _isLongCall  = p.postype==='long_call';
+      const _isLongPut   = p.postype==='long_put';
+      const isContra = (_isShortPut  && _sent==='bear')
+                    || (_isShortCall && _sent==='bull')
+                    || (_isCC        && _sent==='bull')
+                    || (_isLongCall  && _sent==='bear')
+                    || (_isLongPut   && _sent==='bull');
       const fc = isContra
         ? 'fb-contra'
         : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
@@ -1389,7 +1430,8 @@ function renderTable() {
         ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ SELL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
         : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
     } else {
-      actionHtml = (level==='red'||level==='orange')
+      const convictionRollBlock = p.convictionHold && getEffectiveDelta(p) < 0.85;
+      actionHtml = (level==='red'||level==='orange') && !convictionRollBlock
         ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
         : profitLevel==='close'
           ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
@@ -1437,11 +1479,18 @@ function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
   let col=0,itm=0,ern=0,fl=0;
   POSITIONS.forEach(p=>{
-    cnt[getAlertLevel(p)]++;
+    if (!isLongOption(p)) cnt[getAlertLevel(p)]++;
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
-    if(hasFlowSignal(p)&&(flowData[p.ticker]&&flowData[p.ticker].isContra)) fl++;
+    if(hasFlowSignal(p)&&flowData[p.ticker]) {
+      const _fd4=flowData[p.ticker], _s4=_fd4.sentiment, _cc4=p.postype==='covered_call';
+      if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4)
+       ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4)
+       ||(_s4==='bull'&&_cc4)
+       ||(_s4==='bear'&&p.postype==='long_call')
+       ||(_s4==='bull'&&p.postype==='long_put')) fl++;
+    }
   });
   document.getElementById('s-red').textContent=cnt.red;
   document.getElementById('s-orange').textContent=cnt.orange;
@@ -1541,15 +1590,17 @@ function renderMobile() {
 // P&L SUMMARY BAR
 // ══════════════════════════════════════════
 function updatePnlBar() {
-  let totalCollected = 0, totalToClose = 0, totalCollateral = 0;
+  let totalCollected = 0, totalToClose = 0, totalCollateral = 0, toClose45d = 0;
   POSITIONS.forEach(p => {
     if (isLongOption(p)) return; // long options: skip from credit metrics
     if (p.postype === 'covered_call') return;
     const openPrem = Math.abs(p.open);
     const { mid } = getSpreadMid(p);
+    const cost = mid * 100 * p.cts;
     totalCollected  += openPrem * 100 * p.cts;
-    totalToClose    += mid * 100 * p.cts;
+    totalToClose    += cost;
     totalCollateral += p.collateral;
+    if (getDTE(p) <= 45) toClose45d += cost;
   });
   const netPnL    = totalCollected - totalToClose;
   const pctCaptured = totalCollected > 0 ? (netPnL / totalCollected) * 100 : 0;
@@ -1585,6 +1636,7 @@ function updatePnlBar() {
   const fmt = v => '$' + Math.round(Math.abs(v)).toLocaleString();
   document.getElementById('pnl-collected').textContent = fmt(totalCollected);
   document.getElementById('pnl-toclose').textContent   = fmt(totalToClose);
+  document.getElementById('pnl-toclose-45d').textContent = fmt(toClose45d);
   document.getElementById('pnl-netpnl').textContent    = (netPnL >= 0 ? '+' : '-') + fmt(netPnL);
   document.getElementById('pnl-netpnl').style.color    = pnlColor;
   document.getElementById('pnl-pct').textContent       = pctCaptured.toFixed(1) + '%';
@@ -1626,7 +1678,12 @@ function renderOndsCard() {
     const value   = price * shares;
     const gl      = (price - basis) * shares;
     const glClass = gl >= 0 ? 'pnl-pos' : 'pnl-neg';
-    const premBanked = ondsCCs.reduce((s, p) => s + Math.abs(p.open) * 100 * p.cts, 0);
+    // Cumulative CC premium: closed CC P&L from log (net of buybacks) + open CC premium collected
+    const closedCCPnl = TRADE_LOG
+      .filter(e => e.ticker === trackerTicker && e.typeLabel === 'CC')
+      .reduce((s, e) => s + (e.pnlTotal || 0), 0);
+    const openCCPrem  = ondsCCs.reduce((s, p) => s + Math.abs(p.open) * 100 * p.cts, 0);
+    const premBanked  = closedCCPnl + openCCPrem;
 
     // Triggers HTML
     const triggerHtml = !ondsCCs.length
@@ -1678,7 +1735,10 @@ function renderOndsCard() {
         <span style="font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;color:var(--text)">${price > 0 ? '$' + price.toFixed(2) : '—'}</span>
         <span style="color:var(--accent);font-size:13px">${value > 0 ? '$' + (value/1000).toFixed(1) + 'K' : ''}</span>
         <span class="onds-metric-val ${glClass}" style="font-size:16px">${price > 0 ? (gl >= 0 ? '+' : '') + '$' + Math.round(gl).toLocaleString() : '—'}</span>
-        ${premBanked > 0 ? '<span style="color:var(--green);font-size:13px;font-weight:600">+$' + Math.round(premBanked).toLocaleString() + ' banked</span>' : ''}
+        ${(openCCPrem > 0 || premBanked > 0) ? `<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-start">
+          ${openCCPrem > 0 ? '<span style="color:var(--green);font-size:13px;font-weight:600">+$' + Math.round(openCCPrem).toLocaleString() + ' open</span>' : ''}
+          ${premBanked > 0 ? '<span style="color:var(--teal);font-size:11px;font-weight:600" title="Closed CC P&L + open CC premium collected">+$' + Math.round(premBanked).toLocaleString() + ' all-time</span>' : ''}
+        </div>` : ''}
       </div>
       <div style="color:var(--muted);font-size:10px">${shares.toLocaleString()} shares · cost basis $${basis.toFixed(2)}</div>
       <div style="display:flex;flex-direction:column;gap:8px">${triggerHtml}</div>
@@ -2439,17 +2499,7 @@ async function fetchFlowAlerts(tickers) {
       if (total < threshold) { console.log(`[RW] ${t} flow: below threshold ($${threshold/1000}K)`); return; }
 
       const sentiment = calls>puts*1.4?'bull':puts>calls*1.4?'bear':'neu';
-      const myPos = POSITIONS.filter(p=>p.ticker===t);
-      const hasShortPut  = myPos.some(p=>p.type==='P' && !isLongOption(p));
-      const hasShortCall = myPos.some(p=>(p.type==='C'||p.postype==='covered_call') && !isLongOption(p));
-      const hasLongCall  = myPos.some(p=>p.postype==='long_call');
-      const hasLongPut   = myPos.some(p=>p.postype==='long_put');
-      const isContra = (hasShortPut && sentiment==='bear')
-                    || (hasShortCall && sentiment==='bull')
-                    || (hasLongCall && sentiment==='bear')
-                    || (hasLongPut  && sentiment==='bull');
-
-      flowData[t]={sentiment, premium:total, calls, puts, callCt, putCt, isContra};
+      flowData[t]={sentiment, premium:total, calls, puts, callCt, putCt};
       console.log(`[RW] ${t} flow: ${sentiment} isContra=${isContra}`);
     } catch(e){ console.warn(`[RW] ${t} flow error:`, e); }
   }));
@@ -2642,8 +2692,8 @@ function toggleAuto() {
     clearInterval(autoTimer); autoTimer=null;
     btn.textContent='⏱ AUTO: OFF'; btn.classList.remove('on');
   } else {
-    fetchAll(); autoTimer=setInterval(fetchAll,15*60*1000);
-    btn.textContent='⏱ AUTO: 15MIN'; btn.classList.add('on');
+    fetchAll(); autoTimer=setInterval(fetchAll,30*60*1000);
+    btn.textContent='⏱ AUTO: 30MIN'; btn.classList.add('on');
   }
 }
 
@@ -2996,6 +3046,11 @@ function onPosTypeChange() {
     shortLabel.textContent = 'Short Strike $';
   }
   updateCollateralPreview();
+  const _chg = document.getElementById('conviction-hold-group');
+  if (_chg) {
+    const _pt2 = document.getElementById('f-postype').value;
+    _chg.style.display = (_pt2==='covered_call'||_pt2==='long_call'||_pt2==='long_put') ? 'none' : 'flex';
+  }
 }
 
 function updateCollateralPreview() {
@@ -3040,6 +3095,7 @@ function showAddModal() {
   ['f-ticker','f-short','f-long','f-cts','f-expiry','f-open']
     .forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-type').value = 'P';
+  const _cvClear = document.getElementById('f-conviction'); if(_cvClear) _cvClear.checked = false;
   document.getElementById('f-postype').value = 'spread_credit';
   document.getElementById('f-type').disabled = false;
   document.querySelector('.long-strike-group').style.display = 'flex';
@@ -3067,6 +3123,7 @@ function showEditModal(idx) {
   document.getElementById('f-cts').value      = p.cts;
   document.getElementById('f-expiry').value   = p.expiry;
   document.getElementById('f-open').value     = Math.abs(p.open);
+  const _cvEl = document.getElementById('f-conviction'); if(_cvEl) _cvEl.checked = !!(p.convictionHold);
   document.getElementById('posFormError').style.display = 'none';
   onPosTypeChange();
   document.getElementById('posModal').classList.add('show');
@@ -3115,6 +3172,8 @@ function savePosition() {
     if (needsShortLower  && corrShort > corrLong) { [corrShort, corrLong] = [corrLong, corrShort]; }
   }
 
+  const convictionHold = !!(document.getElementById('f-conviction')?.checked) && postype!=='covered_call' && !isSingleLeg;
+
   const pos = {
     ticker, type, postype: postype || 'spread_credit',
     short: corrShort, long: corrLong,
@@ -3126,6 +3185,7 @@ function savePosition() {
     open: isDebit ? -Math.abs(open) : Math.abs(open), // debit stored as negative
     collateral, gain: 0, remain: 50,
     shortMid: open, longMid: 0,
+    convictionHold,
   };
 
   // Calculate and store entryDelta silently using BS at entry
@@ -3351,8 +3411,15 @@ function executeClose() {
   TRADE_LOG.push(entry);
 
   // Remove from active positions
+  const closedTicker = p.ticker;
   POSITIONS.splice(closingIdx, 1);
   closingIdx = null;
+
+  // If no positions remain for this ticker, move it to the watching section
+  const stillHasPosition = POSITIONS.some(pos => pos.ticker === closedTicker);
+  if (!stillHasPosition && !WATCHLIST.includes(closedTicker)) {
+    WATCHLIST.push(closedTicker);
+  }
 
   saveToStorage();
   renderTable();
@@ -3454,7 +3521,8 @@ function showTradeLog() {
       <td style="padding:5px 8px;text-align:center">${e.dteAtClose}d</td>
       <td style="padding:5px 8px;text-align:center">${alertDot}</td>
       <td style="padding:5px 8px;color:var(--muted);font-size:10px">${reasonLabels[e.reason]||e.reason}</td>
-      <td style="padding:5px 8px;color:var(--muted);font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.notes||''}</td>
+      <td style="padding:5px 8px;color:var(--muted);font-size:10px;max-width:200px;white-space:normal;word-break:break-word;line-height:1.4">${e.notes||''}</td>
+      <td style="padding:5px 4px"><button onclick="editLogEntry(${e.id})" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">&#9998;</button></td>
     </tr>`;
   }).join('');
 
@@ -3550,6 +3618,7 @@ function showTradeLog() {
             <th style="padding:6px 8px;text-align:center;color:var(--muted);font-size:9px">Alert</th>
             <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Reason</th>
             <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Notes</th>
+            <th style="padding:6px 8px;width:32px"></th>
           </tr></thead>
           <tbody>${logRows}</tbody>
         </table>
@@ -3558,6 +3627,127 @@ function showTradeLog() {
 
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function editLogEntry(id) {
+  const idx = TRADE_LOG.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const e = TRADE_LOG[idx];
+  const reasonLabels = { profit_target:'Profit Target', roll_out:'Roll-Out', stop_loss:'Stop Loss', expired:'Expired', manual:'Manual / Other' };
+  const strikes = e.long ? `$${e.short}/$${e.long}` : `$${e.short}`;
+  const overlay = document.createElement('div');
+  overlay.id = 'logEditModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:700;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;font-family:'JetBrains Mono',monospace">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent);margin-bottom:4px">Edit Log Entry</div>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:20px">${e.ticker} &middot; ${e.typeLabel} &middot; ${strikes} &middot; ${e.expiry} &middot; closed ${e.closedAt?.slice(0,10)||'&mdash;'}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Entry Premium</div>
+            <input id="le_entryPremium" type="number" step="0.01" min="0" value="${e.entryPremium.toFixed(2)}"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 10px;border-radius:4px;width:100%;outline:none"
+              oninput="leRecalc()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Close Price</div>
+            <input id="le_closePrice" type="number" step="0.01" min="0" value="${e.closePrice.toFixed(2)}"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 10px;border-radius:4px;width:100%;outline:none"
+              oninput="leRecalc()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Contracts</div>
+            <input id="le_cts" type="number" step="1" min="1" value="${e.cts}"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 10px;border-radius:4px;width:100%;outline:none"
+              oninput="leRecalc()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">P&amp;L Preview</div>
+            <div id="le_preview" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted)">--</div>
+          </div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Close Reason</div>
+          <select id="le_reason" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 10px;border-radius:4px;width:100%;outline:none;cursor:pointer"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            ${Object.entries(reasonLabels).map(([v,l])=>`<option value="${v}"${e.reason===v?' selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Notes</div>
+          <textarea id="le_notes" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;width:100%;outline:none;resize:vertical;min-height:80px;line-height:1.6"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">${e.notes||''}</textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button onclick="saveLogEdit(${idx})" style="flex:1;background:var(--accent);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px;border-radius:4px;cursor:pointer">SAVE CHANGES</button>
+        <button onclick="deleteLogEntry(${idx})" style="background:transparent;border:1px solid rgba(255,61,90,.4);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 14px;border-radius:4px;cursor:pointer" title="Delete">DEL</button>
+        <button onclick="document.getElementById('logEditModal').remove()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 16px;border-radius:4px;cursor:pointer">CANCEL</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', ev => { if(ev.target===overlay) overlay.remove(); });
+  leRecalc();
+}
+
+function leRecalc() {
+  const entry = parseFloat(document.getElementById('le_entryPremium')?.value) || 0;
+  const close  = parseFloat(document.getElementById('le_closePrice')?.value) || 0;
+  const cts    = parseInt(document.getElementById('le_cts')?.value) || 1;
+  const el     = document.getElementById('le_preview');
+  if (!el) return;
+  const pct  = entry > 0 ? Math.round(((entry - close) / entry) * 100) : 0;
+  const pnl  = Math.round((entry - close) * 100 * cts * 100) / 100;
+  const color = pct >= 50 ? 'var(--green)' : pct >= 0 ? 'var(--yellow)' : 'var(--red)';
+  el.style.color = color;
+  el.textContent = pct + '% - $' + pnl.toFixed(0);
+}
+
+function saveLogEdit(idx) {
+  const e = TRADE_LOG[idx];
+  if (!e) return;
+  const entryPremium = parseFloat(document.getElementById('le_entryPremium')?.value);
+  const closePrice   = parseFloat(document.getElementById('le_closePrice')?.value);
+  const cts          = parseInt(document.getElementById('le_cts')?.value);
+  const reason       = document.getElementById('le_reason')?.value;
+  const notes        = document.getElementById('le_notes')?.value?.trim();
+  if (!isNaN(entryPremium) && entryPremium >= 0) e.entryPremium = entryPremium;
+  if (!isNaN(closePrice) && closePrice >= 0)     e.closePrice   = closePrice;
+  if (!isNaN(cts) && cts > 0)                    e.cts          = cts;
+  if (reason) { e.reason = reason; e.rolledOut = reason === 'roll_out'; }
+  if (notes !== undefined) e.notes = notes;
+  const op = e.entryPremium, cp = e.closePrice;
+  e.pctCapture = op > 0 ? Math.round(((op - cp) / op) * 100) : 0;
+  e.pnlPerCt   = Math.round((op - cp) * 100 * 100) / 100;
+  e.pnlTotal   = Math.round((op - cp) * 100 * e.cts * 100) / 100;
+  saveToStorage();
+  document.getElementById('logEditModal')?.remove();
+  document.getElementById('tradeLogModal')?.remove();
+  showTradeLog();
+  const toast = document.createElement('div');
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;z-index:999";
+  toast.textContent = 'Log entry updated: ' + e.ticker;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+function deleteLogEntry(idx) {
+  const e = TRADE_LOG[idx];
+  if (!e) return;
+  if (!confirm('Delete log entry for ' + e.ticker + '? This cannot be undone.')) return;
+  TRADE_LOG.splice(idx, 1);
+  saveToStorage();
+  document.getElementById('logEditModal')?.remove();
+  document.getElementById('tradeLogModal')?.remove();
+  if (TRADE_LOG.length) showTradeLog();
+  const toast = document.createElement('div');
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;z-index:999";
+  toast.textContent = 'Log entry deleted';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
 }
 
 function exportTradeLog() {
@@ -3855,7 +4045,7 @@ function renderWatchList() {
   // Compute per-ticker close cost for sorting
   const tickerCloseCost = {};
   posTickers.forEach(t => {
-    const tPos = POSITIONS.filter(p => p.ticker === t);
+    const tPos = POSITIONS.filter(p => p.ticker === t && p.postype !== 'covered_call' && !isLongOption(p));
     tickerCloseCost[t] = tPos.reduce((sum, p) => {
       const { mid } = getSpreadMid(p);
       return sum + mid * 100 * p.cts;
