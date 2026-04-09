@@ -186,8 +186,8 @@
   .btn-danger:hover{opacity:.85}
   .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
   .btn-secondary:hover{border-color:var(--accent);color:var(--accent);opacity:1}
-  .close-x{background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;transition:all .15s}
-  .close-x:hover{color:var(--red);background:var(--red-dim)}
+  .close-x{background:transparent;border:1px solid rgba(0,232,138,.3);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;padding:3px 8px;border-radius:3px;line-height:1;transition:all .15s;letter-spacing:.5px}
+  .close-x:hover{background:var(--green-dim);border-color:var(--green)}
   .ticker-refresh-btn{background:transparent;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:1px 3px;border-radius:3px;line-height:1;vertical-align:middle;margin-left:2px}
   .ticker-refresh-btn:hover{color:var(--accent)}
   .storage-badge{font-size:9px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,232,138,.2);padding:2px 7px;border-radius:3px}
@@ -278,8 +278,7 @@
     .stats-bar, .pnl-bar, .flow-bar, .controls,
     .table-wrap, #ondsCard, .notes-fab, .notes-panel,
     .footer-note, .modal-overlay,
-    div[style*="Stock Positions"], div[style*="Watch List"],
-    div[style*="Ticker Exposure"] { display: none !important }
+    div[style*="Stock Positions"], div[style*="Watch List"] { display: none !important }
 
     /* Slim down the header */
     .header { flex-wrap: wrap; gap: 6px; padding: 8px 12px }
@@ -429,6 +428,7 @@
     <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ ERN</button>
     <button class="btn btn-ghost" id="ivBtn" onclick="fetchIV()" style="font-size:10px;padding:5px 10px">⟳ IV</button>
     <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px">⟳ FLOW</button>
+    <button class="btn btn-ghost" onclick="showTradeLog()" style="border-color:rgba(0,212,255,.3);color:var(--accent);font-size:10px;padding:5px 10px">📋 LOG</button>
     <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
   </div>
 </div>
@@ -585,27 +585,6 @@
   <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
 </div>
 
-<!-- EXPOSURE SUMMARY TABLE -->
-<div style="padding:0 20px 20px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:8px">
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Ticker Exposure</div>
-    <span style="color:var(--muted);font-size:9px">ranked by collateral · close cost color: 🟢 &lt;30% · ⬜ 30–40% · 🟠 40–60% · 🔴 &gt;60% of collateral</span>
-  </div>
-  <table style="width:100%;border-collapse:collapse">
-    <thead><tr>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Ticker</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Positions</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Contracts</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Collateral</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">To Close</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">% of Collateral</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Concentration</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Alert</th>
-    </tr></thead>
-    <tbody id="exposureBody"></tbody>
-  </table>
-</div>
-
 <div class="footer-note">
   ROLLWATCH v2.1 — Spreads: ≥0.75 🔴 ROLL | 0.65–0.75 🟠 WATCH | 0.55–0.65 🟡 RADAR — Long Options: &lt;0.15Δ 🔴 FADING | &lt;0.25Δ 🟠 WATCH — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 PROFIT | ≤0.30Δ 🔷 RADAR — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.) — Positions stored locally in browser
 </div>
@@ -746,7 +725,6 @@
     <div id="posFormError" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="closePosModal()">CANCEL</button>
-      <button class="btn btn-danger" id="posDeleteBtn" onclick="deletePosition()" style="display:none">✕ CLOSE POSITION</button>
       <button class="btn" id="posSaveBtn" onclick="savePosition()" style="background:var(--green)">SAVE</button>
     </div>
   </div>
@@ -1364,24 +1342,24 @@ function renderTable() {
     const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--text);font-size:9px;font-weight:400;margin-top:1px">${src==='live' ? `●LIVE ${deltaRefreshTs||''}` : isStaleSession ? '~stale' : `~BS ${deltaRefreshTs||''}`}</div>`;
 
     // Action buttons
-    const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+    const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
     let actionHtml;
     if (p.postype === 'covered_call') {
       // CC: show ROLL button when any trigger fires, otherwise just EDIT
       const rollUrgent = ccRoll === 'strike' || ccRoll === 'dte' || ccRoll === 'profit';
       actionHtml = rollUrgent
         ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
-        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
     } else if (isLong) {
       actionHtml = profitLevel === 'close'
         ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ SELL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
-        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
     } else {
       actionHtml = (level==='red'||level==='orange')
         ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
         : profitLevel==='close'
           ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
-          : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✕</button>`;
+          : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
     }
 
     const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
@@ -1978,7 +1956,6 @@ async function fetchAll() {
 
   updatePriceTicker();
   renderTable();
-  renderExposure();
   renderStocks();
   renderOndsCard();
   renderWatchList();
@@ -2622,6 +2599,10 @@ const STORAGE_KEY       = 'rollwatch_positions_v2';
 const STOCK_STORAGE_KEY = 'rollwatch_stocks_v1';
 const CC_TRACK_KEY      = 'rollwatch_cctracked_v1';
 const NOTES_KEY         = 'rollwatch_notes_v1';
+const TRADELOG_KEY      = 'rollwatch_tradelog_v1';
+
+// Append-only closed trade log — never mutated, only pushed to
+let TRADE_LOG = [];
 let CC_TRACKED = new Set(['ONDS', 'APLD']);
 let yahooReady = true; // false during fetchAll UW pass — defers pct colors until Yahoo corrects
 let TICKER_NOTES = {}; // ticker -> { text, ts }
@@ -2708,6 +2689,7 @@ function buildPayload() {
     ccTracked:         [...CC_TRACKED],
     tickerNotes:       TICKER_NOTES,
     portfolioBaseline: portfolioBaseline,
+    tradeLog:          TRADE_LOG,
     liveData:          liveData,
     livePrices:        livePrices,
     earningsMap:       earningsMap,
@@ -2758,6 +2740,10 @@ async function driveLoad() {
     if (data.bias && typeof data.bias === 'object') { BIAS = data.bias; }
     if (Array.isArray(data.ccTracked)) { CC_TRACKED = new Set(data.ccTracked); }
     if (data.tickerNotes && typeof data.tickerNotes === 'object') { TICKER_NOTES = data.tickerNotes; }
+    if (Array.isArray(data.tradeLog)) {
+      TRADE_LOG = data.tradeLog;
+      localStorage.setItem(TRADELOG_KEY, JSON.stringify(TRADE_LOG));
+    }
     if (data.portfolioBaseline && data.portfolioBaseline.value) {
       portfolioBaseline = data.portfolioBaseline;
     }
@@ -2803,6 +2789,7 @@ function saveToStorage() {
     localStorage.setItem(BIAS_KEY,          JSON.stringify(BIAS));
     localStorage.setItem(CC_TRACK_KEY,      JSON.stringify([...CC_TRACKED]));
     localStorage.setItem(NOTES_KEY,         JSON.stringify(TICKER_NOTES));
+    localStorage.setItem(TRADELOG_KEY,      JSON.stringify(TRADE_LOG));
     if (portfolioBaseline) localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
     // Save last-known market data so it survives a page reload
     localStorage.setItem('rollwatch_livedata_v1',   JSON.stringify(liveData));
@@ -2855,6 +2842,11 @@ function loadFromStorage() {
     if (rawNotes) {
       const savedNotes = JSON.parse(rawNotes);
       if (savedNotes && typeof savedNotes === 'object') { TICKER_NOTES = savedNotes; }
+    }
+    const rawLog = localStorage.getItem(TRADELOG_KEY);
+    if (rawLog) {
+      const savedLog = JSON.parse(rawLog);
+      if (Array.isArray(savedLog)) { TRADE_LOG = savedLog; }
     }
     const rawP = localStorage.getItem(PORT_KEY);
     if (rawP) {
@@ -2974,7 +2966,6 @@ let editingIdx = null;
 function showAddModal() {
   editingIdx = null;
   document.getElementById('posModalTitle').textContent = '+ Add Position';
-  document.getElementById('posDeleteBtn').style.display = 'none';
   document.getElementById('posSaveBtn').textContent = 'SAVE';
   ['f-ticker','f-short','f-long','f-cts','f-expiry','f-open']
     .forEach(id => document.getElementById(id).value = '');
@@ -2997,7 +2988,6 @@ function showEditModal(idx) {
                 : p.postype === 'long_put'     ? 'Long Put'
                 : p.type==='P'                 ? 'PUT' : 'CALL';
   document.getElementById('posModalTitle').textContent = `✎ Edit — ${p.ticker} ${ptLabel} $${p.short}`;
-  document.getElementById('posDeleteBtn').style.display = 'block';
   document.getElementById('posSaveBtn').textContent = 'UPDATE';
   document.getElementById('f-ticker').value   = p.ticker;
   document.getElementById('f-type').value     = p.type;
@@ -3105,32 +3095,409 @@ function savePosition() {
   saveToStorage();
   closePosModal();
   renderTable();
-  renderExposure();
   renderWatchList();
   renderOndsCard();
   updateStats();
   updatePnlBar();
 }
 
+// ══════════════════════════════════════════
+// TRADE LOG — CLOSE MODAL & LOG ENGINE
+// ══════════════════════════════════════════
+
+let closingIdx = null;
+
 function confirmClose(idx) {
   const p = POSITIONS[idx];
-  const label = p.postype==='covered_call'
-    ? `${p.ticker} Covered Call $${p.short}`
-    : `${p.ticker} ${p.type==='P'?'PUT':'CALL'} $${p.short}/${p.long} ×${p.cts}`;
-  if (confirm(`Close position: ${label}?\n\nThis removes it from the dashboard.`)) {
-    POSITIONS.splice(idx, 1);
-    saveToStorage();
-    renderTable();
-    renderExposure();
-    renderWatchList();
-    renderOndsCard();
-    updateStats();
-    updatePnlBar();
+  closingIdx = idx;
+
+  // Pre-fill close price with current spread mid
+  const { mid, isLive } = getSpreadMid(p);
+  const openPrem = Math.abs(p.open);
+  const pctCapture = openPrem > 0 ? Math.round(((openPrem - mid) / openPrem) * 100) : 0;
+
+  // Build strikes display
+  const strikesLabel = p.postype === 'covered_call'
+    ? `CC $${p.short}`
+    : p.long ? `$${p.short}/$${p.long}` : `$${p.short}`;
+
+  // Build type label
+  function tlabel(p) {
+    if (p.postype==='covered_call') return 'Covered Call';
+    if (p.postype==='long_call') return 'Long Call';
+    if (p.postype==='long_put') return 'Long Put';
+    if (p.type==='P'&&p.open>0) return 'Put Credit Spread';
+    if (p.type==='C'&&p.open>0) return 'Call Credit Spread';
+    if (p.type==='P') return 'Put Debit Spread';
+    return 'Call Debit Spread';
   }
+
+  const captureColor = pctCapture >= 75 ? 'var(--green)' : pctCapture >= 50 ? 'var(--teal)' :
+                       pctCapture >= 25 ? 'var(--yellow)' : pctCapture >= 0 ? 'var(--orange)' : 'var(--red)';
+  const dteAtClose = getDTE(p);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'closeModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;font-family:'JetBrains Mono',monospace">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--green);margin-bottom:4px">✓ Close Position</div>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:18px">${p.ticker} · ${tlabel(p)} · ${strikesLabel} · ${p.cts}ct · ${p.expiry}</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:16px;font-size:11px">
+        <div><span style="color:var(--muted)">Entry Premium</span><br><span style="color:var(--text);font-size:15px;font-weight:700">$${openPrem.toFixed(2)}</span></div>
+        <div><span style="color:var(--muted)">Current Mid</span><br><span style="color:var(--text);font-size:15px;font-weight:700">$${mid.toFixed(2)} ${isLive?'<span style=\'font-size:9px;color:var(--green)\'>●LIVE</span>':'<span style=\'font-size:9px;color:var(--muted)\'>~BS</span>'}</span></div>
+        <div><span style="color:var(--muted)">% Captured (est.)</span><br><span style="font-size:15px;font-weight:700;color:${captureColor}">${pctCapture}%</span></div>
+        <div><span style="color:var(--muted)">DTE at Close</span><br><span style="color:var(--text);font-size:15px;font-weight:700">${dteAtClose}d</span></div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Close Price (spread mid to buy back)</div>
+          <input id="closePrice" type="number" step="0.01" min="0" value="${mid.toFixed(2)}"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 10px;border-radius:4px;width:100%;outline:none"
+            oninput="updateClosePctPreview(${openPrem})"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          <div id="closePctPreview" style="font-size:11px;color:var(--muted);margin-top:4px">P&L: —</div>
+        </div>
+
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Close Reason</div>
+          <select id="closeReason"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;width:100%;outline:none;cursor:pointer"
+            onchange="handleCloseReasonChange()"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <option value="profit_target">⭐ Profit Target (≥50% capture)</option>
+            <option value="roll_out">↩ Roll-Out (closing to re-enter)</option>
+            <option value="stop_loss">🛑 Stop Loss / Risk Management</option>
+            <option value="expired">📅 Expired / Near Expiration</option>
+            <option value="manual">✎ Manual / Other</option>
+          </select>
+        </div>
+
+        <div id="rollPrompt" style="display:none;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:6px;padding:10px 12px;font-size:11px">
+          <span style="color:var(--accent);font-weight:700">↩ Roll-Out detected</span>
+          <span style="color:var(--muted)"> — after closing, open Add Position with this ticker pre-filled?</span>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
+            <input type="checkbox" id="rollAddNext" checked style="accent-color:var(--accent)">
+            <span style="color:var(--text)">Yes — jump to Add Position for ${p.ticker} after closing</span>
+          </label>
+        </div>
+
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Notes (optional)</div>
+          <input id="closeNotes" type="text" placeholder="e.g. rolled to Sep, stock dropped hard…"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;width:100%;outline:none"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button onclick="executeClose()" style="flex:1;background:var(--green);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px;border-radius:4px;cursor:pointer">✓ CONFIRM CLOSE &amp; LOG</button>
+        <button onclick="document.getElementById('closeModal').remove();closingIdx=null" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 16px;border-radius:4px;cursor:pointer">CANCEL</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) { overlay.remove(); closingIdx=null; } });
+  updateClosePctPreview(openPrem);
 }
 
-function deletePosition() {
-  if (editingIdx !== null) { confirmClose(editingIdx); closePosModal(); }
+function updateClosePctPreview(openPrem) {
+  const closePrice = parseFloat(document.getElementById('closePrice')?.value) || 0;
+  const el = document.getElementById('closePctPreview');
+  if (!el) return;
+  if (openPrem <= 0) { el.textContent = 'P&L: —'; return; }
+  const pct = Math.round(((openPrem - closePrice) / openPrem) * 100);
+  const pnl = (openPrem - closePrice) * 100 * (POSITIONS[closingIdx]?.cts || 1);
+  const color = pct >= 50 ? 'var(--green)' : pct >= 0 ? 'var(--yellow)' : 'var(--red)';
+  el.innerHTML = `<span style="color:${color}">${pct}% captured · $${pnl.toFixed(0)} P&L (per contract basis)</span>`;
+}
+
+function handleCloseReasonChange() {
+  const reason = document.getElementById('closeReason')?.value;
+  const prompt = document.getElementById('rollPrompt');
+  if (prompt) prompt.style.display = reason === 'roll_out' ? 'block' : 'none';
+}
+
+function executeClose() {
+  if (closingIdx === null) return;
+  const p = POSITIONS[closingIdx];
+  const closePriceRaw = parseFloat(document.getElementById('closePrice')?.value);
+  const closePrice = isNaN(closePriceRaw) ? 0 : closePriceRaw;
+  const reason = document.getElementById('closeReason')?.value || 'manual';
+  const notes = document.getElementById('closeNotes')?.value?.trim() || '';
+  const openPrem = Math.abs(p.open);
+  const pctCapture = openPrem > 0 ? Math.round(((openPrem - closePrice) / openPrem) * 100) : 0;
+  const doRollAdd = reason === 'roll_out' && document.getElementById('rollAddNext')?.checked;
+  const rollTicker = p.ticker;
+
+  // Build the log entry schema
+  function getTypeLabel(p) {
+    if (p.postype==='covered_call') return 'CC';
+    if (p.postype==='long_call') return 'LC';
+    if (p.postype==='long_put') return 'LP';
+    if (p.type==='P'&&p.open>0) return 'PCS';
+    if (p.type==='C'&&p.open>0) return 'CCS';
+    if (p.type==='P') return 'PDS';
+    return 'CDS';
+  }
+
+  const entry = {
+    id:           Date.now(),                              // unique ID — timestamp ms
+    closedAt:     new Date().toISOString(),                // ISO datetime
+    ticker:       p.ticker,
+    typeLabel:    getTypeLabel(p),                         // PCS/CCS/CC/LC/LP etc.
+    optionType:   p.type,                                  // P or C
+    short:        p.short,
+    long:         p.long || null,
+    cts:          p.cts,
+    expiry:       p.expiry,
+    openedApprox: p.openedAt || null,                      // if we stored it (future)
+    dteAtOpen:    p.dteAtOpen || null,                     // if stored at entry
+    dteAtClose:   getDTE(p),
+    entryPremium: openPrem,
+    closePrice:   closePrice,
+    pctCapture:   pctCapture,
+    pnlPerCt:     Math.round((openPrem - closePrice) * 100 * 100) / 100,  // dollars per contract
+    pnlTotal:     Math.round((openPrem - closePrice) * 100 * p.cts * 100) / 100,
+    collateral:   p.collateral || 0,
+    alertAtClose: getAlertLevel(p),
+    reason:       reason,
+    rolledOut:    reason === 'roll_out',
+    notes:        notes
+  };
+
+  TRADE_LOG.push(entry);
+
+  // Remove from active positions
+  POSITIONS.splice(closingIdx, 1);
+  closingIdx = null;
+
+  saveToStorage();
+  renderTable();
+  renderWatchList();
+  renderOndsCard();
+  updateStats();
+  updatePnlBar();
+
+  document.getElementById('closeModal')?.remove();
+
+  // If Roll-Out, open Add Position with ticker pre-filled
+  if (doRollAdd) {
+    setTimeout(() => {
+      showAddModal();
+      const tickerInput = document.getElementById('posTicker');
+      if (tickerInput) { tickerInput.value = rollTicker; tickerInput.dispatchEvent(new Event('input')); }
+    }, 150);
+  }
+
+  // Brief confirmation toast
+  const toast = document.createElement('div');
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#000;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;z-index:999;box-shadow:0 4px 16px rgba(0,232,138,.3)";
+  toast.textContent = `✓ ${entry.ticker} logged · ${pctCapture}% captured`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2800);
+}
+
+
+
+// ══════════════════════════════════════════
+// TRADE LOG VIEWER
+// ══════════════════════════════════════════
+function showTradeLog() {
+  if (!TRADE_LOG.length) {
+    alert('No closed trades logged yet. Close your first position using the ✓ CLOSE button to start tracking.');
+    return;
+  }
+
+  // Analysis helpers
+  const byReason = {};
+  const byTicker = {};
+  const byType   = {};
+  let totalPnl = 0, totalCapture = 0, captureCount = 0;
+  let wins = 0, losses = 0;
+
+  TRADE_LOG.forEach(e => {
+    byReason[e.reason] = (byReason[e.reason] || 0) + 1;
+    if (!byTicker[e.ticker]) byTicker[e.ticker] = { count:0, pnl:0, capture:0, n:0 };
+    byTicker[e.ticker].count++;
+    byTicker[e.ticker].pnl += e.pnlTotal;
+    if (e.pctCapture !== null) { byTicker[e.ticker].capture += e.pctCapture; byTicker[e.ticker].n++; }
+    if (!byType[e.typeLabel]) byType[e.typeLabel] = { count:0, pnl:0, capture:0, n:0 };
+    byType[e.typeLabel].count++;
+    byType[e.typeLabel].pnl += e.pnlTotal;
+    if (e.pctCapture !== null) { byType[e.typeLabel].capture += e.pctCapture; byType[e.typeLabel].n++; }
+    totalPnl += e.pnlTotal;
+    if (e.pctCapture !== null) { totalCapture += e.pctCapture; captureCount++; }
+    if (e.pnlTotal >= 0) wins++; else losses++;
+  });
+
+  const avgCapture = captureCount > 0 ? Math.round(totalCapture / captureCount) : 0;
+  const winRate = TRADE_LOG.length > 0 ? Math.round((wins / TRADE_LOG.length) * 100) : 0;
+  const pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const capColor = avgCapture >= 60 ? 'var(--green)' : avgCapture >= 40 ? 'var(--yellow)' : 'var(--orange)';
+
+  const reasonLabels = { profit_target:'⭐ Profit Target', roll_out:'↩ Roll-Out', stop_loss:'🛑 Stop Loss', expired:'📅 Expired', manual:'✎ Manual' };
+
+  // Build ticker breakdown rows
+  const tickerRows = Object.entries(byTicker)
+    .sort((a,b) => b[1].pnl - a[1].pnl)
+    .map(([t, d]) => {
+      const avg = d.n > 0 ? Math.round(d.capture / d.n) : '—';
+      const c = d.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:5px 8px;font-weight:700">${t}</td>
+        <td style="padding:5px 8px;text-align:center">${d.count}</td>
+        <td style="padding:5px 8px;text-align:right;color:${c}">$${d.pnl.toFixed(0)}</td>
+        <td style="padding:5px 8px;text-align:center;color:${typeof avg==='number'&&avg>=50?'var(--green)':avg>=25?'var(--yellow)':'var(--red)'}">${typeof avg==='number'?avg+'%':'—'}</td>
+      </tr>`;
+    }).join('');
+
+  // Build log table rows (newest first)
+  const logRows = [...TRADE_LOG].reverse().map(e => {
+    const pnlC = e.pnlTotal >= 0 ? 'var(--green)' : 'var(--red)';
+    const capC = e.pctCapture >= 60 ? 'var(--green)' : e.pctCapture >= 30 ? 'var(--yellow)' : 'var(--red)';
+    const alertDot = { red:'🔴', orange:'🟠', yellow:'🟡', green:'✅' }[e.alertAtClose] || '';
+    const dateStr = e.closedAt ? e.closedAt.slice(0,10) : '—';
+    const strikes = e.long ? `${e.short}/${e.long}` : `${e.short}`;
+    return `<tr style="border-bottom:1px solid var(--border);font-size:11px">
+      <td style="padding:5px 8px;color:var(--muted)">${dateStr}</td>
+      <td style="padding:5px 8px;font-weight:700">${e.ticker}</td>
+      <td style="padding:5px 8px"><span class="type-badge type-${e.optionType==='P'&&e.entryPremium>0?'P-cr':e.optionType==='C'&&e.entryPremium>0?'C-cr':'P-db'}">${e.typeLabel}</span></td>
+      <td style="padding:5px 8px">${e.optionType} ${strikes}</td>
+      <td style="padding:5px 8px;text-align:center">${e.cts}</td>
+      <td style="padding:5px 8px;text-align:right">$${e.entryPremium.toFixed(2)}</td>
+      <td style="padding:5px 8px;text-align:right">$${e.closePrice.toFixed(2)}</td>
+      <td style="padding:5px 8px;text-align:center;font-weight:700;color:${capC}">${e.pctCapture}%</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600;color:${pnlC}">$${e.pnlTotal.toFixed(0)}</td>
+      <td style="padding:5px 8px;text-align:center">${e.dteAtClose}d</td>
+      <td style="padding:5px 8px;text-align:center">${alertDot}</td>
+      <td style="padding:5px 8px;color:var(--muted);font-size:10px">${reasonLabels[e.reason]||e.reason}</td>
+      <td style="padding:5px 8px;color:var(--muted);font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.notes||''}</td>
+    </tr>`;
+  }).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'tradeLogModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:1100px;max-width:98vw;font-family:'JetBrains Mono',monospace">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent)">📋 Trade Log</div>
+          <div style="color:var(--muted);font-size:11px;margin-top:2px">${TRADE_LOG.length} closed trades · all-time</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="exportTradeLog()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:6px 12px;border-radius:4px;cursor:pointer">⬇ EXPORT CSV</button>
+          <button onclick="document.getElementById('tradeLogModal').remove()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 14px;border-radius:4px;cursor:pointer">✕ CLOSE</button>
+        </div>
+      </div>
+
+      <!-- SUMMARY STATS -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:20px">
+        <div style="background:var(--surface2);padding:12px;text-align:center">
+          <div style="font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;color:${pnlColor}">$${totalPnl.toFixed(0)}</div>
+          <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Total P&L</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;text-align:center">
+          <div style="font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;color:${capColor}">${avgCapture}%</div>
+          <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Avg % Captured</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;text-align:center">
+          <div style="font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;color:${winRate>=60?'var(--green)':winRate>=40?'var(--yellow)':'var(--red)'}">${winRate}%</div>
+          <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Win Rate</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;text-align:center">
+          <div style="font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;color:var(--green)">${wins}</div>
+          <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Winners</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;text-align:center">
+          <div style="font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;color:var(--red)">${losses}</div>
+          <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Losers</div>
+        </div>
+      </div>
+
+      <!-- BREAKDOWN PANELS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+        <!-- By Ticker -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px">By Ticker</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:9px">Ticker</th>
+              <th style="padding:5px 8px;text-align:center;color:var(--muted);font-size:9px">Trades</th>
+              <th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:9px">P&L</th>
+              <th style="padding:5px 8px;text-align:center;color:var(--muted);font-size:9px">Avg %</th>
+            </tr></thead>
+            <tbody>${tickerRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--muted)">—</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        <!-- By Reason -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px">By Close Reason</div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+            ${Object.entries(byReason).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px">
+                <span style="color:var(--text)">${reasonLabels[r]||r}</span>
+                <span style="color:var(--accent);font-weight:700">${n} <span style="color:var(--muted);font-weight:400">(${Math.round(n/TRADE_LOG.length*100)}%)</span></span>
+              </div>
+              <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${Math.round(n/TRADE_LOG.length*100)}%;background:var(--accent);border-radius:2px"></div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- FULL LOG TABLE -->
+      <div style="color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Full Trade History (newest first)</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">
+          <thead><tr style="border-bottom:2px solid var(--border);background:var(--surface2)">
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px;white-space:nowrap">Date</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Ticker</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Type</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Strikes</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--muted);font-size:9px">Cts</th>
+            <th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:9px">Entry</th>
+            <th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:9px">Close $</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--muted);font-size:9px">% Cap</th>
+            <th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:9px">P&L</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--muted);font-size:9px">DTE</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--muted);font-size:9px">Alert</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Reason</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Notes</th>
+          </tr></thead>
+          <tbody>${logRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function exportTradeLog() {
+  if (!TRADE_LOG.length) return;
+  const headers = ['Date','Ticker','Type','Strikes','Contracts','Entry Premium','Close Price','% Captured','P&L Total','DTE at Close','Alert at Close','Reason','Rolled Out','Notes'];
+  const rows = TRADE_LOG.map(e => [
+    e.closedAt?.slice(0,10) || '',
+    e.ticker, e.typeLabel,
+    e.long ? `${e.short}/${e.long}` : e.short,
+    e.cts, e.entryPremium, e.closePrice, e.pctCapture,
+    e.pnlTotal, e.dteAtClose, e.alertAtClose,
+    e.reason, e.rolledOut ? 'Yes' : 'No', e.notes || ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `rollwatch_tradelog_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportPositions() {
@@ -3358,80 +3725,7 @@ function deleteStock() {
 document.getElementById('stockModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeStockModal(); });
 
 // ══════════════════════════════════════════
-// EXPOSURE SUMMARY TABLE
-// ══════════════════════════════════════════
-function renderExposure() {
-  const body = document.getElementById('exposureBody');
 
-  // Build per-ticker totals
-  const totals = {};
-  let grandCollateral = 0;
-  POSITIONS.forEach(p => {
-    if (!totals[p.ticker]) totals[p.ticker] = { collateral:0, cts:0, count:0, closeCost:0, alerts:{red:0,orange:0,yellow:0,green:0} };
-    const t = totals[p.ticker];
-    const col = p.postype==='covered_call' ? 0 : p.collateral;
-    t.collateral += col;
-    t.cts += p.cts;
-    t.count++;
-    const { mid } = getSpreadMid(p);
-    t.closeCost += mid * 100 * p.cts;
-    t.alerts[getAlertLevel(p)]++;
-    grandCollateral += col;
-  });
-
-  // Sort by collateral desc
-  const sorted = Object.entries(totals).sort((a,b) => b[1].collateral - a[1].collateral);
-
-  let grandCloseCost = 0;
-  body.innerHTML = sorted.map(([ticker, t]) => {
-    const lp = livePrices[ticker];
-    const closePct = t.collateral > 0 ? (t.closeCost / t.collateral) * 100 : 0;
-    const concPct  = grandCollateral > 0 ? (t.collateral / grandCollateral) * 100 : 0;
-    const closeColor = closePct > 60 ? 'var(--red)' : closePct > 40 ? 'var(--orange)' : closePct < 30 ? 'var(--green)' : 'var(--muted)';
-    const concColor  = concPct > 15 ? 'var(--red)' : concPct > 8 ? 'var(--orange)' : 'var(--muted)';
-    grandCloseCost += t.closeCost;
-
-    // Alert summary badges
-    const alertBadges = [
-      t.alerts.red    ? `<span style="color:var(--red);font-size:12px;font-weight:700">${t.alerts.red}🔴</span>` : '',
-      t.alerts.orange ? `<span style="color:var(--orange);font-size:12px;font-weight:700">${t.alerts.orange}🟠</span>` : '',
-      t.alerts.yellow ? `<span style="color:var(--yellow);font-size:12px;font-weight:700">${t.alerts.yellow}🟡</span>` : '',
-      t.alerts.green  ? `<span style="color:var(--green);font-size:12px;font-weight:700">${t.alerts.green}✅</span>` : '',
-    ].filter(Boolean).join(' ');
-
-    // Concentration bar
-    const barWidth = Math.min(100, concPct * 3); // scale so 33% fills bar
-    const concBar = `<div style="display:flex;align-items:center;gap:6px">
-      <div style="width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
-        <div style="width:${barWidth}%;height:100%;background:${concColor};border-radius:2px"></div>
-      </div>
-      <span style="color:${concColor};font-size:12px">${concPct.toFixed(1)}%</span>
-    </div>`;
-
-    return `<tr class="row">
-      <td><span class="ticker-name">${ticker}</span>${lp?`<span style="color:var(--muted);font-size:9px;display:block">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>`:''}
-      </td>
-      <td style="color:var(--text)">${t.count}</td>
-      <td style="color:var(--text)">${t.cts}</td>
-      <td style="color:var(--text)">$${t.collateral.toLocaleString()}</td>
-      <td style="color:${closeColor};font-weight:600">$${Math.round(t.closeCost).toLocaleString()}</td>
-      <td style="color:${closeColor}">${closePct.toFixed(1)}%</td>
-      <td>${concBar}</td>
-      <td>${alertBadges}</td>
-    </tr>`;
-  }).join('');
-
-  // Totals row
-  const grandClosePct = grandCollateral > 0 ? (grandCloseCost / grandCollateral) * 100 : 0;
-  const grandCloseColor = grandClosePct > 60 ? 'var(--red)' : grandClosePct > 40 ? 'var(--orange)' : grandClosePct < 30 ? 'var(--green)' : 'var(--muted)';
-  body.innerHTML += `<tr style="border-top:2px solid var(--border);background:var(--surface2)">
-    <td colspan="3" style="color:var(--muted);font-size:10px;padding:8px 10px;text-transform:uppercase;letter-spacing:1px">TOTAL</td>
-    <td style="color:var(--text);font-weight:700;font-size:15px">$${grandCollateral.toLocaleString()}</td>
-    <td style="color:${grandCloseColor};font-weight:700;font-size:15px">$${Math.round(grandCloseCost).toLocaleString()}</td>
-    <td style="color:${grandCloseColor};font-weight:700;font-size:15px">${grandClosePct.toFixed(1)}%</td>
-    <td colspan="2"></td>
-  </tr>`;
-}
 
 // ══════════════════════════════════════════
 // WATCH LIST
@@ -3725,7 +4019,6 @@ recalcAllCollateral();
 // Initial render with local/storage data
 updateStats();
 renderTable();
-renderExposure();
 renderStocks();
 renderOndsCard();
 renderWatchList();
@@ -3738,7 +4031,6 @@ driveLoad().then(function(loaded) {
     recalcAllCollateral();
     updateStats();
     renderTable();
-    renderExposure();
     renderStocks();
     renderOndsCard();
     renderWatchList();
