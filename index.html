@@ -246,8 +246,8 @@
   .pnl-progress-bar{height:100%;border-radius:3px;transition:width .4s}
 
   /* ONDS TRACKER CARD */
-  .onds-card{background:var(--surface);border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:0;margin:0 20px 12px;display:flex;flex-direction:row;align-items:stretch;overflow:hidden}
-  .onds-block{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .onds-card{background:var(--surface);border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:0;margin:0 20px 12px;display:flex;flex-direction:row;align-items:stretch;flex-wrap:wrap;overflow:hidden}
+  .onds-block{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-width:320px}
   .onds-block+.onds-block{border-left:1px solid var(--border)}
   .onds-ticker{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--accent);letter-spacing:-0.5px}
   .onds-sub{color:var(--muted);font-size:10px;margin-top:2px}
@@ -584,6 +584,7 @@
         oninput="this.value=this.value.toUpperCase()"
         onfocus="this.style.borderColor='var(--accent)'"
         onblur="this.style.borderColor='var(--border)'" />
+      <button class="btn" style="font-size:10px;padding:5px 12px" onclick="sortAndRenderWatch()" title="Re-sort by cost to close">⇅ SORT</button>
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
     </div>
   </div>
@@ -969,8 +970,9 @@ function getAlertLevel(p) {
   if (d >= warn)     return 'yellow';
 
   // ITM safety net — even if delta hasn't hit trigger, ITM near expiry is orange
-  if (isITM(p) && dte <= 7)  return 'red';
-  if (isITM(p) && dte <= 21) return 'orange';
+  // convictionHold softens by one level (red→yellow, orange→green)
+  if (isITM(p) && dte <= 7)  return p.convictionHold ? 'yellow' : 'red';
+  if (isITM(p) && dte <= 21) return p.convictionHold ? 'green'  : 'orange';
 
   return 'green';
 }
@@ -1703,7 +1705,7 @@ function renderOndsCard() {
           const trigger2Class = t2Fire ? 'fire' : pctGain < 0 ? 'fire' : watchProfit ? 'warn' : 'ok';
           const trigger3Class = t3Fire ? 'fire' : watchDTE ? 'warn' : 'ok';
           const mo = new Date(p.expiry + 'T12:00:00').toLocaleString('en-US',{month:'short'});
-          return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px">$${p.short} CC · ${mo} · ${dte}d · ×${p.cts}</div>
+          return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} · ${dte}d · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} to strike</span>
               <span class="onds-trigger ${trigger2Class}">${pctGain >= 0 ? "💰" : "⚠️"} ${pctGain.toFixed(0)}% ${pctGain >= 0 ? "decay" : "underwater"}</span>
@@ -1711,23 +1713,6 @@ function renderOndsCard() {
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
-    // CC summary list HTML
-    const ccListHtml = ondsCCs.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">` +
-      ondsCCs.map(p => {
-        const dte = getDTE(p);
-        const { mid } = getSpreadMid(p);
-        const openPrem = Math.abs(p.open);
-        const pctGain = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
-        const mo = new Date(p.expiry + 'T12:00:00').toLocaleString('en-US',{month:'short'});
-        const pnlColor = pctGain < 0 ? 'var(--red)' : pctGain >= 50 ? 'var(--green)' : 'var(--text)';
-        return `<div class="onds-cc-item">
-          <span style="color:var(--accent);font-weight:700">$${p.short}</span>
-          <span style="color:var(--muted)"> ${mo} ×${p.cts}</span>
-          <span style="color:var(--muted)"> · open $${openPrem.toFixed(2)} → now $${mid.toFixed(2)}</span>
-          <span style="color:${pnlColor};font-weight:600"> · ${pctGain.toFixed(0)}% decay</span>
-          <span style="color:var(--muted)"> · ${dte}d</span>
-        </div>`;
-      }).join('') + `</div>` : '';
 
     return `<div class="onds-block">
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -1742,7 +1727,6 @@ function renderOndsCard() {
       </div>
       <div style="color:var(--muted);font-size:10px">${shares.toLocaleString()} shares · cost basis $${basis.toFixed(2)}</div>
       <div style="display:flex;flex-direction:column;gap:8px">${triggerHtml}</div>
-      ${ccListHtml}
     </div>`;
   }
 
@@ -1752,7 +1736,16 @@ function renderOndsCard() {
     POSITIONS.some(p => p.ticker === t && p.postype === 'covered_call')
   );
   inner.innerHTML = activeTracked.map(renderTrackerBlock).join('');
-  // Ensure last block has no right-border artifact (handled by flex stretch)
+  // Suppress border-left on the first block of each wrapped row
+  requestAnimationFrame(() => {
+    const blocks = inner.querySelectorAll('.onds-block');
+    let lastTop = -1;
+    blocks.forEach(b => {
+      const top = Math.round(b.getBoundingClientRect().top);
+      if (top > lastTop + 2) { b.style.borderLeft = 'none'; lastTop = top; }
+      else { b.style.borderLeft = ''; }
+    });
+  });
 
   // Update card title for multi-ticker case
   document.getElementById('ondsCardTitle').textContent =
@@ -3887,8 +3880,9 @@ function renderStocks() {
     const cost    = s.cost * s.shares;
     const gl      = value - cost;
     const glPct   = ((current - s.cost) / s.cost) * 100;
-    // Day $ uses prev_close as reference — same basis as lp.pct — so % and $ always agree in direction
-    const prevClose = lp && lp.prev > 0 ? lp.prev : (lp && lp.open > 0 ? lp.open : null);
+    // Day $ uses prev_close ONLY — must match same basis as lp.pct (Yahoo prev close)
+    // Never fall back to lp.open (intraday open) as that creates a mismatch where % shows 0% but $ shows large value
+    const prevClose = lp && lp.prev > 0 ? lp.prev : null;
     const dayGL   = lp && prevClose ? (current - prevClose) * s.shares : null;
     const dayGLPct = dayGL != null ? lp.pct : null;
     totalValue   += value;
@@ -4038,6 +4032,11 @@ function cycleBias(ticker) {
   renderTable();
 }
 
+function sortAndRenderWatch() {
+  // Force re-sort: re-evaluate positions for all watchlist tickers, then render
+  renderWatchList();
+}
+
 function renderWatchList() {
   const grid = document.getElementById('watchGrid');
   const posTickers = new Set(POSITIONS.map(p => p.ticker));
@@ -4059,19 +4058,16 @@ function renderWatchList() {
     if (p.postype !== 'covered_call' && !isLongOption(p)) tickerCollateral[p.ticker] += p.collateral;
   });
 
-  // Build master list: position tickers first (sorted by close cost desc, collateral as tiebreaker), then watch-only (sorted alpha)
+  // Build master list: ALL tickers with positions sorted by close cost, then watch-only (no positions) sorted alpha
   const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t)).sort();
   const inPosition = [...posTickers].sort((a, b) => {
     const ccDiff = (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0);
     if (Math.abs(ccDiff) > 0.01) return ccDiff;
     return (tickerCollateral[b] || 0) - (tickerCollateral[a] || 0);
   });
-  // Watch-list tickers that also have positions — keep in position group
-  const watchInPos = WATCHLIST.filter(t => posTickers.has(t));
-  // Final order: position-only (sorted by close cost) → watch+position (sorted by close cost) → pure watch-only (alpha)
+  // Final order: all position tickers (sorted by close cost) → pure watch-only (alpha)
   const allCards = [
-    ...inPosition.filter(t => !WATCHLIST.includes(t)),
-    ...inPosition.filter(t => WATCHLIST.includes(t)),
+    ...inPosition,
     ...watchOnly,
   ];
 
