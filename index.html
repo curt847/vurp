@@ -4026,7 +4026,7 @@ function removeWatchTicker(ticker) {
 
 function cycleBias(ticker) {
   const current = BIAS[ticker] || 'neu';
-  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : 'neu';
+  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : current === 'sell' ? 'earn' : 'neu';
   saveWatchList();
   renderWatchList();
   renderTable();
@@ -4117,9 +4117,9 @@ function renderWatchList() {
       : `<span class="wc-pos out">watching</span>`;
 
     // Bias button
-    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
-    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NEUTRAL';
-    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':'rgba(74,85,104,.15)';
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARNINGS':'→ NEUTRAL';
+    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':bias==='earn'?'rgba(192,132,252,.12)':'rgba(74,85,104,.15)';
     const biasBtn   = `<button onclick="cycleBias('${ticker}')"
       style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
              font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
@@ -4153,9 +4153,11 @@ function renderWatchList() {
         ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,61,90,0.13);color:var(--red)">${ticker}</div>`
         : isSell
           ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,140,66,0.13);color:var(--orange)">${ticker}</div>`
-          : hasNote
-            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.09);color:var(--yellow)">${ticker}</div>`
-            : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:3px;padding:1px 6px;margin-bottom:2px">${ticker}</div>`;
+          : bias === 'earn'
+            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(192,132,252,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(192,132,252,0.13);color:#c084fc">${ticker}</div>`
+            : hasNote
+              ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.09);color:var(--yellow)">${ticker}</div>`
+              : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:3px;padding:1px 6px;margin-bottom:2px">${ticker}</div>`;
 
     return `<div class="watch-card" style="${cardStyle}">
       ${posBadge}
