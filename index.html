@@ -154,7 +154,7 @@
   .flow-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
   .fb-bull{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.25)}
   .fb-bear{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,90,.25)}
-  .fb-contra{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,200,66,.35)}
+  .fb-contra{background:rgba(255,255,255,0.05);color:#ffffff;border:1px solid rgba(255,255,255,.3)}
   .fb-neu{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   .spin{display:inline-block;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -1363,7 +1363,7 @@ function renderTable() {
     }
     const profitLevel = p.postype === 'covered_call' ? null : getProfitLevel(p, liveGain);
 
-    if (itm)   statusHtml+=` <span class="pill pill-${isLong?'green':'red'}" style="margin-left:2px">ITM</span>`;
+    
     if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ERN</span>`;
     if (p.convictionHold) { statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,''); statusHtml = `<span class="pill pill-conviction">&#127919; HOLD</span> ` + statusHtml; }
 
@@ -1386,7 +1386,7 @@ function renderTable() {
         : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
       const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEUTRAL';
       const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
-      const contraTag = isContra?` <span style="color:var(--yellow);font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
+      const contraTag = isContra?` <span style="color:#ffffff;font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
       flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
     }
 
@@ -1587,8 +1587,7 @@ function renderMobile() {
         <div class="mob-card-bot">
           <span class="mob-price" style="color:${sColor}">$${stock.toFixed(2)}</span>
           <div class="mob-badge-row">
-            ${itm?'<span class="pill pill-red">ITM</span>':''}
-            ${p.cts>1?`<span style="font-size:11px;color:var(--muted)">${p.cts}ct</span>`:''}
+                        ${p.cts>1?`<span style="font-size:11px;color:var(--muted)">${p.cts}ct</span>`:''}
             ${hasEarningsRisk(p)?'<span class="pill pill-purple">ERN</span>':''}
           </div>
         </div>
@@ -1679,7 +1678,8 @@ function renderOndsCard() {
   // Helper: render one tracked ticker block
   function renderTrackerBlock(trackerTicker) {
     const ondsStock = STOCKS.find(s => s.ticker === trackerTicker);
-    const ondsCCs   = POSITIONS.filter(p => p.ticker === trackerTicker && p.postype === 'covered_call');
+    const ondsCCs   = POSITIONS.filter(p => p.ticker === trackerTicker && p.postype === 'covered_call')
+                               .sort((a, b) => new Date(a.expiry) - new Date(b.expiry) || a.short - b.short);
     if (!ondsStock && !ondsCCs.length) return '';
 
     const lp      = livePrices[trackerTicker];
@@ -1711,10 +1711,12 @@ function renderOndsCard() {
           const watchDTE = dte <= 30 && dte > 21;
           const watchProfit = pctGain >= 35 && pctGain < 50;
           const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= p.short * 0.05 ? 'warn' : 'ok';  // warn within 5%
-          const trigger2Class = t2Fire ? 'fire' : pctGain < 0 ? 'fire' : watchProfit ? 'warn' : 'ok';
+          const trigger2Class = t2Fire ? 'fire' : pctGain < 0 ? 'warn' : watchProfit ? 'warn' : 'ok';
           const trigger3Class = t3Fire ? 'fire' : watchDTE ? 'warn' : 'ok';
-          const mo = new Date(p.expiry + 'T12:00:00').toLocaleString('en-US',{month:'short'});
-          return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} · ${dte}d · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
+          const _expDate = new Date(p.expiry + 'T12:00:00');
+          const mo = _expDate.toLocaleString('en-US',{month:'short'});
+          const dy = _expDate.getDate();
+          return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ${dte}d · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} to strike</span>
               <span class="onds-trigger ${trigger2Class}">${pctGain >= 0 ? "💰" : "⚠️"} ${pctGain.toFixed(0)}% ${pctGain >= 0 ? "decay" : "underwater"}</span>
@@ -1734,7 +1736,7 @@ function renderOndsCard() {
           ${premBanked > 0 ? '<span style="color:var(--teal);font-size:11px;font-weight:600" title="Closed CC P&L + open CC premium collected">+$' + Math.round(premBanked).toLocaleString() + ' all-time</span>' : ''}
         </div>` : ''}
       </div>
-      <div style="color:var(--muted);font-size:10px">${shares.toLocaleString()} shares · cost basis $${basis.toFixed(2)}</div>
+      <div style="color:var(--muted);font-size:10px">${shares.toLocaleString()} shares · cost basis $${basis.toFixed(2)}${shares > 0 ? ' · ' + Math.round(ondsCCs.reduce((s,p) => s + p.cts*100, 0) / shares * 100) + '% covered' : ''}</div>
       <div style="display:flex;flex-direction:column;gap:8px">${triggerHtml}</div>
     </div>`;
   }
