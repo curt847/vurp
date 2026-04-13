@@ -1149,8 +1149,8 @@ function getFiltered() {
       case 'orange':   return getAlertLevel(p)==='orange';
       case 'yellow':   return getAlertLevel(p)==='yellow';
       case 'green':    return getAlertLevel(p)==='green';
-      case 'close':    { const g=calcLiveGain(p); return getProfitLevel(p,g)==='close' && g>=70; }
-      case 'profit':   { const g=calcLiveGain(p); const lv=getProfitLevel(p,g); return (lv==='close'&&g>=70)||(lv==='profit'&&g>=50)||lv==='watch_profit'; }
+      case 'close':    { const g=calcLiveGain(p); const lv=getProfitLevel(p,g); return lv==='close'; }
+      case 'profit':   { const g=calcLiveGain(p); const lv=getProfitLevel(p,g); return lv==='close'||lv==='profit'||lv==='watch_profit'; }
       case 'calls':    return p.type==='C';
       case 'puts':     return p.type==='P';
       case 'itm':      return isITM(p);
@@ -1344,12 +1344,21 @@ function renderTable() {
     } else {
       // Profit-side alert for spreads/longs
       const profitLevel = getProfitLevel(p, liveGain);
-      if (profitLevel === 'close' && liveGain >= 70) {
-        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ${isLong?'SELL':'CLOSE'}</span>`;
-      } else if (profitLevel === 'profit' && liveGain >= 50) {
-        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ TAKE PROFIT</span>`;
+      const delta = getEffectiveDelta(p);
+      // Delta-driven: fire based on delta alone when price data is unreliable (wide spreads)
+      // Price-driven: require gain threshold to confirm the signal
+      const isDeltaClose  = delta <= THRESH_DELTA_CLOSE;
+      const isDeltaProfit = delta <= THRESH_DELTA_PROFIT;
+      const isDeltaWatch  = delta <= THRESH_DELTA_WATCH_PROFIT;
+      if (profitLevel === 'close') {
+        const label = liveGain >= 70 ? `⭐⭐ ${isLong?'SELL':'CLOSE'}` : `⭐⭐ CLOSE (Δ${delta.toFixed(2)})`;
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">${label}</span>`;
+      } else if (profitLevel === 'profit') {
+        const label = liveGain >= 50 ? '⭐ TAKE PROFIT' : `⭐ LOW Δ (${delta.toFixed(2)})`;
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">${label}</span>`;
       } else if (profitLevel === 'watch_profit') {
-        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
+        const label = liveGain >= THRESH_WATCH_PROFIT ? '🔷 PROFIT RADAR' : `🔷 LOW Δ (${delta.toFixed(2)})`;
+        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">${label}</span>`;
       }
     }
     const profitLevel = p.postype === 'covered_call' ? null : getProfitLevel(p, liveGain);
@@ -3341,8 +3350,14 @@ function updateClosePctPreview(openPrem) {
   const el = document.getElementById('closePctPreview');
   if (!el) return;
   if (openPrem <= 0) { el.textContent = 'P&L: —'; return; }
-  const pct = Math.round(((openPrem - closePrice) / openPrem) * 100);
-  const pnl = (openPrem - closePrice) * 100 * (POSITIONS[closingIdx]?.cts || 1);
+  const p = POSITIONS[closingIdx];
+  const isLongOpt = p && (p.postype === 'long_call' || p.postype === 'long_put');
+  const pct = isLongOpt
+    ? Math.round(((closePrice - openPrem) / openPrem) * 100)
+    : Math.round(((openPrem - closePrice) / openPrem) * 100);
+  const pnl = isLongOpt
+    ? (closePrice - openPrem) * 100 * (p?.cts || 1)
+    : (openPrem - closePrice) * 100 * (POSITIONS[closingIdx]?.cts || 1);
   const color = pct >= 50 ? 'var(--green)' : pct >= 0 ? 'var(--yellow)' : 'var(--red)';
   el.innerHTML = `<span style="color:${color}">${pct}% captured · $${pnl.toFixed(0)} P&L (per contract basis)</span>`;
 }
@@ -3361,7 +3376,12 @@ function executeClose() {
   const reason = document.getElementById('closeReason')?.value || 'manual';
   const notes = document.getElementById('closeNotes')?.value?.trim() || '';
   const openPrem = Math.abs(p.open);
-  const pctCapture = openPrem > 0 ? Math.round(((openPrem - closePrice) / openPrem) * 100) : 0;
+  const isLongOpt = p.postype === 'long_call' || p.postype === 'long_put';
+  const pctCapture = openPrem > 0
+    ? (isLongOpt
+        ? Math.round(((closePrice - openPrem) / openPrem) * 100)
+        : Math.round(((openPrem - closePrice) / openPrem) * 100))
+    : 0;
   const doRollAdd = reason === 'roll_out' && document.getElementById('rollAddNext')?.checked;
   const rollTicker = p.ticker;
 
@@ -3392,8 +3412,8 @@ function executeClose() {
     entryPremium: openPrem,
     closePrice:   closePrice,
     pctCapture:   pctCapture,
-    pnlPerCt:     Math.round((openPrem - closePrice) * 100 * 100) / 100,  // dollars per contract
-    pnlTotal:     Math.round((openPrem - closePrice) * 100 * p.cts * 100) / 100,
+    pnlPerCt:     Math.round((isLongOpt ? closePrice - openPrem : openPrem - closePrice) * 100 * 100) / 100,
+    pnlTotal:     Math.round((isLongOpt ? closePrice - openPrem : openPrem - closePrice) * 100 * p.cts * 100) / 100,
     collateral:   p.collateral || 0,
     alertAtClose: getAlertLevel(p),
     reason:       reason,
@@ -3622,9 +3642,12 @@ function showTradeLog() {
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
 }
 
+let _leCurrentId = null;
+
 function editLogEntry(id) {
   const idx = TRADE_LOG.findIndex(e => e.id === id);
   if (idx === -1) return;
+  _leCurrentId = id;
   const e = TRADE_LOG[idx];
   const reasonLabels = { profit_target:'Profit Target', roll_out:'Roll-Out', stop_loss:'Stop Loss', expired:'Expired', manual:'Manual / Other' };
   const strikes = e.long ? `$${e.short}/$${e.long}` : `$${e.short}`;
@@ -3692,8 +3715,14 @@ function leRecalc() {
   const cts    = parseInt(document.getElementById('le_cts')?.value) || 1;
   const el     = document.getElementById('le_preview');
   if (!el) return;
-  const pct  = entry > 0 ? Math.round(((entry - close) / entry) * 100) : 0;
-  const pnl  = Math.round((entry - close) * 100 * cts * 100) / 100;
+  const editIdx = TRADE_LOG.findIndex(e => e.id === _leCurrentId);
+  const isLongOpt = editIdx >= 0 && (TRADE_LOG[editIdx].typeLabel === 'LC' || TRADE_LOG[editIdx].typeLabel === 'LP');
+  const pct  = entry > 0
+    ? (isLongOpt ? Math.round(((close - entry) / entry) * 100) : Math.round(((entry - close) / entry) * 100))
+    : 0;
+  const pnl  = isLongOpt
+    ? Math.round((close - entry) * 100 * cts * 100) / 100
+    : Math.round((entry - close) * 100 * cts * 100) / 100;
   const color = pct >= 50 ? 'var(--green)' : pct >= 0 ? 'var(--yellow)' : 'var(--red)';
   el.style.color = color;
   el.textContent = pct + '% - $' + pnl.toFixed(0);
@@ -3713,9 +3742,12 @@ function saveLogEdit(idx) {
   if (reason) { e.reason = reason; e.rolledOut = reason === 'roll_out'; }
   if (notes !== undefined) e.notes = notes;
   const op = e.entryPremium, cp = e.closePrice;
-  e.pctCapture = op > 0 ? Math.round(((op - cp) / op) * 100) : 0;
-  e.pnlPerCt   = Math.round((op - cp) * 100 * 100) / 100;
-  e.pnlTotal   = Math.round((op - cp) * 100 * e.cts * 100) / 100;
+  const isLongOpt = e.typeLabel === 'LC' || e.typeLabel === 'LP';
+  e.pctCapture = op > 0
+    ? (isLongOpt ? Math.round(((cp - op) / op) * 100) : Math.round(((op - cp) / op) * 100))
+    : 0;
+  e.pnlPerCt   = Math.round((isLongOpt ? cp - op : op - cp) * 100 * 100) / 100;
+  e.pnlTotal   = Math.round((isLongOpt ? cp - op : op - cp) * 100 * e.cts * 100) / 100;
   saveToStorage();
   document.getElementById('logEditModal')?.remove();
   document.getElementById('tradeLogModal')?.remove();
@@ -3973,6 +4005,7 @@ function saveStock() {
   saveToStorage();
   closeStockModal();
   renderStocks();
+  renderOndsCard();
 }
 
 function removeStock(idx) {
