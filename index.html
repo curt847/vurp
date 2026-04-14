@@ -227,6 +227,48 @@
   .notes-panel.hidden{display:none}
   .notes-panel-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
   .notes-panel-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--accent);letter-spacing:.5px}
+
+  /* WHALE FEED PANEL */
+  .whale-panel{position:fixed;top:0;right:-520px;width:500px;height:100vh;background:var(--surface);border-left:1px solid rgba(0,232,138,.2);z-index:600;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 40px rgba(0,0,0,.6)}
+  .whale-panel.open{right:0}
+  .whale-panel-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface2)}
+  .whale-panel-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--green);letter-spacing:.5px}
+  .whale-panel-sub{font-size:10px;color:var(--muted);margin-top:2px}
+  .whale-panel-body{overflow-y:auto;flex:1;padding:0}
+  .whale-ticker-section{border-bottom:1px solid var(--border)}
+  .whale-ticker-hdr{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface);transition:background .15s}
+  .whale-ticker-hdr:hover{background:var(--surface2)}
+  .whale-ticker-name{font-family:'DM Sans',sans-serif;font-weight:800;font-size:15px;letter-spacing:.5px}
+  .whale-ticker-summary{display:flex;align-items:center;gap:8px;font-size:11px}
+  .whale-trades{padding:0 16px 10px}
+  .whale-trade-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .whale-trade-row:last-child{border-bottom:none}
+  .whale-trade-left{display:flex;align-items:center;gap:8px}
+  .whale-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .whale-trade-detail{font-size:11px;color:var(--muted);line-height:1.4}
+  .whale-trade-prem{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+  .whale-sent-bull{color:var(--green)}
+  .whale-sent-bear{color:var(--red)}
+  .whale-sent-mix{color:var(--yellow)}
+  .whale-empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:12px}
+  .whale-filter-bar{padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--surface2);flex-wrap:wrap}
+  .whale-filter-btn{font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .15s}
+  .whale-filter-btn.active{border-color:var(--green);color:var(--green);background:rgba(0,232,138,.08)}
+  .whale-stats-bar{padding:10px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .whale-stat-box{text-align:center;padding:6px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)}
+  .whale-stat-val{font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif}
+  .whale-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+  /* OI HEAT MAP */
+  .oi-expiry-tab{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;transition:all .15s;margin-right:6px}
+  .oi-expiry-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.07)}
+  .oi-legend{display:flex;align-items:center;gap:16px;font-size:10px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap}
+  .oi-legend-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px}
+  .oi-chart-wrap{overflow-x:auto;padding-bottom:4px}
+  .oi-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .oi-stat{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 12px;text-align:center}
+  .oi-stat-val{font-size:16px;font-weight:700;font-family:'DM Sans',sans-serif}
+  .oi-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
   .notes-list{overflow-y:auto;flex:1;padding:8px}
   .note-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px}
   .note-item-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
@@ -428,7 +470,8 @@
     <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
     <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ ERN</button>
     <button class="btn btn-ghost" id="ivBtn" onclick="fetchIV()" style="font-size:10px;padding:5px 10px">⟳ IV</button>
-    <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px">⟳ FLOW</button>
+    <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,212,255,.3);color:var(--accent)">🌊 FLOW</button>
+    <button class="btn btn-ghost" id="whaleBtn" onclick="fetchWhales()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,232,138,.3);color:var(--green)">🐋 WHALES</button>
     <button class="btn btn-ghost" onclick="showTradeLog()" style="border-color:rgba(0,212,255,.3);color:var(--accent);font-size:10px;padding:5px 10px">📋 LOG</button>
     <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
   </div>
@@ -525,8 +568,8 @@
   <thead><tr>
     <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
     <th>Stock $</th><th>Δ Short</th><th>Extrinsic</th><th>IV / IVR</th>
-    <th>Leg Quotes</th><th>Collateral</th>
-    <th>Status</th><th>Flow</th><th>Action</th>
+    <th>Collateral</th>
+    <th>Status</th><th>Flow</th><th>Whale 🐋</th><th>Action</th>
   </tr></thead>
   <tbody id="tableBody"></tbody>
 </table>
@@ -626,11 +669,54 @@
   <div id="mobCards"></div>
 </div>
 
+<!-- ═══════════════════════════════════════════ WHALE FEED PANEL -->
+<div class="whale-panel" id="whalePanel">
+  <div class="whale-panel-hdr">
+    <div>
+      <div class="whale-panel-title">🐋 WHALE FEED</div>
+      <div class="whale-panel-sub" id="whalePanelSub">Large-premium options flow on your tickers · $500K+ threshold</div>
+    </div>
+    <button onclick="closeWhaleFeed()" style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:16px;padding:4px 10px;border-radius:4px;font-family:inherit;line-height:1">✕</button>
+  </div>
+  <div class="whale-stats-bar" id="whaleStatsBar" style="display:none">
+    <div class="whale-stat-box"><div class="whale-stat-val whale-sent-bull" id="wStatBull">—</div><div class="whale-stat-lbl">🟢 Bull $</div></div>
+    <div class="whale-stat-box"><div class="whale-stat-val whale-sent-bear" id="wStatBear">—</div><div class="whale-stat-lbl">🔴 Bear $</div></div>
+    <div class="whale-stat-box"><div class="whale-stat-val" id="wStatTrades" style="color:var(--accent)">—</div><div class="whale-stat-lbl">Trades</div></div>
+  </div>
+  <div class="whale-filter-bar" id="whaleFilterBar">
+    <span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">SHOW:</span>
+    <button class="whale-filter-btn active" onclick="setWhaleFilter('all',this)">All Tickers</button>
+    <button class="whale-filter-btn" onclick="setWhaleFilter('contra',this)">⚠ Contra Only</button>
+    <button class="whale-filter-btn" onclick="setWhaleFilter('bull',this)">↑ Bullish</button>
+    <button class="whale-filter-btn" onclick="setWhaleFilter('bear',this)">↓ Bearish</button>
+    <button class="whale-filter-btn" id="whaleFocusBtn" style="display:none" onclick="setWhaleFilter('focus',this)">📌 Focused</button>
+  </div>
+  <div class="whale-panel-body" id="whalePanelBody">
+    <div class="whale-empty">Hit 🐋 WHALES to load large-premium flow<br><span style="font-size:10px;margin-top:6px;display:block;opacity:.6">Scans all your tickers for $500K+ option trades</span></div>
+  </div>
+</div>
+<div id="whalePanelBackdrop" onclick="closeWhaleFeed()" style="display:none;position:fixed;inset:0;z-index:599;background:rgba(0,0,0,.3)"></div>
+
 <div class="modal-overlay" id="rollModal">
   <div class="modal">
     <div class="modal-title" id="modalTitle"></div>
     <div id="modalBody"></div>
-    <button class="btn modal-close" onclick="closeModal()">CLOSE</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button id="oiMapBtn" class="btn btn-ghost" onclick="openOIFromRoll()" style="font-size:10px;padding:6px 12px;border-color:rgba(0,212,255,.3);color:var(--accent)">📊 OI MAP</button>
+      <button class="btn modal-close" onclick="closeModal()" style="flex:1">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- OI HEAT MAP MODAL -->
+<div class="modal-overlay" id="oiModal">
+  <div class="modal" style="width:680px;max-width:96vw;max-height:92vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title" id="oiModalTitle" style="color:var(--accent);margin-bottom:0">📊 OI Heat Map</div>
+      <button onclick="closeOIModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px;padding:3px 10px;border-radius:4px;font-family:inherit">✕</button>
+    </div>
+    <div id="oiModalSub" style="font-size:10px;color:var(--muted);margin-bottom:14px"></div>
+    <div id="oiModalBody" style="overflow-y:auto;max-height:calc(92vh - 120px)"></div>
   </div>
 </div>
 
@@ -861,6 +947,7 @@ const UW_HDRS      = {'Authorization':`Bearer ${UW_API_KEY}`,'UW-CLIENT-API-ID':
 let liveData    = {};  // ticker -> {[strike_type]:delta, iv, [bid/ask_strike_type]:val}
 let livePrices  = {};  // ticker -> {price, change, pct}
 let flowData    = {};  // ticker -> {sentiment, premium}
+let whaleData   = {};  // ticker -> [{premium,type,strike,expiry,side,time}, ...]  (>$500K trades)
 let earningsMap = {};  // ticker -> date string
 let currentFilter = 'all';
 let autoTimer   = null;
@@ -1378,7 +1465,6 @@ function renderTable() {
       const _isLongPut   = p.postype==='long_put';
       const isContra = (_isShortPut  && _sent==='bear')
                     || (_isShortCall && _sent==='bull')
-                    || (_isCC        && _sent==='bull')
                     || (_isLongCall  && _sent==='bear')
                     || (_isLongPut   && _sent==='bull');
       const fc = isContra
@@ -1388,6 +1474,33 @@ function renderTable() {
       const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
       const contraTag = isContra?` <span style="color:#ffffff;font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
       flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
+    }
+
+    // ── Whale cell ──
+    const wArr = whaleData[p.ticker] || [];
+    let whaleHtml = '<span style="color:var(--muted);font-size:10px">—</span>';
+    if (wArr.length) {
+      const bullPrem = wArr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+      const bearPrem = wArr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+      const wTotal   = bullPrem + bearPrem;
+      const wSent    = bullPrem > bearPrem*1.4 ? 'bull' : bearPrem > bullPrem*1.4 ? 'bear' : 'mixed';
+      // Contra logic — same as flow
+      const _isCC4       = p.postype === 'covered_call';
+      const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4;
+      const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4;
+      const _isLongC4    = p.postype==='long_call';
+      const _isLongP4    = p.postype==='long_put';
+      const wContra = (_isShortPut4 && wSent==='bear')
+                   || (_isShortCal4 && wSent==='bull')
+                   || (_isLongC4    && wSent==='bear')
+                   || (_isLongP4    && wSent==='bull');
+      const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIX';
+      const wColor = wContra ? '#ffffff' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'var(--yellow)';
+      const wBg    = wContra ? 'rgba(255,255,255,0.05)' : wSent==='bull'?'rgba(0,232,138,0.1)':wSent==='bear'?'rgba(255,61,90,0.1)':'rgba(245,200,66,0.1)';
+      const wBorder= wContra ? 'rgba(255,255,255,0.3)' : wSent==='bull'?'rgba(0,232,138,0.3)':wSent==='bear'?'rgba(255,61,90,0.3)':'rgba(245,200,66,0.3)';
+      const wPrem  = wTotal>=1e6?`$${(wTotal/1e6).toFixed(1)}M`:`$${(wTotal/1e3).toFixed(0)}K`;
+      const wContraTag = wContra ? ' <span style="font-size:8px;font-weight:700">⚠</span>' : '';
+      whaleHtml = `<span onclick="openWhaleFeed('${p.ticker}')" style="cursor:pointer;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${wBg};color:${wColor};border:1px solid ${wBorder}">${wLabel} ${wPrem}${wContraTag}</span>`;
     }
 
     const idx = POSITIONS.indexOf(p);
@@ -1475,10 +1588,10 @@ function renderTable() {
       <td class="delta-cell ${dClass}">${deltaLabel}</td>
       <td>${extHtml}</td>
       <td class="iv-val">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; return `<div style="font-size:11px;font-weight:600;color:var(--muted)">IVR ${Math.round(ivr)}</div>`; })()}</td>
-      <td>${bidAsk}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
       <td>${statusHtml}</td>
       <td>${flowHtml}</td>
+      <td>${whaleHtml}</td>
       <td>${actionHtml}</td>
     `;
     body.appendChild(tr);
@@ -1498,7 +1611,6 @@ function updateStats() {
       const _fd4=flowData[p.ticker], _s4=_fd4.sentiment, _cc4=p.postype==='covered_call';
       if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4)
        ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4)
-       ||(_s4==='bull'&&_cc4)
        ||(_s4==='bear'&&p.postype==='long_call')
        ||(_s4==='bull'&&p.postype==='long_put')) fl++;
     }
@@ -2162,8 +2274,10 @@ async function fetchFlow() {
   updateStats();
   saveToStorage();
   btn.disabled = false;
-  btn.textContent = '⟳ FLOW';
-  document.getElementById('lastRefresh').textContent += ' · flow ' + new Date().toLocaleTimeString();
+  const flowTime = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  btn.textContent = `🌊 FLOW`;
+  btn.title = `Last fetched ${flowTime}`;
+  document.getElementById('lastRefresh').textContent += ` · flow ${flowTime}`;
 }
 
 async function fetchEarningsOnly() {
@@ -2509,6 +2623,242 @@ async function fetchFlowAlerts(tickers) {
   }));
 }
 
+// ══════════════════════════════════════════
+// WHALE FEED
+// ══════════════════════════════════════════
+let _whaleFocusTicker = null;
+let _whaleFilter = 'all';
+
+async function fetchWhales() {
+  const btn = document.getElementById('whaleBtn');
+  btn.textContent = '🐋 Loading…';
+  btn.disabled = true;
+  openWhaleFeed(null);
+
+  // Derive tickers from POSITIONS (+ any watch-only that have livePrices)
+  const whaleTickers = [...new Set([
+    ...POSITIONS.map(p => p.ticker),
+    ...Object.keys(livePrices)
+  ])].filter(Boolean).sort();
+
+  document.getElementById('whalePanelBody').innerHTML =
+    `<div class="whale-empty"><div style="color:var(--accent);font-size:13px;margin-bottom:8px">⟳ Scanning ${whaleTickers.length} tickers…</div><div style="font-size:10px;opacity:.6">Fetching $500K+ whale trades</div></div>`;
+
+  const WHALE_THRESHOLD = 500000;
+  whaleData = {};
+
+  await Promise.all(whaleTickers.map(async t => {
+    try {
+      let r = await uw(`/api/stock/${t}/flow-alerts`).catch(() => null);
+      if (!r || !(r.data && r.data.length)) {
+        r = await uw(`/api/stock/${t}/flow-recent`).catch(() => null);
+      }
+      if (!r || !(r.data && r.data.length)) return;
+
+      const trades = [];
+      r.data.forEach(x => {
+        const prem = parseFloat(x.total_premium || x.premium || x.premium_value || x.notional || x.size || 0);
+        if (prem < WHALE_THRESHOLD) return;
+        const optType = (x.option_type || x.call_put || x.type || x.side || '').toLowerCase();
+        const type = (optType==='call'||optType==='c') ? 'C' : (optType==='put'||optType==='p') ? 'P' : null;
+        if (!type) return;
+        const side = (x.side || x.sentiment || x.aggressor_ind || '').toLowerCase();
+        const strike = parseFloat(x.strike || x.strike_price || 0);
+        const expiry = x.expiry || x.expiration_date || x.expires || '';
+        const time   = x.created_at || x.timestamp || x.date || '';
+        trades.push({ premium: prem, type, side, strike, expiry, time,
+          raw: x.option_symbol || x.ticker || '' });
+      });
+      if (trades.length) {
+        trades.sort((a,b) => b.premium - a.premium);
+        whaleData[t] = trades;
+        console.log(`[RW] 🐋 ${t}: ${trades.length} whale trades, top $${(trades[0].premium/1000).toFixed(0)}K`);
+      }
+    } catch(e) { console.warn(`[RW] whale fetch ${t}:`, e); }
+  }));
+
+  btn.disabled = false;
+  const whaleTime = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  btn.textContent = '🐋 WHALES';
+  btn.title = `Last fetched ${whaleTime}`;
+  saveToStorage();
+  renderWhaleFeed();
+  // Also re-render table to update whale cells
+  renderTable();
+}
+
+function openWhaleFeed(ticker) {
+  _whaleFocusTicker = ticker;
+  if (ticker) {
+    _whaleFilter = 'focus';
+    const fb = document.getElementById('whaleFocusBtn');
+    if (fb) { fb.style.display=''; fb.textContent = `📌 ${ticker}`; }
+    document.querySelectorAll('.whale-filter-btn').forEach(b => b.classList.remove('active'));
+    if (fb) fb.classList.add('active');
+  }
+  document.getElementById('whalePanel').classList.add('open');
+  document.getElementById('whalePanelBackdrop').style.display = 'block';
+  if (Object.keys(whaleData).length) renderWhaleFeed();
+}
+
+function closeWhaleFeed() {
+  document.getElementById('whalePanel').classList.remove('open');
+  document.getElementById('whalePanelBackdrop').style.display = 'none';
+  _whaleFocusTicker = null;
+}
+
+function setWhaleFilter(f, btn) {
+  _whaleFilter = f;
+  if (f !== 'focus') _whaleFocusTicker = null;
+  document.querySelectorAll('.whale-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderWhaleFeed();
+}
+
+function renderWhaleFeed() {
+  const body = document.getElementById('whalePanelBody');
+  const statsBar = document.getElementById('whaleStatsBar');
+  const sub = document.getElementById('whalePanelSub');
+
+  // Which tickers to show
+  let tickers = Object.keys(whaleData).sort();
+  if (!tickers.length) {
+    body.innerHTML = `<div class="whale-empty">No $500K+ whale trades found on your tickers<br><span style="font-size:10px;margin-top:6px;display:block;opacity:.6">Try again later — whale flow is intermittent</span></div>`;
+    statsBar.style.display = 'none';
+    return;
+  }
+
+  // Filter
+  if (_whaleFilter === 'focus' && _whaleFocusTicker) {
+    tickers = tickers.filter(t => t === _whaleFocusTicker);
+  } else if (_whaleFilter === 'bull') {
+    tickers = tickers.filter(t => {
+      const arr = whaleData[t];
+      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+      return bull > bear;
+    });
+  } else if (_whaleFilter === 'bear') {
+    tickers = tickers.filter(t => {
+      const arr = whaleData[t];
+      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+      return bear > bull;
+    });
+  } else if (_whaleFilter === 'contra') {
+    tickers = tickers.filter(t => {
+      // Find any position on this ticker and check contra
+      const pos = POSITIONS.find(p => p.ticker === t);
+      if (!pos) return false;
+      const arr = whaleData[t];
+      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+      const sent = bull > bear*1.4 ? 'bull' : bear > bull*1.4 ? 'bear' : 'mix';
+      const isCC = pos.postype==='covered_call';
+      return (pos.type==='P' && !isLongOption(pos) && !isCC && sent==='bear')
+          || (pos.type==='C' && !isLongOption(pos) && !isCC && sent==='bull')
+          || (pos.postype==='long_call' && sent==='bear')
+          || (pos.postype==='long_put'  && sent==='bull');
+    });
+  }
+
+  // Global stats
+  let totalBull = 0, totalBear = 0, totalTrades = 0;
+  Object.values(whaleData).forEach(arr => {
+    arr.forEach(w => {
+      if (w.type==='C') totalBull += w.premium;
+      else totalBear += w.premium;
+      totalTrades++;
+    });
+  });
+  const fmt = v => v>=1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1000).toFixed(0)}K`;
+  document.getElementById('wStatBull').textContent = fmt(totalBull);
+  document.getElementById('wStatBear').textContent = fmt(totalBear);
+  document.getElementById('wStatTrades').textContent = totalTrades;
+  statsBar.style.display = 'grid';
+
+  const whaleCount = Object.keys(whaleData).length;
+  sub.textContent = `${whaleCount} ticker${whaleCount!==1?'s':''} with whale activity · $500K+ threshold · ${new Date().toLocaleTimeString()}`;
+
+  if (!tickers.length) {
+    body.innerHTML = `<div class="whale-empty">No tickers match this filter</div>`;
+    return;
+  }
+
+  let html = '';
+  tickers.forEach(t => {
+    const arr = whaleData[t];
+    const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+    const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+    const total = bull + bear;
+    const sent = bull > bear*1.4 ? 'bull' : bear > bull*1.4 ? 'bear' : 'mix';
+    const sentColor = sent==='bull'?'var(--green)':sent==='bear'?'var(--red)':'var(--yellow)';
+    const sentLabel = sent==='bull'?'↑ BULLISH':sent==='bear'?'↓ BEARISH':'→ MIXED';
+
+    // Contra check for this ticker
+    const pos = POSITIONS.find(p => p.ticker === t);
+    const isCC = pos && pos.postype==='covered_call';
+    const isContra = pos && (
+      (pos.type==='P' && !isLongOption(pos) && !isCC && sent==='bear') ||
+      (pos.type==='C' && !isLongOption(pos) && !isCC && sent==='bull') ||
+      (pos.postype==='long_call' && sent==='bear') ||
+      (pos.postype==='long_put'  && sent==='bull')
+    );
+
+    const contraWarn = isContra
+      ? `<span style="background:rgba(255,255,255,0.05);color:#ffffff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:2px;border:1px solid rgba(255,255,255,.3)">⚠ CONTRA</span>` : '';
+
+    html += `<div class="whale-ticker-section">
+      <div class="whale-ticker-hdr" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="whale-ticker-name">${t}</span>
+          ${contraWarn}
+        </div>
+        <div class="whale-ticker-summary">
+          <span style="color:${sentColor};font-weight:700;font-size:11px">${sentLabel}</span>
+          <span style="color:var(--muted)">·</span>
+          <span style="color:var(--text);font-weight:600">${fmt(total)}</span>
+          <span style="color:var(--muted);font-size:9px">${arr.length} trade${arr.length!==1?'s':''}</span>
+          <span style="color:var(--muted);font-size:14px;margin-left:4px">›</span>
+        </div>
+      </div>
+      <div class="whale-trades">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);padding:4px 0 6px;text-transform:uppercase;letter-spacing:.5px">
+          <span>
+            <span style="color:var(--green)">●CALL $${fmt(bull)}</span>
+            &nbsp;/&nbsp;
+            <span style="color:var(--red)">●PUT $${fmt(bear)}</span>
+          </span>
+          <span>${arr.length} whale trade${arr.length!==1?'s':''}</span>
+        </div>
+        ${arr.slice(0,8).map(w => {
+          const wColor = w.type==='C'?'var(--green)':'var(--red)';
+          const wLabel = w.type==='C'?'CALL':'PUT';
+          const pStr = w.premium>=1e6?`$${(w.premium/1e6).toFixed(2)}M`:`$${(w.premium/1e3).toFixed(0)}K`;
+          const strikeStr = w.strike ? `$${w.strike}` : '';
+          const expiryStr = w.expiry ? w.expiry.slice(5).replace('-','/') : '';
+          const sideStr = w.side ? w.side.toUpperCase() : '';
+          const timeStr = w.time ? new Date(w.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+          const detail = [strikeStr, expiryStr, sideStr, timeStr].filter(Boolean).join(' · ');
+          return `<div class="whale-trade-row">
+            <div class="whale-trade-left">
+              <div class="whale-type-dot" style="background:${wColor}"></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:${wColor}">${wLabel}${strikeStr?' '+strikeStr:''}</div>
+                <div class="whale-trade-detail">${[expiryStr,sideStr,timeStr].filter(Boolean).join(' · ')}</div>
+              </div>
+            </div>
+            <div class="whale-trade-prem" style="color:${wColor}">${pStr}</div>
+          </div>`;
+        }).join('')}
+        ${arr.length>8?`<div style="font-size:9px;color:var(--muted);padding:6px 0;text-align:center">+ ${arr.length-8} more trades</div>`:''}
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+}
+
 // Known upcoming earnings as fallback (update periodically)
 const EARNINGS_FALLBACK = {}; // populated by EXTRAS fetch only
 
@@ -2594,10 +2944,6 @@ function showRollModal(idx) {
 
     <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp ? `$${lp.price.toFixed(2)} <span style="font-size:13px;font-weight:500;color:${lp.pct>=0?'var(--green)':'var(--red)'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>` : `$${stock.toFixed(2)} <span style="font-size:12px;color:var(--muted)">(stale)</span>`}</span></div>
     ${p.openStock ? `<div class="modal-row"><span class="modal-label">Stock at Open</span><span class="modal-val" style="color:var(--muted)">$${p.openStock.toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${p.openStockDate||''}</span></span></div>${stockMoveHtml}` : ''}
-    <div class="modal-row"><span class="modal-label">Short Delta</span><span class="modal-val" style="color:${(()=>{const t=getRollTrigger(p);return delta>=t?'var(--red)':delta>=t-0.05?'var(--yellow)':'var(--green)'})()}">${delta.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">${getDeltaSource(p)==='live'?'●LIVE':'~BS'}</span></span></div>
-    ${(() => { const ld = p.long ? (liveData[p.ticker] && liveData[p.ticker][`${p.long}_${p.type}`]) : null; const sd = ld != null ? Math.abs(delta - ld) : null; return sd != null ? `<div class="modal-row"><span class="modal-label">Spread Delta</span><span class="modal-val" style="color:var(--muted)">${sd.toFixed(3)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(short ${delta.toFixed(3)} − long ${ld.toFixed(3)})</span></span></div>` : ''; })()}
-    <div class="modal-row"><span class="modal-label">DTE</span><span class="modal-val" style="color:${dteAdvice.color}">${getDTE(p)}d <span style="font-size:12px;font-weight:500;color:var(--muted)">· ${p.expiry}</span> <span style="font-size:12px;font-weight:500">— ${dteAdvice.label}</span></span></div>
-    <div class="modal-row"><span class="modal-label">IV / IVR</span><span class="modal-val">${iv.toFixed(1)}% ${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return '<span style="color:var(--muted);font-size:12px">IVR —</span>'; return `<span style="color:var(--muted);font-size:13px">· IVR ${Math.round(ivr)}</span>`; })()}</span></div>
     <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">${
       p.postype === 'covered_call'
@@ -2674,18 +3020,278 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">⚠ Earnings Risk</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]} — roll past this date</span></div>`:''}
 
     ${flow?(()=>{
-      const flowColor = flow.sentiment==='bull'?'var(--green)':flow.sentiment==='bear'?'var(--red)':'var(--muted)';
-      const contraText = flow.isContra ? ' ⚠ CONTRA' : ' — aligned';
+      const _sent = flow.sentiment;
+      const _isCC = p.postype === 'covered_call';
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
+      const _isLongCall  = p.postype==='long_call';
+      const _isLongPut   = p.postype==='long_put';
+      const isContra = (_isShortPut  && _sent==='bear')
+                    || (_isShortCall && _sent==='bull')
+                    || (_isLongCall  && _sent==='bear')
+                    || (_isLongPut   && _sent==='bull');
+      const flowColor = isContra ? '#ffffff' : _sent==='bull'?'var(--green)':_sent==='bear'?'var(--red)':'var(--muted)';
+      const contraTag = isContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
       return `
     <div class="roll-divider"></div>
-    <div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${flow.sentiment.toUpperCase()}${contraText}</span></div>
+    <div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${_sent.toUpperCase()}${contraTag}</span></div>
     <div class="modal-row"><span class="modal-label">Flow Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls · $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
     })():''}
   `;
+  document.getElementById('rollModal').dataset.posIdx = idx;
   document.getElementById('rollModal').classList.add('show');
 }
 function closeModal(){document.getElementById('rollModal').classList.remove('show')}
 document.getElementById('rollModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+// ══════════════════════════════════════════
+// OI HEAT MAP
+// ══════════════════════════════════════════
+function closeOIModal(){document.getElementById('oiModal').classList.remove('show')}
+document.getElementById('oiModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeOIModal()});
+
+function openOIFromRoll() {
+  const idx = parseInt(document.getElementById('rollModal').dataset.posIdx);
+  if (isNaN(idx)) return;
+  const p = POSITIONS[idx];
+  showOIMap(p);
+}
+
+async function showOIMap(p) {
+  document.getElementById('oiModal').classList.add('show');
+  document.getElementById('oiModalTitle').textContent = `📊 OI Heat Map — ${p.ticker}`;
+  document.getElementById('oiModalSub').textContent = `Open Interest by strike · your position highlighted · loading…`;
+  document.getElementById('oiModalBody').innerHTML =
+    `<div style="text-align:center;padding:40px;color:var(--accent)">⟳ Fetching strike OI data…</div>`;
+
+  // Get expiries: current position expiry + next roll target
+  const today = new Date();
+  const posExpiry = p.expiry;
+  // Next monthly expiry ~30-45 days out
+  const rollTarget = (() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 35);
+    // Find the 3rd Friday of that month
+    const yr = d.getFullYear(), mo = d.getMonth();
+    const first = new Date(yr, mo, 1);
+    const firstFri = (5 - first.getDay() + 7) % 7;
+    const thirdFri = new Date(yr, mo, 1 + firstFri + 14);
+    return thirdFri.toISOString().slice(0,10);
+  })();
+
+  const expiriesToFetch = [...new Set([posExpiry, rollTarget])];
+  const oiCache = {}; // expiry -> [{strike, callOI, putOI, callVol, putVol}]
+
+  await Promise.all(expiriesToFetch.map(async exp => {
+    try {
+      // Use option-contracts (not greeks) — it has open_interest, volume, and OCC symbols
+      const r = await uw(`/api/stock/${p.ticker}/option-contracts`, exp);
+      const arr = Array.isArray(r?.data) ? r.data : [];
+      if (!arr.length) return;
+
+      // Probe field names on first call
+      if (!window._oiFieldsLogged) {
+        window._oiFieldsLogged = true;
+        console.log('[RW] OI fields available (option-contracts):', Object.keys(arr[0]));
+      }
+
+      // Build per-strike OI map — parse strike & type from OCC symbol
+      // OCC format: TICKER + YYMMDD + C/P + 8-digit strike (strike * 1000)
+      const strikeMap = {};
+      arr.forEach(row => {
+        const sym = row.option_symbol || '';
+        const match = sym.match(/([CP])(\d{8})$/);
+        if (!match) return;
+        const type   = match[1]; // 'C' or 'P'
+        const strike = parseInt(match[2]) / 1000;
+        const key    = strike.toFixed(2);
+        if (!strikeMap[key]) strikeMap[key] = { strike, callOI:0, putOI:0, callVol:0, putVol:0 };
+        const s = strikeMap[key];
+
+        // OI field — try multiple names
+        const oi = parseFloat(
+          row.open_interest ?? row.oi ?? row.openInterest ?? row.open_int ??
+          row.oi_change ?? 0
+        );
+        // Volume field
+        const vol = parseFloat(
+          row.volume ?? row.vol ?? row.trade_volume ?? row.contract_volume ?? 0
+        );
+
+        if (type === 'C') { s.callOI += oi; s.callVol += vol; }
+        else              { s.putOI  += oi; s.putVol  += vol; }
+      });
+
+      const rows = Object.values(strikeMap).sort((a,b)=>b.strike-a.strike);
+      oiCache[exp] = rows;
+      console.log(`[RW] OI map ${p.ticker} ${exp}: ${rows.length} strikes, sample OI: call=${rows[Math.floor(rows.length/2)]?.callOI} put=${rows[Math.floor(rows.length/2)]?.putOI}`);
+    } catch(e) {
+      console.warn('[RW] OI fetch failed for', exp, e);
+    }
+  }));
+
+  renderOIMap(p, oiCache, posExpiry, rollTarget, expiriesToFetch);
+}
+
+function renderOIMap(p, oiCache, posExpiry, rollTarget, allExpiries) {
+  const body = document.getElementById('oiModalBody');
+  const stock = getLiveStock(p);
+
+  if (!Object.keys(oiCache).length) {
+    body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">
+      No OI data returned from API.<br>
+      <span style="font-size:10px;margin-top:8px;display:block">UW greeks endpoint may not include open_interest for this expiry.<br>
+      Check console for available field names.</span>
+    </div>`;
+    document.getElementById('oiModalSub').textContent = `No data — see console for field probe`;
+    return;
+  }
+
+  // Tabs for expiry selector
+  let activeExp = posExpiry in oiCache ? posExpiry : Object.keys(oiCache)[0];
+
+  function buildChart(exp) {
+    const rows = oiCache[exp];
+    if (!rows || !rows.length) return `<div style="padding:30px;text-align:center;color:var(--muted)">No data for ${exp}</div>`;
+
+    // Filter to a window around current stock price (±30%)
+    const focusRows = rows.filter(r => stock ? Math.abs(r.strike - stock) / stock < 0.30 : true);
+    // Rows are high→low; find stock price position in descending list
+    const stockIdx = focusRows.findIndex(r => r.strike <= stock);
+    const display = focusRows.length > 40 ? focusRows.slice(
+      Math.max(0, stockIdx - 20),
+      Math.min(focusRows.length, stockIdx + 20)
+    ) : focusRows;
+
+    if (!display.length) return `<div style="padding:30px;text-align:center;color:var(--muted)">No strikes near current price</div>`;
+
+    const maxOI = Math.max(...display.map(r => Math.max(r.callOI, r.putOI)), 1);
+    const totalCallOI = display.reduce((s,r)=>s+r.callOI,0);
+    const totalPutOI  = display.reduce((s,r)=>s+r.putOI,0);
+    const pcRatio = totalCallOI > 0 ? (totalPutOI/totalCallOI).toFixed(2) : '—';
+
+    // Max pain: for each potential expiry price, sum OI × distance
+    const maxPain = (() => {
+      let best = null, bestLoss = Infinity;
+      display.forEach(candidate => {
+        let loss = 0;
+        display.forEach(r => {
+          loss += r.callOI * Math.max(0, candidate.strike - r.strike);
+          loss += r.putOI  * Math.max(0, r.strike - candidate.strike);
+        });
+        if (loss < bestLoss) { bestLoss = loss; best = candidate.strike; }
+      });
+      return best;
+    })();
+
+    const fmtOI = v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString();
+    const BAR_MAX_W = 180; // px each side
+
+    const rows_html = display.map(r => {
+      const isShort  = Math.abs(r.strike - p.short) < 0.5;
+      const isLong   = p.long && Math.abs(r.strike - p.long) < 0.5;
+      const isStock  = stock && Math.abs(r.strike - stock) < (display[1]?.strike - display[0]?.strike) * 0.6;
+      const isMaxPain= maxPain && Math.abs(r.strike - maxPain) < 0.5;
+
+      const callW = Math.round((r.callOI / maxOI) * BAR_MAX_W);
+      const putW  = Math.round((r.putOI  / maxOI) * BAR_MAX_W);
+
+      const rowBg = isShort ? 'rgba(255,140,66,.08)'
+                  : isLong  ? 'rgba(0,232,138,.06)'
+                  : isStock ? 'rgba(0,212,255,.05)'
+                  : '';
+      const rowBorder = isShort ? '1px solid rgba(255,140,66,.3)'
+                      : isLong  ? '1px solid rgba(0,232,138,.25)'
+                      : isStock ? '1px solid rgba(0,212,255,.2)'
+                      : '1px solid transparent';
+
+      const strikeLabel = (() => {
+        const tags = [];
+        if (isStock)   tags.push(`<span style="font-size:8px;color:var(--accent);font-weight:700;margin-left:3px">▲PRICE</span>`);
+        if (isShort)   tags.push(`<span style="font-size:8px;color:var(--orange);font-weight:700;margin-left:3px">SHORT</span>`);
+        if (isLong)    tags.push(`<span style="font-size:8px;color:var(--green);font-weight:700;margin-left:3px">LONG</span>`);
+        if (isMaxPain) tags.push(`<span style="font-size:8px;color:var(--yellow);font-weight:700;margin-left:3px">⭐MAX PAIN</span>`);
+        return tags.join('');
+      })();
+
+      return `<div style="display:flex;align-items:center;gap:4px;padding:3px 6px;margin:1px 0;background:${rowBg};border:${rowBorder};border-radius:3px;font-size:10px">
+        <!-- PUT bar (left, red) -->
+        <div style="width:${BAR_MAX_W}px;display:flex;justify-content:flex-end;align-items:center;gap:4px">
+          <span style="color:var(--muted);font-size:9px;white-space:nowrap">${r.putOI?fmtOI(r.putOI):''}</span>
+          <div style="width:${putW}px;height:12px;background:rgba(167,139,250,.6);border-radius:2px 0 0 2px"></div>
+        </div>
+        <!-- Strike label -->
+        <div style="width:110px;text-align:center;font-weight:${isShort||isLong||isStock?'700':'400'};color:${isShort?'var(--orange)':isLong?'var(--green)':isStock?'var(--accent)':'var(--text)'};flex-shrink:0;font-size:11px">
+          $${r.strike % 1 === 0 ? r.strike.toFixed(0) : r.strike.toFixed(1)}${strikeLabel}
+        </div>
+        <!-- CALL bar (right, teal) -->
+        <div style="width:${BAR_MAX_W}px;display:flex;align-items:center;gap:4px">
+          <div style="width:${callW}px;height:12px;background:rgba(0,200,180,.6);border-radius:0 2px 2px 0"></div>
+          <span style="color:var(--muted);font-size:9px;white-space:nowrap">${r.callOI?fmtOI(r.callOI):''}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="oi-stat-row">
+        <div class="oi-stat"><div class="oi-stat-val" style="color:var(--purple)">${fmtOI(totalPutOI)}</div><div class="oi-stat-lbl">Put OI</div></div>
+        <div class="oi-stat"><div class="oi-stat-val" style="color:var(--yellow)">${pcRatio}</div><div class="oi-stat-lbl">P/C Ratio</div></div>
+        <div class="oi-stat"><div class="oi-stat-val" style="color:var(--teal)">${fmtOI(totalCallOI)}</div><div class="oi-stat-lbl">Call OI</div></div>
+      </div>
+      ${maxPain ? `<div style="font-size:11px;color:var(--yellow);margin-bottom:10px;text-align:center">⭐ Max Pain: <strong>$${maxPain}</strong> &nbsp;·&nbsp; <span style="color:var(--muted)">market maker gravity point near expiry</span></div>` : ''}
+      <div class="oi-legend">
+        <span><span class="oi-legend-dot" style="background:rgba(167,139,250,.6)"></span>Put OI (purple)</span>
+        <span><span class="oi-legend-dot" style="background:rgba(0,200,180,.6)"></span>Call OI (teal)</span>
+        <span><span class="oi-legend-dot" style="background:rgba(255,140,66,.5)"></span>Your short strike</span>
+        <span><span class="oi-legend-dot" style="background:rgba(0,232,138,.4)"></span>Your long strike</span>
+        <span><span class="oi-legend-dot" style="background:rgba(0,212,255,.4)"></span>Current price</span>
+      </div>
+      <div class="oi-chart-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);padding:0 6px 4px;text-transform:uppercase;letter-spacing:.5px">
+          <span style="width:${BAR_MAX_W}px;text-align:right">← PUTS (bearish)</span>
+          <span style="width:110px;text-align:center">Strike</span>
+          <span style="width:${BAR_MAX_W}px">CALLS (bullish) →</span>
+        </div>
+        ${rows_html}
+        ${display.length < (focusRows?.length||0) ? `<div style="text-align:center;font-size:9px;color:var(--muted);padding:6px">Showing ±20 strikes around current price</div>` : ''}
+      </div>`;
+  }
+
+  // Build tab buttons
+  const tabsHtml = allExpiries.map(exp => {
+    const label = exp === posExpiry ? `${exp.slice(5)} (current)` : `${exp.slice(5)} (roll target)`;
+    const hasData = !!oiCache[exp];
+    return `<button class="oi-expiry-tab ${exp===activeExp?'active':''}" 
+      onclick="switchOITab('${exp}',this)"
+      ${!hasData?'style="opacity:.4;cursor:not-allowed"':''}>
+      ${label}${!hasData?' ⚠':''}
+    </button>`;
+  }).join('');
+
+  // Check if OI data is actually populated (may all be zeros)
+  const activeRows = oiCache[activeExp] || [];
+  const hasRealOI = activeRows.some(r => r.callOI > 0 || r.putOI > 0);
+
+  document.getElementById('oiModalSub').textContent =
+    `${p.ticker} · ${p.type==='P'?'PUT':'CALL'} spread $${p.short}/$${p.long||'—'} · stock $${stock?.toFixed(2)||'—'}`;
+
+  body.innerHTML = `
+    <div style="margin-bottom:12px">${tabsHtml}</div>
+    ${!hasRealOI ? `<div style="background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:4px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--yellow)">
+      ⚠ OI data is all zeros for this expiry — the UW option-contracts endpoint may not be returning open_interest fields. Check console for <code>[RW] OI fields available</code> to see what's there.
+    </div>` : ''}
+    <div id="oiChartArea">${buildChart(activeExp)}</div>`;
+
+  // Store data for tab switching
+  window._oiRenderCtx = { p, oiCache, posExpiry, rollTarget, allExpiries, buildChart };
+}
+
+function switchOITab(exp, btn) {
+  document.querySelectorAll('.oi-expiry-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const ctx = window._oiRenderCtx;
+  if (ctx) document.getElementById('oiChartArea').innerHTML = ctx.buildChart(exp);
+}
 
 // ══════════════════════════════════════════
 // AUTO REFRESH
@@ -2905,6 +3511,8 @@ function saveToStorage() {
     localStorage.setItem('rollwatch_liveprices_v1', JSON.stringify(livePrices));
     localStorage.setItem('rollwatch_earnings_v1',   JSON.stringify(earningsMap));
     localStorage.setItem('rollwatch_flow_v1',       JSON.stringify(flowData));
+    localStorage.setItem('rollwatch_whale_v1',      JSON.stringify(whaleData));
+    localStorage.setItem('rollwatch_flow_ts_v1',    String(Date.now()));
     localStorage.setItem('rollwatch_livets_v1',     String(Date.now()));
     const badge = getStorageBadge();
     if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
@@ -2979,15 +3587,39 @@ function loadFromStorage() {
       if (savedEr && typeof savedEr === 'object') Object.assign(earningsMap, savedEr);
     }
     const rawFl = localStorage.getItem('rollwatch_flow_v1');
-    if (rawFl) {
+    const rawFlTs = localStorage.getItem('rollwatch_flow_ts_v1');
+    const flowAgeHrs = rawFlTs ? (Date.now() - Number(rawFlTs)) / 3600000 : 99;
+    if (rawFl && flowAgeHrs < 8) {
       const savedFl = JSON.parse(rawFl);
       if (savedFl && typeof savedFl === 'object') Object.assign(flowData, savedFl);
+    } else if (flowAgeHrs >= 8) {
+      localStorage.removeItem('rollwatch_flow_v1');
+    }
+    const rawWh = localStorage.getItem('rollwatch_whale_v1');
+    if (rawWh && flowAgeHrs < 8) {
+      const savedWh = JSON.parse(rawWh);
+      if (savedWh && typeof savedWh === 'object') Object.assign(whaleData, savedWh);
+    } else if (flowAgeHrs >= 8) {
+      localStorage.removeItem('rollwatch_whale_v1');
     }
     const rawLts = localStorage.getItem('rollwatch_livets_v1');
     if (rawLts) {
       const mins = Math.round((Date.now() - Number(rawLts)) / 60000);
       const staleLabel = mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
       document.getElementById('lastRefresh').textContent = `⏱ restored · last live ${staleLabel}`;
+    }
+    if (rawFlTs) {
+      const fMins = Math.round((Date.now() - Number(rawFlTs)) / 60000);
+      const fLabel = fMins < 2 ? 'just now' : fMins < 60 ? `${fMins}m ago` : `${Math.round(fMins/60)}h ago`;
+      const flowBtn = document.getElementById('flowBtn');
+      const whaleBtn = document.getElementById('whaleBtn');
+      if (flowBtn)  flowBtn.title  = `Last fetched ${fLabel}`;
+      if (whaleBtn) whaleBtn.title = `Last fetched ${fLabel}`;
+      // Update whale panel default sub-text if data was restored
+      const whaleSub = document.getElementById('whalePanelSub');
+      if (whaleSub && Object.keys(whaleData).length) {
+        whaleSub.textContent = `Restored from last session · fetched ${fLabel} · $500K+ threshold`;
+      }
     }
   } catch(e) {}
   // NOTE: intentionally NOT calling saveToStorage() here —
@@ -3162,7 +3794,11 @@ function savePosition() {
   const collateral = calcCollateral(postype, short, long, cts, liveStockNow || short, open);
   const dte        = calcDTE(expiry);
   const isDebit    = postype === 'spread_debit' || isSingleLeg;
-  const todayStr   = new Date().toISOString().slice(0,10);
+  // Use LOCAL date (not UTC toISOString) — avoids next-day stamp after ~5pm in UTC-7
+  const todayStr   = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
 
   // Auto-correct inverted strike order before storing.
   // P-CR / C-DB: short > long (sell higher put / buy lower call)
@@ -3213,28 +3849,56 @@ function savePosition() {
     POSITIONS[editingIdx] = pos;
   } else {
     POSITIONS.push(pos);
-    // If no live price yet, fetch it in the background and stamp it on
-    if (!liveStockNow) {
-      const posRef = pos; // closure ref
-      (async () => {
-        try {
-          const v = await uw(`/api/stock/${ticker}/stock-state`);
-          const d = v?.data;
-          const row = Array.isArray(d) ? d[0] : d;
-          if (row) {
-            const price = parseFloat(row.close||row.price||row.last||row.last_price||row.mark||row.underlying_price||0);
-            if (price > 0) {
-              posRef.openStock     = price;
-              posRef.openStockDate = new Date().toISOString().slice(0,10);
-              posRef.stock         = price;
-              livePrices[ticker]   = livePrices[ticker] || { price, open: price, change: 0, pct: 0 };
-              saveToStorage();
-              renderTable();
-            }
+    // Always fetch a fresh live price for openStock — never trust stale cache
+    const posRef = pos;
+    const localDateStr = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+    (async () => {
+      try {
+        // Yahoo first — most accurate current price, same source as the ticker bar
+        const yq = await fetchYahooQuote(ticker);
+        if (yq && yq.price > 0) {
+          posRef.openStock     = yq.price;
+          posRef.openStockDate = localDateStr();
+          posRef.stock         = yq.price;
+          livePrices[ticker]   = { price: yq.price, pct: yq.pct, open: yq.price, prev: 0, change: 0 };
+          // Recalc entryDelta with the fresh price — much more accurate than stale cache
+          if (posRef.postype !== 'covered_call') {
+            const S0f = yq.price;
+            const T0f = Math.max(calcDTE(posRef.expiry), 1) / 365;
+            const iv0f = (liveData[ticker] && liveData[ticker].iv) || getLiveIV(posRef);
+            posRef.entryDelta = Math.abs(bsDelta(S0f, posRef.short, T0f, iv0f, posRef.type));
+            console.log(`[RW] entryDelta refreshed for ${ticker}: Δ${posRef.entryDelta.toFixed(3)} @ $${yq.price}`);
           }
-        } catch(e) {}
-      })();
-    }
+          saveToStorage(); renderTable();
+          return;
+        }
+        // Fallback: UW stock-state — prefer last/price over close (close = yesterday)
+        const v = await uw(`/api/stock/${ticker}/stock-state`);
+        const d = v?.data;
+        const row = Array.isArray(d) ? d[0] : d;
+        if (row) {
+          const price = parseFloat(row.last||row.last_price||row.price||row.mark||row.underlying_price||row.close||0);
+          if (price > 0) {
+            posRef.openStock     = price;
+            posRef.openStockDate = localDateStr();
+            posRef.stock         = price;
+            livePrices[ticker]   = livePrices[ticker] || { price, open: price, change: 0, pct: 0 };
+            // Recalc entryDelta with fresh UW price too
+            if (posRef.postype !== 'covered_call') {
+              const S0f = price;
+              const T0f = Math.max(calcDTE(posRef.expiry), 1) / 365;
+              const iv0f = (liveData[ticker] && liveData[ticker].iv) || getLiveIV(posRef);
+              posRef.entryDelta = Math.abs(bsDelta(S0f, posRef.short, T0f, iv0f, posRef.type));
+              console.log(`[RW] entryDelta refreshed (UW) for ${ticker}: Δ${posRef.entryDelta.toFixed(3)} @ $${price}`);
+            }
+            saveToStorage(); renderTable();
+          }
+        }
+      } catch(e) { console.warn('[RW] openStock fetch failed for', ticker, e); }
+    })();
   }
 
   saveToStorage();
