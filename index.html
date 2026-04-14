@@ -90,6 +90,7 @@
 
   .ticker-name{font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.5px;text-transform:uppercase}
   .ern-warn{font-size:8px;color:var(--purple);display:block;margin-top:1px}
+  .ern-imminent{display:inline-block;border:2px solid var(--purple);border-radius:4px;padding:2px 6px;box-shadow:0 0 8px rgba(167,139,250,.4)}
   .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
   /* Put Credit + Call Debit = BULLISH — light blue */
   .type-P-cr{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.4)}
@@ -1563,7 +1564,18 @@ function renderTable() {
     }
 
     const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
-    const tickerCell = '<td><span class="ticker-name">' + p.ticker + '</span>' + ernHtml +
+    const ernImminent = (() => {
+      const e = earningsMap[p.ticker];
+      if (!e) return false;
+      const tod = new Date(); tod.setHours(0,0,0,0);
+      const earnDate = new Date(e + 'T00:00:00');
+      const daysUntil = Math.round((earnDate - tod) / 86400000);
+      return daysUntil === 0 || daysUntil === 1;
+    })();
+    const tickerNameHtml = ernImminent
+      ? '<span class="ticker-name ern-imminent">' + p.ticker + '</span>'
+      : '<span class="ticker-name">' + p.ticker + '</span>';
+    const tickerCell = '<td>' + tickerNameHtml + ernHtml +
       '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
     const tr=document.createElement('tr');
     const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
