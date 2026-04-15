@@ -1572,10 +1572,14 @@ function renderTable() {
       const daysUntil = Math.round((earnDate - tod) / 86400000);
       return daysUntil === 0 || daysUntil === 1;
     })();
-    const tickerNameHtml = ernImminent
+    const hasNote = !!TICKER_NOTES[p.ticker];
+    const noteTooltip = hasNote ? TICKER_NOTES[p.ticker].text.slice(0,80).replace(/'/g,"&#39;") : 'Add note';
+    const tickerNameInner = ernImminent
       ? '<span class="ticker-name ern-imminent">' + p.ticker + '</span>'
       : '<span class="ticker-name">' + p.ticker + '</span>';
-    const tickerCell = '<td>' + tickerNameHtml + ernHtml +
+    const tickerNameHtml = '<span onclick="openNoteModal(\'' + p.ticker + '\')" title="' + noteTooltip + '" style="cursor:pointer">' + tickerNameInner + '</span>';
+    const tdStyle = hasNote ? ' style="outline:2px solid var(--yellow);outline-offset:-2px;background:var(--yellow-dim)"' : '';
+    const tickerCell = '<td' + tdStyle + '>' + tickerNameHtml + ernHtml +
       '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
     const tr=document.createElement('tr');
     const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
@@ -2095,7 +2099,7 @@ async function fetchAll() {
   const watchOnly  = WATCHLIST.filter(t => !posTickers.includes(t));
   let done = 0;
   const BATCH = 5;        // tickers per batch — keeps req/min well under UW rate limit
-  const BATCH_PAUSE = 45; // seconds to wait between batches (resets UW per-minute window)
+  const BATCH_PAUSE = 30; // seconds to wait between batches (resets UW per-minute window)
 
   btn.textContent = `⏳ 0/${posTickers.length} tickers…`;
   yahooReady = false; // suppress pct colors until Yahoo corrects at end
