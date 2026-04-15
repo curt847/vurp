@@ -3076,22 +3076,37 @@ async function showOIMap(p) {
   document.getElementById('oiModalBody').innerHTML =
     `<div style="text-align:center;padding:40px;color:var(--accent)">⟳ Fetching strike OI data…</div>`;
 
-  // Get expiries: current position expiry + next roll target
+  // Get expiries: current position expiry + next 2 roll targets
   const today = new Date();
   const posExpiry = p.expiry;
-  // Next monthly expiry ~30-45 days out
-  const rollTarget = (() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 35);
-    // Find the 3rd Friday of that month
-    const yr = d.getFullYear(), mo = d.getMonth();
+
+  // Helper: find 3rd Friday of a given year/month
+  function thirdFriday(yr, mo) {
     const first = new Date(yr, mo, 1);
     const firstFri = (5 - first.getDay() + 7) % 7;
-    const thirdFri = new Date(yr, mo, 1 + firstFri + 14);
-    return thirdFri.toISOString().slice(0,10);
-  })();
+    const d = new Date(yr, mo, 1 + firstFri + 14);
+    return d.toISOString().slice(0,10);
+  }
 
-  const expiriesToFetch = [...new Set([posExpiry, rollTarget])];
+  // Generate next N monthly 3rd-Fridays starting from ~daysOut days from today
+  function nextMonthlyExpiries(count, startDaysOut) {
+    const results = [];
+    const base = new Date(today);
+    base.setDate(base.getDate() + startDaysOut);
+    let yr = base.getFullYear(), mo = base.getMonth();
+    while (results.length < count) {
+      const tf = thirdFriday(yr, mo);
+      if (tf > today.toISOString().slice(0,10)) results.push(tf);
+      mo++;
+      if (mo > 11) { mo = 0; yr++; }
+    }
+    return results;
+  }
+
+  // Roll target 1: ~35 days out; Roll target 2: ~65 days out
+  const [rollTarget, rollTarget2] = nextMonthlyExpiries(2, 28);
+
+  const expiriesToFetch = [...new Set([posExpiry, rollTarget, rollTarget2])];
   const oiCache = {}; // expiry -> [{strike, callOI, putOI, callVol, putVol}]
 
   await Promise.all(expiriesToFetch.map(async exp => {
@@ -3142,10 +3157,10 @@ async function showOIMap(p) {
     }
   }));
 
-  renderOIMap(p, oiCache, posExpiry, rollTarget, expiriesToFetch);
+  renderOIMap(p, oiCache, posExpiry, rollTarget, rollTarget2, expiriesToFetch);
 }
 
-function renderOIMap(p, oiCache, posExpiry, rollTarget, allExpiries) {
+function renderOIMap(p, oiCache, posExpiry, rollTarget, rollTarget2, allExpiries) {
   const body = document.getElementById('oiModalBody');
   const stock = getLiveStock(p);
 
@@ -3271,7 +3286,11 @@ function renderOIMap(p, oiCache, posExpiry, rollTarget, allExpiries) {
 
   // Build tab buttons
   const tabsHtml = allExpiries.map(exp => {
-    const label = exp === posExpiry ? `${exp.slice(5)} (current)` : `${exp.slice(5)} (roll target)`;
+    let label;
+    if (exp === posExpiry)        label = `${exp.slice(5)} (current)`;
+    else if (exp === rollTarget)  label = `${exp.slice(5)} (roll target)`;
+    else if (exp === rollTarget2) label = `${exp.slice(5)} (roll target +2)`;
+    else                          label = exp.slice(5);
     const hasData = !!oiCache[exp];
     return `<button class="oi-expiry-tab ${exp===activeExp?'active':''}" 
       onclick="switchOITab('${exp}',this)"
@@ -3295,7 +3314,7 @@ function renderOIMap(p, oiCache, posExpiry, rollTarget, allExpiries) {
     <div id="oiChartArea">${buildChart(activeExp)}</div>`;
 
   // Store data for tab switching
-  window._oiRenderCtx = { p, oiCache, posExpiry, rollTarget, allExpiries, buildChart };
+  window._oiRenderCtx = { p, oiCache, posExpiry, rollTarget, rollTarget2, allExpiries, buildChart };
 }
 
 function switchOITab(exp, btn) {
@@ -3525,6 +3544,7 @@ function saveToStorage() {
     localStorage.setItem('rollwatch_flow_v1',       JSON.stringify(flowData));
     localStorage.setItem('rollwatch_whale_v1',      JSON.stringify(whaleData));
     localStorage.setItem('rollwatch_flow_ts_v1',    String(Date.now()));
+    if (Object.keys(whaleData).length) localStorage.setItem('rollwatch_whale_ts_v1', String(Date.now()));
     localStorage.setItem('rollwatch_livets_v1',     String(Date.now()));
     const badge = getStorageBadge();
     if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
@@ -3608,11 +3628,14 @@ function loadFromStorage() {
       localStorage.removeItem('rollwatch_flow_v1');
     }
     const rawWh = localStorage.getItem('rollwatch_whale_v1');
-    if (rawWh && flowAgeHrs < 8) {
+    const rawWhTs = localStorage.getItem('rollwatch_whale_ts_v1');
+    const whaleAgeHrs = rawWhTs ? (Date.now() - Number(rawWhTs)) / 3600000 : 99;
+    if (rawWh && whaleAgeHrs < 8) {
       const savedWh = JSON.parse(rawWh);
       if (savedWh && typeof savedWh === 'object') Object.assign(whaleData, savedWh);
-    } else if (flowAgeHrs >= 8) {
+    } else if (whaleAgeHrs >= 8) {
       localStorage.removeItem('rollwatch_whale_v1');
+      localStorage.removeItem('rollwatch_whale_ts_v1');
     }
     const rawLts = localStorage.getItem('rollwatch_livets_v1');
     if (rawLts) {
@@ -3624,13 +3647,17 @@ function loadFromStorage() {
       const fMins = Math.round((Date.now() - Number(rawFlTs)) / 60000);
       const fLabel = fMins < 2 ? 'just now' : fMins < 60 ? `${fMins}m ago` : `${Math.round(fMins/60)}h ago`;
       const flowBtn = document.getElementById('flowBtn');
+      if (flowBtn) flowBtn.title = `Last fetched ${fLabel}`;
+    }
+    if (rawWhTs) {
+      const wMins = Math.round((Date.now() - Number(rawWhTs)) / 60000);
+      const wLabel = wMins < 2 ? 'just now' : wMins < 60 ? `${wMins}m ago` : `${Math.round(wMins/60)}h ago`;
       const whaleBtn = document.getElementById('whaleBtn');
-      if (flowBtn)  flowBtn.title  = `Last fetched ${fLabel}`;
-      if (whaleBtn) whaleBtn.title = `Last fetched ${fLabel}`;
+      if (whaleBtn) whaleBtn.title = `Last fetched ${wLabel}`;
       // Update whale panel default sub-text if data was restored
       const whaleSub = document.getElementById('whalePanelSub');
       if (whaleSub && Object.keys(whaleData).length) {
-        whaleSub.textContent = `Restored from last session · fetched ${fLabel} · $500K+ threshold`;
+        whaleSub.textContent = `Restored from last session · fetched ${wLabel} · $500K+ threshold`;
       }
     }
   } catch(e) {}
