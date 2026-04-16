@@ -208,7 +208,11 @@
   .watch-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:130px;position:relative;transition:border-color .15s}
   .watch-card:hover{border-color:var(--accent)}
   .watch-card.has-position{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.04)}
-  .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)}
+  .watch-card.watch-only{border:2px solid rgba(255,255,255,.5);background:var(--surface);color:var(--text)}
+  .watch-card.watch-only .wc-ticker{color:var(--text)}
+  .watch-card.watch-only .wc-price{color:var(--text)}
+  .watch-card.watch-only:hover{border-color:rgba(255,255,255,.85)}
+  .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)}
   .watch-card .wc-price{font-size:16px;font-weight:700;margin-top:4px}
   .watch-card .wc-change{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:-0.5px}
   .watch-card .wc-iv{font-size:9px;color:var(--muted);margin-top:3px}
@@ -628,11 +632,12 @@
         oninput="this.value=this.value.toUpperCase()"
         onfocus="this.style.borderColor='var(--accent)'"
         onblur="this.style.borderColor='var(--border)'" />
-      <button class="btn" style="font-size:10px;padding:5px 12px" onclick="sortAndRenderWatch()" title="Re-sort by cost to close">⇅ SORT</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px" onclick="if(confirm('Reset all sector assignments to saved default?'))resetSectors()" title="Reset sector assignments to saved default">↺ SECTORS</button>
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
     </div>
   </div>
-  <div id="watchGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+  <div id="watchGrid"></div>
 </div>
 
 <div class="footer-note">
@@ -770,10 +775,12 @@
   <div class="modal pos-modal">
     <div class="modal-title" id="posModalTitle">+ Add Position</div>
     <div class="form-grid">
-      <div class="form-group">
+      <!-- Row 1: Ticker full width -->
+      <div class="form-group full">
         <label class="form-label">Ticker</label>
         <input class="form-input" id="f-ticker" placeholder="e.g. PLTR" oninput="this.value=this.value.toUpperCase()"/>
       </div>
+      <!-- Row 2: Position Type | Option Type -->
       <div class="form-group">
         <label class="form-label">Position Type</label>
         <select class="form-select" id="f-postype" onchange="onPosTypeChange()">
@@ -791,6 +798,7 @@
           <option value="C">CALL</option>
         </select>
       </div>
+      <!-- Row 3: Short Strike | Long Strike -->
       <div class="form-group">
         <label class="form-label" id="f-short-label">Short Strike $</label>
         <input class="form-input" id="f-short" type="number" placeholder="e.g. 150"/>
@@ -799,6 +807,7 @@
         <label class="form-label">Long Strike $</label>
         <input class="form-input" id="f-long" type="number" placeholder="e.g. 140"/>
       </div>
+      <!-- Row 4: Contracts | Expiry Date -->
       <div class="form-group">
         <label class="form-label">Contracts</label>
         <input class="form-input" id="f-cts" type="number" placeholder="e.g. 3" min="1"/>
@@ -807,6 +816,7 @@
         <label class="form-label">Expiry Date</label>
         <input class="form-input" id="f-expiry" type="date"/>
       </div>
+      <!-- Row 5: Open Premium full width -->
       <div class="form-group full">
         <label class="form-label">Open Premium $ (per share — credit received or debit paid)</label>
         <input class="form-input" id="f-open" type="number" step="0.01" placeholder="e.g. 4.33"/>
@@ -814,6 +824,44 @@
     </div>
     <div id="posCollateralPreview" style="color:var(--muted);font-size:10px;margin-bottom:10px;display:none">
       📐 Cost Basis / Collateral: <span id="collateralCalc" style="color:var(--accent);font-weight:700"></span>
+    </div>
+
+    <!-- Inline Spread Calculator for Add Modal -->
+    <div style="margin-bottom:12px">
+      <button type="button" onclick="toggleAddSpreadCalc()" id="addCalcToggleBtn"
+        style="background:transparent;border:1px solid rgba(0,212,255,.3);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;letter-spacing:.5px;width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between">
+        <span>⇄ SPREAD CALCULATOR</span><span id="addCalcChevron" style="font-size:12px">▼</span>
+      </button>
+      <div id="addSpreadCalcBody" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px">
+        <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Enter leg prices to calculate net spread before entering above</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Sell Leg (short)</div>
+            <input id="asc-sell" type="number" step="0.01" min="0" placeholder="e.g. 3.50"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buy Leg (long)</div>
+            <input id="asc-buy" type="number" step="0.01" min="0" placeholder="e.g. 1.20"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Strike Width</div>
+            <input id="asc-width" type="number" step="1" min="0" placeholder="e.g. 5"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Contracts</div>
+            <input id="asc-cts" type="number" step="1" min="1" value="1"
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          </div>
+        </div>
+        <div id="ascResult" style="font-size:11px;color:var(--muted);text-align:center;padding:4px 0">Enter prices above to calculate</div>
+      </div>
     </div>
     <label id="conviction-hold-group" style="display:flex;align-items:flex-start;gap:10px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.25);border-radius:6px;padding:10px 12px;margin-bottom:10px;cursor:pointer">
       <input type="checkbox" id="f-conviction" style="margin-top:2px;accent-color:var(--purple);flex-shrink:0;width:14px;height:14px"/>
@@ -3436,6 +3484,7 @@ function buildPayload() {
     stocks:            STOCKS,
     watchlist:         WATCHLIST,
     bias:              BIAS,
+    tickerSectors:     TICKER_SECTORS,
     ccTracked:         [...CC_TRACKED],
     tickerNotes:       TICKER_NOTES,
     portfolioBaseline: portfolioBaseline,
@@ -3488,6 +3537,7 @@ async function driveLoad() {
       WATCHLIST = [...new Set(data.watchlist)];
     }
     if (data.bias && typeof data.bias === 'object') { BIAS = data.bias; }
+    if (data.tickerSectors && typeof data.tickerSectors === 'object') { TICKER_SECTORS = data.tickerSectors; }
     if (Array.isArray(data.ccTracked)) { CC_TRACKED = new Set(data.ccTracked); }
     if (data.tickerNotes && typeof data.tickerNotes === 'object') { TICKER_NOTES = data.tickerNotes; }
     if (Array.isArray(data.tradeLog)) {
@@ -3537,6 +3587,7 @@ function saveToStorage() {
     localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(STOCKS));
     localStorage.setItem(WATCH_KEY,         JSON.stringify(WATCHLIST));
     localStorage.setItem(BIAS_KEY,          JSON.stringify(BIAS));
+    localStorage.setItem('rollwatch_sectors_v1', JSON.stringify(TICKER_SECTORS));
     localStorage.setItem(CC_TRACK_KEY,      JSON.stringify([...CC_TRACKED]));
     localStorage.setItem(NOTES_KEY,         JSON.stringify(TICKER_NOTES));
     localStorage.setItem(TRADELOG_KEY,      JSON.stringify(TRADE_LOG));
@@ -3586,6 +3637,11 @@ function loadFromStorage() {
       const savedB = JSON.parse(rawB);
       if (savedB && typeof savedB === 'object') { BIAS = savedB; }
     }
+    const rawSec = localStorage.getItem('rollwatch_sectors_v1');
+    if (rawSec) {
+      const savedSec = JSON.parse(rawSec);
+      if (savedSec && typeof savedSec === 'object') { TICKER_SECTORS = savedSec; }
+    }
     const rawCCT = localStorage.getItem(CC_TRACK_KEY);
     if (rawCCT) {
       const savedCCT = JSON.parse(rawCCT);
@@ -3630,6 +3686,8 @@ function loadFromStorage() {
       if (savedFl && typeof savedFl === 'object') Object.assign(flowData, savedFl);
     } else if (flowAgeHrs >= 8) {
       localStorage.removeItem('rollwatch_flow_v1');
+      localStorage.removeItem('rollwatch_flow_ts_v1');
+      Object.keys(flowData).forEach(k => delete flowData[k]);
     }
     const rawWh = localStorage.getItem('rollwatch_whale_v1');
     const rawWhTs = localStorage.getItem('rollwatch_whale_ts_v1');
@@ -3647,7 +3705,7 @@ function loadFromStorage() {
       const staleLabel = mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
       document.getElementById('lastRefresh').textContent = `⏱ restored · last live ${staleLabel}`;
     }
-    if (rawFlTs) {
+    if (rawFlTs && flowAgeHrs < 8) {
       const fMins = Math.round((Date.now() - Number(rawFlTs)) / 60000);
       const fLabel = fMins < 2 ? 'just now' : fMins < 60 ? `${fMins}m ago` : `${Math.round(fMins/60)}h ago`;
       const flowBtn = document.getElementById('flowBtn');
@@ -3954,6 +4012,156 @@ function savePosition() {
 }
 
 // ══════════════════════════════════════════
+// SPREAD CALCULATOR
+// ══════════════════════════════════════════
+
+function showSpreadCalc() {
+  if (document.getElementById('spreadCalcModal')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'spreadCalcModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:420px;max-width:95vw;font-family:'JetBrains Mono',monospace">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent)">⇄ Spread Calculator</div>
+        <button onclick="document.getElementById('spreadCalcModal').remove()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+      </div>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:20px">Enter the sell and buy leg prices to calculate your net spread</div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Sell Leg Price (short / credit)</div>
+          <input id="scSell" type="number" step="0.01" min="0" placeholder="e.g. 3.50"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;padding:10px 12px;border-radius:4px;width:100%;outline:none"
+            oninput="calcSpread()"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Buy Leg Price (long / debit)</div>
+          <input id="scBuy" type="number" step="0.01" min="0" placeholder="e.g. 1.20"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;padding:10px 12px;border-radius:4px;width:100%;outline:none"
+            oninput="calcSpread()"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Strike Width (optional, for max loss)</div>
+          <input id="scWidth" type="number" step="1" min="0" placeholder="e.g. 5"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;padding:10px 12px;border-radius:4px;width:100%;outline:none"
+            oninput="calcSpread()"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Contracts</div>
+          <input id="scCts" type="number" step="1" min="1" value="1"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;padding:10px 12px;border-radius:4px;width:100%;outline:none"
+            oninput="calcSpread()"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+      </div>
+
+      <div id="scResult" style="margin-top:20px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px">
+        <div style="color:var(--muted);font-size:12px;grid-column:1/-1;text-align:center">Enter prices above to calculate</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  setTimeout(() => document.getElementById('scSell')?.focus(), 50);
+}
+
+function calcSpread() {
+  const sell = parseFloat(document.getElementById('scSell')?.value);
+  const buy  = parseFloat(document.getElementById('scBuy')?.value);
+  const width = parseFloat(document.getElementById('scWidth')?.value);
+  const cts  = Math.max(parseInt(document.getElementById('scCts')?.value) || 1, 1);
+  const el   = document.getElementById('scResult');
+  if (!el) return;
+
+  if (isNaN(sell) || isNaN(buy)) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;grid-column:1/-1;text-align:center">Enter prices above to calculate</div>`;
+    return;
+  }
+
+  const net     = sell - buy;
+  const netPer  = net * 100;
+  const netTotal= net * 100 * cts;
+  const isCredit= net > 0;
+  const netColor= isCredit ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+  const creditLabel = isCredit ? 'Net Credit' : net < 0 ? 'Net Debit' : 'Net Spread';
+
+  let maxProfitHtml = `<div><span style="color:var(--muted)">Max Profit / ct</span><br><span style="color:var(--green);font-size:18px;font-weight:700">$${(netPer).toFixed(0)}</span></div>
+    <div><span style="color:var(--muted)">Max Profit (${cts}ct)</span><br><span style="color:var(--green);font-size:18px;font-weight:700">$${netTotal.toFixed(0)}</span></div>`;
+
+  let maxLossHtml = '';
+  if (!isNaN(width) && width > 0) {
+    const maxLossPerCt = isCredit ? (width - net) * 100 : (width + net) * 100;
+    const maxLossTotal = maxLossPerCt * cts;
+    const breakeven = isCredit ? sell - net : buy - net;
+    maxLossHtml = `
+      <div><span style="color:var(--muted)">Max Loss / ct</span><br><span style="color:var(--red);font-size:18px;font-weight:700">$${maxLossPerCt.toFixed(0)}</span></div>
+      <div><span style="color:var(--muted)">Max Loss (${cts}ct)</span><br><span style="color:var(--red);font-size:18px;font-weight:700">$${maxLossTotal.toFixed(0)}</span></div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+        <span style="color:var(--muted)">Risk / Reward</span>  <span style="color:var(--text);font-weight:700">1 : ${(netPer / maxLossPerCt).toFixed(2)}</span>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <span style="color:var(--muted)">% Max Profit = </span><span style="color:var(--accent);font-weight:700">${Math.round((netPer / (netPer + maxLossPerCt)) * 100)}%</span>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div style="grid-column:1/-1;margin-bottom:4px">
+      <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px">${creditLabel}</span><br>
+      <span style="color:${netColor};font-size:26px;font-weight:800">$${Math.abs(net).toFixed(2)}</span>
+      <span style="color:var(--muted);font-size:12px"> per contract · $${Math.abs(netPer).toFixed(0)} value</span>
+    </div>
+    ${maxProfitHtml}
+    ${maxLossHtml}`;
+}
+
+// ── Inline spread calc helpers ──
+function _runInlineSpreadCalc(sellId, buyId, widthId, ctsId, resultId) {
+  const sell  = parseFloat(document.getElementById(sellId)?.value);
+  const buy   = parseFloat(document.getElementById(buyId)?.value);
+  const width = parseFloat(document.getElementById(widthId)?.value);
+  const cts   = Math.max(parseInt(document.getElementById(ctsId)?.value) || 1, 1);
+  const el    = document.getElementById(resultId);
+  if (!el) return;
+  if (isNaN(sell) || isNaN(buy)) { el.textContent = 'Enter prices above to calculate'; el.style.color='var(--muted)'; return; }
+  const net      = sell - buy;
+  const netPer   = net * 100;
+  const netTotal = netPer * cts;
+  const isCredit = net > 0;
+  const netColor = isCredit ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+  const label    = isCredit ? 'Net Credit' : net < 0 ? 'Net Debit' : 'Net Spread';
+  let html = `<span style="color:${netColor};font-size:18px;font-weight:800">$${Math.abs(net).toFixed(2)}</span>
+    <span style="color:var(--muted);font-size:10px"> ${label} · $${Math.abs(netPer).toFixed(0)}/ct · $${Math.abs(netTotal).toFixed(0)} total (${cts}ct)</span>`;
+  if (!isNaN(width) && width > 0) {
+    const maxLossPerCt = isCredit ? (width - net) * 100 : (width + net) * 100;
+    const rr = netPer / maxLossPerCt;
+    html += `<br><span style="color:var(--muted);font-size:10px">Max Loss $${maxLossPerCt.toFixed(0)}/ct · R/R 1:${rr.toFixed(2)} · ${Math.round(rr/(1+rr)*100)}% max profit</span>`;
+  }
+  el.innerHTML = html; el.style.color = '';
+}
+
+function calcAddSpread()   { _runInlineSpreadCalc('asc-sell','asc-buy','asc-width','asc-cts','ascResult'); }
+function calcCloseSpread() { _runInlineSpreadCalc('csc-sell','csc-buy','csc-width','csc-cts','cscResult'); }
+
+function toggleAddSpreadCalc() {
+  const body = document.getElementById('addSpreadCalcBody');
+  const chevron = document.getElementById('addCalcChevron');
+  if (!body) return;
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (chevron) chevron.textContent = open ? '▼' : '▲';
+}
+
+function toggleCloseSpreadCalc() {
+  const body = document.getElementById('closeSpreadCalcBody');
+  const chevron = document.getElementById('closeCalcChevron');
+  if (!body) return;
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (chevron) chevron.textContent = open ? '▼' : '▲';
+}
+
 // TRADE LOG — CLOSE MODAL & LOG ENGINE
 // ══════════════════════════════════════════
 
@@ -3996,6 +4204,7 @@ function confirmClose(idx) {
       <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--green);margin-bottom:4px">✓ Close Position</div>
       <div style="color:var(--muted);font-size:11px;margin-bottom:18px">${p.ticker} · ${tlabel(p)} · ${strikesLabel} · ${p.cts}ct · ${p.expiry}</div>
 
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:16px;font-size:11px">
         <div><span style="color:var(--muted)">Entry Premium</span><br><span style="color:var(--text);font-size:15px;font-weight:700">$${openPrem.toFixed(2)}</span></div>
         <div><span style="color:var(--muted)">Current Mid</span><br><span style="color:var(--text);font-size:15px;font-weight:700">$${mid.toFixed(2)} ${isLive?'<span style=\'font-size:9px;color:var(--green)\'>●LIVE</span>':'<span style=\'font-size:9px;color:var(--muted)\'>~BS</span>'}</span></div>
@@ -4004,6 +4213,14 @@ function confirmClose(idx) {
       </div>
 
       <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Contracts to Close (max: ${p.cts})</div>
+          <input id="closeContracts" type="number" step="1" min="1" max="${p.cts}" value="${p.cts}"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 10px;border-radius:4px;width:100%;outline:none"
+            oninput="updateClosePctPreview(${openPrem})"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+        </div>
+
         <div>
           <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Close Price (spread mid to buy back)</div>
           <input id="closePrice" type="number" step="0.01" min="0" value="${mid.toFixed(2)}"
@@ -4042,6 +4259,44 @@ function confirmClose(idx) {
             style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;width:100%;outline:none"
             onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
         </div>
+
+        <!-- Inline Spread Calculator for Close Modal -->
+        <div>
+          <button type="button" onclick="toggleCloseSpreadCalc()" id="closeCalcToggleBtn"
+            style="background:transparent;border:1px solid rgba(0,212,255,.3);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;letter-spacing:.5px;width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between">
+            <span>⇄ SPREAD CALCULATOR</span><span id="closeCalcChevron" style="font-size:12px">▼</span>
+          </button>
+          <div id="closeSpreadCalcBody" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px">
+            <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Compare bid/ask legs to find fair close price</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div>
+                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Sell Leg (short)</div>
+                <input id="csc-sell" type="number" step="0.01" min="0" placeholder="e.g. 3.50"
+                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
+              <div>
+                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buy Leg (long)</div>
+                <input id="csc-buy" type="number" step="0.01" min="0" placeholder="e.g. 1.20"
+                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
+              <div>
+                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Strike Width</div>
+                <input id="csc-width" type="number" step="1" min="0" placeholder="e.g. 5"
+                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
+              <div>
+                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Contracts</div>
+                <input id="csc-cts" type="number" step="1" min="1" value="1"
+                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
+                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              </div>
+            </div>
+            <div id="cscResult" style="font-size:11px;color:var(--muted);text-align:center;padding:4px 0">Enter prices above to calculate</div>
+          </div>
+        </div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:20px">
@@ -4061,14 +4316,17 @@ function updateClosePctPreview(openPrem) {
   if (openPrem <= 0) { el.textContent = 'P&L: —'; return; }
   const p = POSITIONS[closingIdx];
   const isLongOpt = p && (p.postype === 'long_call' || p.postype === 'long_put');
+  const ctsToClose = Math.min(Math.max(parseInt(document.getElementById('closeContracts')?.value) || p?.cts || 1, 1), p?.cts || 1);
   const pct = isLongOpt
     ? Math.round(((closePrice - openPrem) / openPrem) * 100)
     : Math.round(((openPrem - closePrice) / openPrem) * 100);
   const pnl = isLongOpt
-    ? (closePrice - openPrem) * 100 * (p?.cts || 1)
-    : (openPrem - closePrice) * 100 * (POSITIONS[closingIdx]?.cts || 1);
+    ? (closePrice - openPrem) * 100 * ctsToClose
+    : (openPrem - closePrice) * 100 * ctsToClose;
+  const remaining = (p?.cts || 1) - ctsToClose;
   const color = pct >= 50 ? 'var(--green)' : pct >= 0 ? 'var(--yellow)' : 'var(--red)';
-  el.innerHTML = `<span style="color:${color}">${pct}% captured · $${pnl.toFixed(0)} P&L (per contract basis)</span>`;
+  const remainingNote = remaining > 0 ? ` · <span style="color:var(--muted)">${remaining}ct remain open</span>` : '';
+  el.innerHTML = `<span style="color:${color}">${pct}% captured · $${pnl.toFixed(0)} P&L (${ctsToClose}ct)</span>${remainingNote}`;
 }
 
 function handleCloseReasonChange() {
@@ -4086,6 +4344,8 @@ function executeClose() {
   const notes = document.getElementById('closeNotes')?.value?.trim() || '';
   const openPrem = Math.abs(p.open);
   const isLongOpt = p.postype === 'long_call' || p.postype === 'long_put';
+  const ctsToClose = Math.min(Math.max(parseInt(document.getElementById('closeContracts')?.value) || p.cts, 1), p.cts);
+  const isPartial = ctsToClose < p.cts;
   const pctCapture = openPrem > 0
     ? (isLongOpt
         ? Math.round(((closePrice - openPrem) / openPrem) * 100)
@@ -4113,7 +4373,7 @@ function executeClose() {
     optionType:   p.type,                                  // P or C
     short:        p.short,
     long:         p.long || null,
-    cts:          p.cts,
+    cts:          ctsToClose,
     expiry:       p.expiry,
     openedApprox: p.openedAt || null,                      // if we stored it (future)
     dteAtOpen:    p.dteAtOpen || null,                     // if stored at entry
@@ -4122,7 +4382,7 @@ function executeClose() {
     closePrice:   closePrice,
     pctCapture:   pctCapture,
     pnlPerCt:     Math.round((isLongOpt ? closePrice - openPrem : openPrem - closePrice) * 100 * 100) / 100,
-    pnlTotal:     Math.round((isLongOpt ? closePrice - openPrem : openPrem - closePrice) * 100 * p.cts * 100) / 100,
+    pnlTotal:     Math.round((isLongOpt ? closePrice - openPrem : openPrem - closePrice) * 100 * ctsToClose * 100) / 100,
     collateral:   p.collateral || 0,
     alertAtClose: getAlertLevel(p),
     reason:       reason,
@@ -4132,15 +4392,21 @@ function executeClose() {
 
   TRADE_LOG.push(entry);
 
-  // Remove from active positions
+  // Remove or reduce position
   const closedTicker = p.ticker;
-  POSITIONS.splice(closingIdx, 1);
+  if (isPartial) {
+    POSITIONS[closingIdx].cts -= ctsToClose;
+  } else {
+    POSITIONS.splice(closingIdx, 1);
+  }
   closingIdx = null;
 
-  // If no positions remain for this ticker, move it to the watching section
-  const stillHasPosition = POSITIONS.some(pos => pos.ticker === closedTicker);
-  if (!stillHasPosition && !WATCHLIST.includes(closedTicker)) {
-    WATCHLIST.push(closedTicker);
+  // If fully closed and no positions remain for this ticker, move it to watching
+  if (!isPartial) {
+    const stillHasPosition = POSITIONS.some(pos => pos.ticker === closedTicker);
+    if (!stillHasPosition && !WATCHLIST.includes(closedTicker)) {
+      WATCHLIST.push(closedTicker);
+    }
   }
 
   saveToStorage();
@@ -4742,8 +5008,72 @@ const BIAS_KEY   = 'rollwatch_bias_v1';
 let WATCHLIST = []; // user additions persist via storage
 let BIAS      = {}; // ticker -> 'bull' | 'bear' | 'neu'
 
+// ── SECTOR MAP ──
+// Hardcoded defaults; user overrides stored in TICKER_SECTORS
+const SECTORS = ['Tech', 'Software', 'Semiconductor', 'Data Center', 'Finance', 'Industrial', 'Space / Defense', 'Consumer', 'Healthcare', 'Crypto / Quantum', 'Other'];
+const DEFAULT_SECTORS = {
+  // Tech
+  AAPL:'Tech', MSFT:'Tech', LASR:'Tech', GLW:'Tech', WDC:'Tech',
+  // Software
+  PLTR:'Software', CRM:'Software', NOW:'Software', WDAY:'Software', ADBE:'Software',
+  RDDT:'Software', DUOL:'Software',
+  // Semiconductor
+  NVDA:'Semiconductor', AMD:'Semiconductor', INTC:'Semiconductor', AVGO:'Semiconductor',
+  AMAT:'Semiconductor', NBIS:'Semiconductor',
+  // Data Center
+  APLD:'Data Center', IREN:'Data Center', HUT:'Data Center', VRT:'Data Center',
+  // Finance
+  JPM:'Finance', MS:'Finance', HOOD:'Finance', SOFI:'Finance',
+  // Industrial
+  BA:'Industrial', IBM:'Industrial', GE:'Industrial',
+  // Space / Defense
+  ASTS:'Space / Defense', RKLB:'Space / Defense',
+  // Consumer
+  AMZN:'Consumer', META:'Consumer', GOOG:'Consumer', APP:'Consumer',
+  FLUT:'Consumer', HIMS:'Consumer',
+  // Healthcare
+  LLY:'Healthcare', MRK:'Healthcare', BSX:'Healthcare',
+  // Crypto / Quantum
+  MSTR:'Crypto / Quantum', BTC:'Crypto / Quantum', IONQ:'Crypto / Quantum',
+  // Other
+  TSLA:'Other', USO:'Other',
+};
+let TICKER_SECTORS = {}; // user overrides: ticker -> sector name
+
+function getSector(ticker) {
+  return TICKER_SECTORS[ticker] || DEFAULT_SECTORS[ticker] || 'Other';
+}
+
+function saveSectorsAsDefault() {
+  // Snapshot the current effective sector for every known ticker
+  const allTickers = [...new Set([...POSITIONS.map(p => p.ticker), ...WATCHLIST])];
+  const snapshot = {};
+  allTickers.forEach(t => { snapshot[t] = getSector(t); });
+  localStorage.setItem('rollwatch_sectors_default_v1', JSON.stringify(snapshot));
+  // Brief toast
+  const toast = document.createElement('div');
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;z-index:999";
+  toast.textContent = '💾 Sector layout saved as default';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2200);
+}
+
+function resetSectors() {
+  // Restore from user-saved default if it exists, otherwise fall back to hardcoded
+  const saved = localStorage.getItem('rollwatch_sectors_default_v1');
+  TICKER_SECTORS = saved ? JSON.parse(saved) : {};
+  localStorage.setItem('rollwatch_sectors_v1', JSON.stringify(TICKER_SECTORS));
+  saveToStorage();
+  renderWatchList();
+}
+
+function setTickerSector(ticker, sector) {
+  TICKER_SECTORS[ticker] = sector;
+  saveToStorage();
+  renderWatchList();
+}
+
 function saveWatchList() {
-  // Always go through saveToStorage so Drive gets the full state update
   saveToStorage();
 }
 
@@ -4775,7 +5105,6 @@ function cycleBias(ticker) {
 }
 
 function sortAndRenderWatch() {
-  // Force re-sort: re-evaluate positions for all watchlist tickers, then render
   renderWatchList();
 }
 
@@ -4783,7 +5112,6 @@ function renderWatchList() {
   const grid = document.getElementById('watchGrid');
   const posTickers = new Set(POSITIONS.map(p => p.ticker));
 
-  // Compute per-ticker close cost for sorting
   const tickerCloseCost = {};
   posTickers.forEach(t => {
     const tPos = POSITIONS.filter(p => p.ticker === t && p.postype !== 'covered_call' && !isLongOption(p));
@@ -4793,125 +5121,130 @@ function renderWatchList() {
     }, 0);
   });
 
-  // Compute per-ticker collateral for tiebreaker
   const tickerCollateral = {};
   POSITIONS.forEach(p => {
     if (!tickerCollateral[p.ticker]) tickerCollateral[p.ticker] = 0;
     if (p.postype !== 'covered_call' && !isLongOption(p)) tickerCollateral[p.ticker] += p.collateral;
   });
 
-  // Build master list: ALL tickers with positions sorted by close cost, then watch-only (no positions) sorted alpha
-  const watchOnly  = WATCHLIST.filter(t => !posTickers.has(t)).sort();
-  const inPosition = [...posTickers].sort((a, b) => {
-    const ccDiff = (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0);
-    if (Math.abs(ccDiff) > 0.01) return ccDiff;
-    return (tickerCollateral[b] || 0) - (tickerCollateral[a] || 0);
+  // All tickers to show: position tickers + watchlist
+  const allTickers = [...new Set([...posTickers, ...WATCHLIST])];
+
+  // Group by sector
+  const bySector = {};
+  allTickers.forEach(ticker => {
+    const sec = getSector(ticker);
+    if (!bySector[sec]) bySector[sec] = [];
+    bySector[sec].push(ticker);
   });
-  // Final order: all position tickers (sorted by close cost) → pure watch-only (alpha)
-  const allCards = [
-    ...inPosition,
-    ...watchOnly,
-  ];
 
-  grid.innerHTML = allCards.map(ticker => {
-    const lp       = livePrices[ticker];
-    const iv       = (liveData[ticker]&&liveData[ticker].iv);
-    const hasPos   = posTickers.has(ticker);
-    const isWatch  = WATCHLIST.includes(ticker);
-    const posCount = POSITIONS.filter(p => p.ticker === ticker).length;
-    const bias     = BIAS[ticker] || 'neu';
-    const isWatchOnly = isWatch && !hasPos;
+  // Sort tickers within each sector: position tickers by close cost desc, then watch-only alpha
+  Object.keys(bySector).forEach(sec => {
+    bySector[sec].sort((a, b) => {
+      const aHas = posTickers.has(a), bHas = posTickers.has(b);
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      if (aHas && bHas) {
+        const ccDiff = (tickerCloseCost[b] || 0) - (tickerCloseCost[a] || 0);
+        if (Math.abs(ccDiff) > 0.01) return ccDiff;
+        return (tickerCollateral[b] || 0) - (tickerCollateral[a] || 0);
+      }
+      return a.localeCompare(b);
+    });
+  });
 
-    // Card border/bg — neutral; bias is shown on ticker label only
-    const isSell = bias === 'sell';
-    const cardStyle = isWatchOnly
-      ? 'border-color:var(--accent);background:rgba(0,212,255,.06)'
-      : hasPos && isWatch
-        ? 'border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.04)'
-        : 'border-color:var(--border);background:var(--surface)';
+  // Render sectors in defined order, skip empty ones
+  const sectorDropdownOptions = SECTORS.map(s => `<option value="${s}">${s}</option>`).join('');
 
-    const priceHtml = lp
-      ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
-         <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
-      : `<div class="wc-price" style="color:var(--muted)">—</div>`;
+  const html = SECTORS.filter(sec => bySector[sec] && bySector[sec].length).map(sec => {
+    const tickers = bySector[sec];
+    const cards = tickers.map(ticker => {
+      const lp       = livePrices[ticker];
+      const hasPos   = posTickers.has(ticker);
+      const isWatch  = WATCHLIST.includes(ticker);
+      const isWatchOnly = isWatch && !hasPos;
+      const posCount = POSITIONS.filter(p => p.ticker === ticker).length;
+      const bias     = BIAS[ticker] || 'neu';
+      const isSell   = bias === 'sell';
 
-    // Amount to close + collateral for position tickers
-    const closeCost  = tickerCloseCost[ticker];
-    const collateral = tickerCollateral[ticker] || 0;
-    const closeHtml = (() => {
+      const cardClass = isWatchOnly ? 'watch-card watch-only' : hasPos ? 'watch-card has-position' : 'watch-card';
+
+      const priceColor = lp ? (lp.pct >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)';
+      const priceHtml = lp
+        ? `<div class="wc-price ${lp.pct>=0?'price-up':'price-dn'}">$${lp.price.toFixed(2)}</div>
+           <div class="wc-change ${lp.pct>=0?'price-up':'price-dn'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</div>`
+        : `<div class="wc-price" style="color:var(--muted)">—</div>`;
+
+      const closeCost  = tickerCloseCost[ticker];
+      const collateral = tickerCollateral[ticker] || 0;
       const closeColor = hasPos && closeCost > 5000 ? '#ff64b4' : closeCost > 2000 ? 'var(--orange)' : 'var(--muted)';
       const collColor  = collateral > 3000 ? 'var(--accent)' : 'var(--muted)';
-      const hide = !hasPos ? 'color:transparent' : '';
-      return `<div style="margin-top:3px;display:flex;justify-content:space-between;align-items:baseline">
-                <span style="font-size:9px;${hide};letter-spacing:.3px;text-transform:uppercase">To Close</span>
-                <span style="font-size:9px;${hide};letter-spacing:.3px;text-transform:uppercase">Coll</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline">
-                <span style="font-size:13px;font-weight:700;color:${hasPos ? closeColor : 'transparent'};line-height:1.1">$${Math.round(closeCost||0).toLocaleString()}</span>
-                <span style="font-size:13px;font-weight:700;color:${hasPos ? collColor : 'transparent'};line-height:1.1">$${(collateral/1000).toFixed(1)}K</span>
-              </div>`;
-    })();
+      const closeHtml = `<div style="margin-top:3px;display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:9px;${hasPos?'':'color:transparent'};letter-spacing:.3px;text-transform:uppercase">To Close</span>
+          <span style="font-size:9px;${hasPos?'':'color:transparent'};letter-spacing:.3px;text-transform:uppercase">Coll</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:13px;font-weight:700;color:${hasPos ? closeColor : 'transparent'};line-height:1.1">$${Math.round(closeCost||0).toLocaleString()}</span>
+          <span style="font-size:13px;font-weight:700;color:${hasPos ? collColor : 'transparent'};line-height:1.1">$${(collateral/1000).toFixed(1)}K</span>
+        </div>`;
 
-    const ivHtml = '';
+      const posBadge = hasPos
+        ? `<span class="wc-pos in">${posCount} pos</span>`
+        : `<span class="wc-pos out">watching</span>`;
 
-    const posBadge = hasPos
-      ? `<span class="wc-pos in">${posCount} pos</span>`
-      : `<span class="wc-pos out">watching</span>`;
+      const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
+      const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARNINGS':'→ NEUTRAL';
+      const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':bias==='earn'?'rgba(192,132,252,.12)':'rgba(74,85,104,.15)';
+      const biasBtn = `<button onclick="cycleBias('${ticker}')" style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">${biasLabel}</button>`;
 
-    // Bias button
-    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
-    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARNINGS':'→ NEUTRAL';
-    const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':bias==='earn'?'rgba(192,132,252,.12)':'rgba(74,85,104,.15)';
-    const biasBtn   = `<button onclick="cycleBias('${ticker}')"
-      style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};
-             font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
-             padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">
-      ${biasLabel}
-    </button>`;
+      const removeBtn = isWatch
+        ? `<button class="wc-remove" onclick="removeWatchTicker('${ticker}')" title="Remove from watch list">✕</button>`
+        : '';
 
-    // Remove button — only for manually-added watch tickers
-    const removeBtn = isWatch
-      ? `<button class="wc-remove" onclick="removeWatchTicker('${ticker}')" title="Remove from watch list">✕</button>`
-      : '';
+      const hasNote = !!TICKER_NOTES[ticker];
+      const noteBtn = `<button onclick="openNoteModal('${ticker}')" title="${hasNote?(TICKER_NOTES[ticker].text.slice(0,80).replace(/'/g,"&#39;")):'Add note'}"
+        style="width:100%;margin-bottom:4px;padding:2px 6px;border-radius:3px;background:${hasNote?'rgba(245,200,66,0.2)':'rgba(74,85,104,.1)'};border:1px solid ${hasNote?'rgba(245,200,66,0.55)':'var(--border)'};color:${hasNote?'var(--yellow)':'var(--muted)'};font-size:9px;font-family:inherit;font-weight:700;letter-spacing:.4px;cursor:pointer;display:flex;align-items:center;gap:4px">
+        📝 ${hasNote?'NOTE':'ADD NOTE'}</button>`;
 
-    const hasNote = !!TICKER_NOTES[ticker];
-    const noteBtn = `<button onclick="openNoteModal('${ticker}')" title="${hasNote ? (TICKER_NOTES[ticker].text.slice(0,80).replace(/'/g,"&#39;")) : 'Add note'}"
-      style="width:100%;margin-bottom:4px;padding:2px 6px;border-radius:3px;
-             background:${hasNote ? 'rgba(245,200,66,0.2)' : 'rgba(74,85,104,.1)'};
-             border:1px solid ${hasNote ? 'rgba(245,200,66,0.55)' : 'var(--border)'};
-             color:${hasNote ? 'var(--yellow)' : 'var(--muted)'};
-             font-size:9px;font-family:inherit;font-weight:700;letter-spacing:.4px;
-             cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s"
-      onmouseover="this.style.borderColor='rgba(245,200,66,0.7)';this.style.color='var(--yellow)';this.style.background='rgba(245,200,66,0.2)'"
-      onmouseout="this.style.borderColor='${hasNote ? 'rgba(245,200,66,0.55)' : 'var(--border)'}';this.style.color='${hasNote ? 'var(--yellow)' : 'var(--muted)'}';this.style.background='${hasNote ? 'rgba(245,200,66,0.2)' : 'rgba(74,85,104,.1)'}'">
-      📝 ${hasNote ? 'NOTE' : 'ADD NOTE'}
-    </button>`;
+      const tickerLabel = bias === 'bull'
+        ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(0,232,138,0.13);color:var(--green)">${ticker}</div>`
+        : bias === 'bear'
+          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,61,90,0.13);color:var(--red)">${ticker}</div>`
+          : isSell
+            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,140,66,0.13);color:var(--orange)">${ticker}</div>`
+            : bias === 'earn'
+              ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(192,132,252,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(192,132,252,0.13);color:#c084fc">${ticker}</div>`
+              : hasNote
+                ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.09);color:var(--yellow)">${ticker}</div>`
+                : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:3px;padding:1px 6px;margin-bottom:2px">${ticker}</div>`;
 
-    // Ticker label: bull/bear/sell bias wins over note; note only shows if no bias
-    // All variants share identical padding/border structure to prevent layout shift
-    const tickerLabel = bias === 'bull'
-      ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(0,232,138,0.13);color:var(--green)">${ticker}</div>`
-      : bias === 'bear'
-        ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,61,90,0.13);color:var(--red)">${ticker}</div>`
-        : isSell
-          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(255,140,66,0.13);color:var(--orange)">${ticker}</div>`
-          : bias === 'earn'
-            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(192,132,252,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(192,132,252,0.13);color:#c084fc">${ticker}</div>`
-            : hasNote
-              ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.55);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(245,200,66,0.09);color:var(--yellow)">${ticker}</div>`
-              : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:3px;padding:1px 6px;margin-bottom:2px">${ticker}</div>`;
+      // Sector dropdown
+      const currentSec = getSector(ticker);
+      const sectorSelect = `<select onchange="setTickerSector('${ticker}',this.value)"
+        title="Move to sector"
+        style="margin-top:4px;width:100%;background:${isWatchOnly?'rgba(0,0,0,.06)':'var(--surface2)'};border:1px solid ${isWatchOnly?'rgba(0,0,0,.12)':'var(--border)'};color:${isWatchOnly?'#6b7280':'var(--muted)'};font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 4px;border-radius:3px;outline:none;cursor:pointer">
+        ${SECTORS.map(s => `<option value="${s}"${s===currentSec?' selected':''}>${s}</option>`).join('')}
+      </select>`;
 
-    return `<div class="watch-card" style="${cardStyle}">
-      ${posBadge}
-      ${removeBtn}
-      ${tickerLabel}
-      ${priceHtml}
-      ${closeHtml}
-      ${ivHtml}
-      ${noteBtn}
-      ${biasBtn}
+      return `<div class="${cardClass}">
+        ${posBadge}
+        ${removeBtn}
+        ${tickerLabel}
+        ${priceHtml}
+        ${closeHtml}
+        ${noteBtn}
+        ${biasBtn}
+        ${sectorSelect}
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${sec}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${cards}</div>
     </div>`;
   }).join('');
+
+  grid.innerHTML = html || '<div style="color:var(--muted);font-size:12px">No tickers yet — add one above</div>';
 }
 
 // ══════════════════════════════════════════
