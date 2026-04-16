@@ -641,7 +641,7 @@
 </div>
 
 <div class="footer-note">
-  ROLLWATCH v2.1 — Spreads: DTE-aware triggers · &lt;30d cap 0.55 · 30–60d cap 0.65 · &gt;60d cap 0.75 · Yellow = 0.05 below trigger — Long Options: &lt;0.15Δ 🔴 | &lt;0.25Δ 🟠 | &lt;0.35Δ 🟡 — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 | ≤0.30Δ 🔷 — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.)
+  ROLLWATCH v2.1 — Spreads: DTE-aware triggers · &lt;26d cap 0.55 · 26–30d cap 0.65 · &gt;30d cap 0.75 · Yellow = 0.05 below trigger — Long Options: &lt;0.15Δ 🔴 | &lt;0.25Δ 🟠 | &lt;0.35Δ 🟡 — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 | ≤0.30Δ 🔷 — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.)
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -966,9 +966,9 @@ const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // Roll trigger: relative drift from entryDelta + absolute cap, whichever fires first
 // Yellow = trigger - 0.05, Red = trigger
 const DTE_BANDS = [
-  { maxDte: 30,  drift: 0.12, cap: 0.60 },  // <30 DTE
-  { maxDte: 60,  drift: 0.18, cap: 0.65 },  // 30-60 DTE
-  { maxDte: 9999,drift: 0.25, cap: 0.75 },  // >60 DTE
+  { maxDte: 26,  drift: 0.12, cap: 0.60 },  // <26 DTE
+  { maxDte: 30,  drift: 0.18, cap: 0.65 },  // 26-30 DTE
+  { maxDte: 9999,drift: 0.25, cap: 0.75 },  // >30 DTE
 ];
 function getDteBand(dte) {
   return DTE_BANDS.find(b => dte <= b.maxDte) || DTE_BANDS[DTE_BANDS.length-1];
@@ -1262,7 +1262,7 @@ function getCCRollTrigger(p) {
   if (isLive && pctGain >= 50)                      return 'profit';  // 50% max profit
 
   // Yellow triggers
-  if (dte <= 30)                                    return 'dte_watch';
+  if (dte <= 26)                                    return 'dte_watch';
   return null;
 }
 
@@ -1475,7 +1475,7 @@ function renderTable() {
       if (ccRoll === 'strike')        statusHtml += ` <span class="pill pill-red" style="margin-left:2px">🔔 ROLL NOW</span>`;
       else if (ccRoll === 'dte')      statusHtml += ` <span class="pill pill-red" style="margin-left:2px">📅 21 DTE</span>`;
       else if (ccRoll === 'profit')   statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
-      else if (ccRoll === 'dte_watch')       statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 30 DTE</span>`;
+      else if (ccRoll === 'dte_watch')       statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 26 DTE</span>`;
       else if (ccRoll === 'profit_watch')    statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 35% DECAY</span>`;
     } else {
       // Profit-side alert for spreads/longs
@@ -1884,7 +1884,7 @@ function renderOndsCard() {
           const t1Fire = price > 0 && distToStrike <= p.short * 0.03;  // within 3% of strike — immediate roll
           const t2Fire = pctGain >= 50;
           const t3Fire = dte <= 21;
-          const watchDTE = dte <= 30 && dte > 21;
+          const watchDTE = dte <= 26 && dte > 21;
           const watchProfit = pctGain >= 35 && pctGain < 50;
           const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= p.short * 0.05 ? 'warn' : 'ok';  // warn within 5%
           const trigger2Class = t2Fire ? 'fire' : pctGain < 0 ? 'warn' : watchProfit ? 'warn' : 'ok';
