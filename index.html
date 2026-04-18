@@ -81,7 +81,6 @@
   thead th:hover{color:var(--accent)}
   tr.row{border-bottom:1px solid var(--border);transition:background .1s}
   tr.row:hover{background:var(--surface2)}
-  tr.row-itm{background:rgba(255,61,90,.03)}
   tr.row-itm:hover{background:rgba(255,61,90,.07)}
   tr.row-sell{outline:2px solid var(--orange);outline-offset:-2px;background:rgba(255,140,66,0.07) !important}
   tr.row-sell:hover{background:rgba(255,140,66,0.13) !important}
@@ -89,7 +88,7 @@
   td{padding:9px 10px;white-space:nowrap;vertical-align:middle}
 
   .ticker-name{font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.5px;text-transform:uppercase}
-  .ern-warn{font-size:8px;color:var(--purple);display:block;margin-top:1px}
+  .ern-warn{font-size:11px;color:var(--purple);display:block;margin-top:2px;font-weight:600;letter-spacing:.2px}
   .ern-imminent{display:inline-block;border:2px solid var(--purple);border-radius:4px;padding:2px 6px;box-shadow:0 0 8px rgba(167,139,250,.4)}
   .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
   /* Put Credit + Call Debit = BULLISH — light blue */
@@ -155,7 +154,7 @@
   .flow-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
   .fb-bull{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.25)}
   .fb-bear{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,90,.25)}
-  .fb-contra{background:rgba(255,255,255,0.05);color:#ffffff;border:1px solid rgba(255,255,255,.3)}
+  .fb-contra{background:rgba(245,200,66,0.08);color:var(--yellow);border:1px solid rgba(245,200,66,.35)}
   .fb-neu{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   .spin{display:inline-block;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -190,6 +189,8 @@
   .btn-secondary:hover{border-color:var(--accent);color:var(--accent);opacity:1}
   .close-x{background:transparent;border:1px solid rgba(0,232,138,.3);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;padding:3px 8px;border-radius:3px;line-height:1;transition:all .15s;letter-spacing:.5px}
   .close-x:hover{background:var(--green-dim);border-color:var(--green)}
+  .edit-x{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;padding:3px 8px;border-radius:3px;line-height:1;transition:all .15s;letter-spacing:.5px}
+  .edit-x:hover{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
   .ticker-refresh-btn{background:transparent;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:1px 3px;border-radius:3px;line-height:1;vertical-align:middle;margin-left:2px}
   .ticker-refresh-btn:hover{color:var(--accent)}
   .storage-badge{font-size:9px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,232,138,.2);padding:2px 7px;border-radius:3px}
@@ -473,7 +474,7 @@
     <button class="btn btn-secondary" onclick="exportPositions()" style="font-size:10px;padding:5px 10px">⬇ EXPORT</button>
     <button class="btn" onclick="showAddModal()" style="background:var(--green);font-size:11px">+ ADD</button>
     <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
-    <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ ERN</button>
+    <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ EARN</button>
     <button class="btn btn-ghost" id="ivBtn" onclick="fetchIV()" style="font-size:10px;padding:5px 10px">⟳ IV</button>
     <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,212,255,.3);color:var(--accent)">🌊 FLOW</button>
     <button class="btn btn-ghost" id="whaleBtn" onclick="fetchWhales()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,232,138,.3);color:var(--green)">🐋 WHALES</button>
@@ -571,9 +572,9 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread Mid</th><th>% Gain</th><th>DTE</th>
+    <th>Ticker</th><th>Type</th><th>Strikes</th><th>Cts</th><th>Spread (Open)</th><th>% Gain</th><th>DTE</th>
     <th>Stock $</th><th>Δ Short</th><th>Extrinsic</th><th>IV / IVR</th>
-    <th>Collateral</th>
+    <th>Coll</th>
     <th>Status</th><th>Flow</th><th>Whale 🐋</th><th>Action</th>
   </tr></thead>
   <tbody id="tableBody"></tbody>
@@ -833,7 +834,7 @@
         <span>⇄ SPREAD CALCULATOR</span><span id="addCalcChevron" style="font-size:12px">▼</span>
       </button>
       <div id="addSpreadCalcBody" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px">
-        <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Enter leg prices to calculate net spread before entering above</div>
+        <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Enter leg prices — net auto-fills Open Premium above</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div>
             <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Sell Leg (short)</div>
@@ -844,18 +845,6 @@
           <div>
             <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buy Leg (long)</div>
             <input id="asc-buy" type="number" step="0.01" min="0" placeholder="e.g. 1.20"
-              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
-              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
-          </div>
-          <div>
-            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Strike Width</div>
-            <input id="asc-width" type="number" step="1" min="0" placeholder="e.g. 5"
-              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
-              oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
-          </div>
-          <div>
-            <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Contracts</div>
-            <input id="asc-cts" type="number" step="1" min="1" value="1"
               style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
               oninput="calcAddSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
           </div>
@@ -1257,7 +1246,7 @@ function getCCRollTrigger(p) {
   const distToStrike = p.short - stock; // positive = stock below strike (OTM = safe)
 
   // Red triggers
-  if (stock > 0 && distToStrike <= p.short * 0.03) return 'strike';  // within 3% of strike
+  if (stock > 0 && distToStrike <= p.short * 0.05) return 'strike';  // within 5% of strike (or ITM)
   if (dte <= 21)                                    return 'dte';     // hard 21 DTE deadline
   if (isLive && pctGain >= 50)                      return 'profit';  // 50% max profit
 
@@ -1409,8 +1398,7 @@ function renderTable() {
                    : extPct < 0.34     ? 'var(--orange)'
                    : extPct < 0.67     ? 'var(--yellow)'
                    : 'var(--green)';
-    const extHtml = `<div style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:${extColor}">$${ext.value.toFixed(2)}</div>
-      <div style="color:var(--muted);font-size:9px">mid $${ext.mid.toFixed(2)} · int $${ext.intrinsic.toFixed(2)}</div>`;
+    const extHtml = `<div style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:${extColor}">$${ext.value.toFixed(2)}</div>`;
 
     // Spread mid timestamp — needs ext defined first
     const tickerTs  = liveData[p.ticker] && liveData[p.ticker].ts;        // real UW data time
@@ -1466,17 +1454,27 @@ function renderTable() {
       green:``,
     };
     const ccRoll = getCCRollTrigger(p);
+    // CC base: blank when healthy (no trigger) — badges are only shown when actionable
     let statusHtml = p.postype === 'covered_call'
-      ? `<span class="pill pill-green"><span class="dot dot-green"></span>CC</span>`
+      ? ''
       : (isLong && isITM(p) && getDTE(p) <= 7) ? pills['green_expiring'] : pills[level];
 
-    // CC roll triggers (override profit pills for covered calls)
+    // CC roll triggers — color logic:
+    // RED   = actionable for bad reason (stock near/through strike)
+    // BLUE  = actionable for good reason (profit target or DTE deadline — good exits)
+    // ORANGE = watch, not yet actionable (26-30d window)
     if (p.postype === 'covered_call') {
-      if (ccRoll === 'strike')        statusHtml += ` <span class="pill pill-red" style="margin-left:2px">🔔 ROLL NOW</span>`;
-      else if (ccRoll === 'dte')      statusHtml += ` <span class="pill pill-red" style="margin-left:2px">📅 21 DTE</span>`;
-      else if (ccRoll === 'profit')   statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
-      else if (ccRoll === 'dte_watch')       statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 26 DTE</span>`;
-      else if (ccRoll === 'profit_watch')    statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 35% DECAY</span>`;
+      if (ccRoll === 'strike') {
+        const _stock2 = getLiveStock(p);
+        const _distPct = p.short > 0 ? ((_stock2 - p.short) / p.short * 100) : 0;
+        const _absPct = Math.abs(_distPct).toFixed(1);
+        const _dir = _stock2 > p.short ? 'ITM' : `${_absPct}% below`;
+        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;color:var(--red)">🔔 ${_dir}</span>`;
+      }
+      else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">📅 ROLL 21d</span>`;
+      else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
+      else if (ccRoll === 'dte_watch')    statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 30d SOON</span>`;
+      else if (ccRoll === 'profit_watch') statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 35% DECAY</span>`;
     } else {
       // Profit-side alert for spreads/longs
       const profitLevel = getProfitLevel(p, liveGain);
@@ -1500,7 +1498,7 @@ function renderTable() {
     const profitLevel = p.postype === 'covered_call' ? null : getProfitLevel(p, liveGain);
 
     
-    if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ERN</span>`;
+    if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ EARN</span>`;
     if (p.convictionHold) { statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,''); statusHtml = `<span class="pill pill-conviction">&#127919; HOLD</span> ` + statusHtml; }
 
     let flowHtml='<span style="color:var(--muted);font-size:10px">—</span>';
@@ -1521,19 +1519,27 @@ function renderTable() {
         : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
       const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEUTRAL';
       const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
-      const contraTag = isContra?` <span style="color:#ffffff;font-size:8px;font-weight:700">⚠CONTRA</span>`:'';
+      const contraTag = isContra?`<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>`:'';
       flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
     }
 
-    // ── Whale cell ──
+    // ── Whale cell — near-term weighted (≤45 DTE gets 2× weight) ──
     const wArr = whaleData[p.ticker] || [];
     let whaleHtml = '<span style="color:var(--muted);font-size:10px">—</span>';
     if (wArr.length) {
-      const bullPrem = wArr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
-      const bearPrem = wArr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
-      const wTotal   = bullPrem + bearPrem;
+      const today45 = new Date(); today45.setHours(0,0,0,0);
+      const cutoff45 = today45.getTime() + 45*86400000;
+      // Weight near-term trades 2× so short-dated flow dominates the badge
+      const weightedPrem = (arr, type) => arr.filter(w=>w.type===type).reduce((s,w)=>{
+        const exp = w.expiry ? new Date(w.expiry+'T12:00:00').getTime() : Infinity;
+        return s + w.premium * (exp <= cutoff45 ? 2 : 1);
+      }, 0);
+      const bullPrem = weightedPrem(wArr, 'C');
+      const bearPrem = weightedPrem(wArr, 'P');
+      const wTotalRaw = wArr.reduce((s,w)=>s+w.premium,0);
       const wSent    = bullPrem > bearPrem*1.4 ? 'bull' : bearPrem > bullPrem*1.4 ? 'bear' : 'mixed';
-      // Contra logic — same as flow
+      // Near-term trade count for tooltip context
+      const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
       const _isCC4       = p.postype === 'covered_call';
       const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4;
       const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4;
@@ -1544,12 +1550,13 @@ function renderTable() {
                    || (_isLongC4    && wSent==='bear')
                    || (_isLongP4    && wSent==='bull');
       const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIX';
-      const wColor = wContra ? '#ffffff' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'var(--yellow)';
-      const wBg    = wContra ? 'rgba(255,255,255,0.05)' : wSent==='bull'?'rgba(0,232,138,0.1)':wSent==='bear'?'rgba(255,61,90,0.1)':'rgba(245,200,66,0.1)';
-      const wBorder= wContra ? 'rgba(255,255,255,0.3)' : wSent==='bull'?'rgba(0,232,138,0.3)':wSent==='bear'?'rgba(255,61,90,0.3)':'rgba(245,200,66,0.3)';
-      const wPrem  = wTotal>=1e6?`$${(wTotal/1e6).toFixed(1)}M`:`$${(wTotal/1e3).toFixed(0)}K`;
-      const wContraTag = wContra ? ' <span style="font-size:8px;font-weight:700">⚠</span>' : '';
-      whaleHtml = `<span onclick="openWhaleFeed('${p.ticker}')" style="cursor:pointer;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${wBg};color:${wColor};border:1px solid ${wBorder}">${wLabel} ${wPrem}${wContraTag}</span>`;
+      const wColor = wContra ? 'var(--yellow)' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'#ffffff';
+      const wBg    = wContra ? 'rgba(245,200,66,0.08)' : wSent==='bull'?'rgba(0,232,138,0.1)':wSent==='bear'?'rgba(255,61,90,0.1)':'rgba(255,255,255,0.05)';
+      const wBorder= wContra ? 'rgba(245,200,66,0.35)' : wSent==='bull'?'rgba(0,232,138,0.3)':wSent==='bear'?'rgba(255,61,90,0.3)':'rgba(255,255,255,0.25)';
+      const wPrem  = wTotalRaw>=1e6?`$${(wTotalRaw/1e6).toFixed(1)}M`:`$${(wTotalRaw/1e3).toFixed(0)}K`;
+      const ntTag  = ntCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--accent);margin-left:3px;vertical-align:middle" title="${ntCount} near-term trade${ntCount!==1?'s':''} ≤45 DTE — driving sentiment">▲${ntCount}</span>` : '';
+      const wContraTag = wContra ? `<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>` : '';
+      whaleHtml = `<div onclick="openWhaleFeed('${p.ticker}')" style="cursor:pointer"><span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${wBg};color:${wColor};border:1px solid ${wBorder}">${wLabel} ${wPrem}</span>${ntTag}${wContraTag}</div>`;
     }
 
     const idx = POSITIONS.indexOf(p);
@@ -1589,29 +1596,34 @@ function renderTable() {
     // Delta column label — for long options, high delta is good
     const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--text);font-size:9px;font-weight:400;margin-top:1px">${src==='live' ? `●LIVE ${deltaRefreshTs||''}` : isStaleSession ? '~stale' : `~BS ${deltaRefreshTs||''}`}</div>`;
 
-    // Action buttons
-    const editClose = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
+    // Action buttons — order is always: ✎ pencil | [↩ ROLL] | ✓ CLOSE/SELL
+    const pencil = `<button class="edit-x" onclick="showEditModal(${idx})" title="Edit">&#9998;</button>`;
+    const closeBtnHtml = `<button class="close-x" onclick="confirmClose(${idx})" title="Close position">&#10003; CLOSE</button>`;
+    const sellBtnHtml  = `<button class="action-btn closebtn" onclick="confirmClose(${idx})">&#10003; SELL</button>`;
+    const rollBtnHtml  = `<button class="action-btn roll" onclick="showRollModal(${idx})">&#8629; ROLL</button>`;
     let actionHtml;
     if (p.postype === 'covered_call') {
-      // CC: show ROLL button when any trigger fires, otherwise just EDIT
       const rollUrgent = ccRoll === 'strike' || ccRoll === 'dte' || ccRoll === 'profit';
       actionHtml = rollUrgent
-        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
-        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
+        ? `${pencil} ${rollBtnHtml} ${closeBtnHtml}`
+        : `${pencil} ${closeBtnHtml}`;
     } else if (isLong) {
       actionHtml = profitLevel === 'close'
-        ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ SELL</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
-        : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
+        ? `${pencil} ${sellBtnHtml}`
+        : `${pencil} ${closeBtnHtml}`;
     } else {
+      // Credit spreads: always "CLOSE" regardless of profit level
       const convictionRollBlock = p.convictionHold && getEffectiveDelta(p) < 0.85;
       actionHtml = (level==='red'||level==='orange') && !convictionRollBlock
-        ? `<button class="action-btn roll" onclick="showRollModal(${idx})">↩ ROLL</button> ` + editClose
-        : profitLevel==='close'
-          ? `<button class="action-btn closebtn" onclick="confirmClose(${idx})">✓ CLOSE</button> <button class="edit-x" onclick="showEditModal(${idx})" title="Edit">✎</button>`
-          : `<button class="action-btn" onclick="showEditModal(${idx})">✎ EDIT</button> <button class="close-x" onclick="confirmClose(${idx})" title="Close position">✓ CLOSE</button>`;
+        ? `${pencil} ${rollBtnHtml} ${closeBtnHtml}`
+        : `${pencil} ${closeBtnHtml}`;
     }
 
-    const ernHtml = eWarn ? '<span class="ern-warn">⚠ ERN ' + earningsMap[p.ticker] + '</span>' : '';
+    const ernHtml = eWarn ? (()=>{
+      const ed = earningsMap[p.ticker] || '';
+      const edFmt = ed ? new Date(ed+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ed;
+      return '<span class="ern-warn">⚠ ' + edFmt + '</span>';
+    })() : '';
     const ernImminent = (() => {
       const e = earningsMap[p.ticker];
       if (!e) return false;
@@ -1627,8 +1639,8 @@ function renderTable() {
       : '<span class="ticker-name">' + p.ticker + '</span>';
     const tickerNameHtml = '<span onclick="openNoteModal(\'' + p.ticker + '\')" title="' + noteTooltip + '" style="cursor:pointer">' + tickerNameInner + '</span>';
     const tdStyle = hasNote ? ' style="outline:2px solid var(--yellow);outline-offset:-2px;background:var(--yellow-dim)"' : '';
-    const tickerCell = '<td' + tdStyle + '>' + tickerNameHtml + ernHtml +
-      '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button></td>';
+    const refreshBtn = '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button>';
+    const tickerCell = '<td' + tdStyle + '><div style="display:flex;align-items:center;gap:2px">' + tickerNameHtml + refreshBtn + '</div>' + (ernHtml ? '<div>' + ernHtml + '</div>' : '') + '</td>';
     const tr=document.createElement('tr');
     const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
     tr.className=`row${itm?' row-itm':''}${isSellBias?' row-sell':''}`;
@@ -1637,9 +1649,9 @@ function renderTable() {
       <td>${strikesHtml}</td>
       <td style="color:var(--muted)">×${p.cts}</td>
       <td>
-        <div style="display:flex;align-items:baseline;gap:6px">
+        <div style="display:flex;align-items:baseline;gap:5px">
           <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;color:var(--text)">$${ext.mid.toFixed(2)}</span>
-          <span style="color:var(--muted);font-size:10px">open $${Math.abs(p.open).toFixed(2)}</span>
+          <span style="color:var(--muted);font-size:12px">($${Math.abs(p.open).toFixed(2)})</span>
         </div>
         <div style="color:var(--text);font-size:9px;margin-top:1px">${liveLabel}</div>
       </td>
@@ -1648,8 +1660,8 @@ function renderTable() {
         ${getDTE(p)}d
         <div style="color:var(--muted);font-size:10px;font-weight:400">${p.expiry.slice(5).replace('-','/')}</div>
       </td>
-      <td class="${dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px">$${stock.toFixed(2)}${chgHtml}</td>
-      <td class="delta-cell ${dClass}">${deltaLabel}</td>
+      <td class="${p.postype==='covered_call' ? (itm ? '' : Math.abs(stock-p.short)/p.short<0.05 ? 'stock-atm' : 'stock-otm') : dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px${p.postype==='covered_call'&&itm ? ';color:var(--muted)' : ''}">$${stock.toFixed(2)}${chgHtml}</td>
+      <td class="delta-cell ${p.postype==='covered_call' ? '' : dClass}" style="${p.postype==='covered_call' ? 'color:var(--muted)' : ''}">${deltaLabel}</td>
       <td>${extHtml}</td>
       <td class="iv-val">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; return `<div style="font-size:11px;font-weight:600;color:var(--muted)">IVR ${Math.round(ivr)}</div>`; })()}</td>
       <td style="color:var(--muted);font-size:11px">${collateralHtml}</td>
@@ -1764,7 +1776,7 @@ function renderMobile() {
           <span class="mob-price" style="color:${sColor}">$${stock.toFixed(2)}</span>
           <div class="mob-badge-row">
                         ${p.cts>1?`<span style="font-size:11px;color:var(--muted)">${p.cts}ct</span>`:''}
-            ${hasEarningsRisk(p)?'<span class="pill pill-purple">ERN</span>':''}
+            ${hasEarningsRisk(p)?'<span class="pill pill-purple">EARN</span>':''}
           </div>
         </div>
       </div>`;
@@ -2347,7 +2359,7 @@ async function fetchFlow() {
 async function fetchEarningsOnly() {
   const btn = document.getElementById('ernBtn');
   btn.disabled = true;
-  btn.textContent = '⟳ ERN…';
+  btn.textContent = '⟳ EARN…';
 
   const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
   await withTimeout(fetchEarnings(allTickers), 20000).catch(() => {});
@@ -2356,7 +2368,7 @@ async function fetchEarningsOnly() {
   updateStats();
   saveToStorage();
   btn.disabled = false;
-  btn.textContent = '⟳ ERN';
+  btn.textContent = '⟳ EARN';
   document.getElementById('lastRefresh').textContent += ' · ern ' + new Date().toLocaleTimeString();
 }
 
@@ -2870,7 +2882,7 @@ function renderWhaleFeed() {
     );
 
     const contraWarn = isContra
-      ? `<span style="background:rgba(255,255,255,0.05);color:#ffffff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:2px;border:1px solid rgba(255,255,255,.3)">⚠ CONTRA</span>` : '';
+      ? `<span style="background:rgba(245,200,66,0.08);color:var(--yellow);font-size:9px;font-weight:700;padding:2px 5px;border-radius:2px;border:1px solid rgba(245,200,66,.35)">⚠ CONTRA</span>` : '';
 
     html += `<div class="whale-ticker-section">
       <div class="whale-ticker-hdr" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2960,6 +2972,7 @@ function showRollModal(idx) {
   const iv    = getLiveIV(p);
   const lp    = livePrices[p.ticker];
   const flow  = flowData[p.ticker];
+  const wRollArr = whaleData[p.ticker] || [];
   const width = Math.abs(p.short - p.long);
   const { mid: spreadMid, isLive } = getSpreadMid(p);
   const openPrem = Math.abs(p.open);
@@ -3006,9 +3019,51 @@ function showRollModal(idx) {
       #rollModal .row-tag       { font-size:12px; font-weight:400; color:var(--muted); margin-right:6px; }
     </style>
 
-    <div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">${lp ? `$${lp.price.toFixed(2)} <span style="font-size:13px;font-weight:500;color:${lp.pct>=0?'var(--green)':'var(--red)'}">${lp.pct>=0?'▲':'▼'}${Math.abs(lp.pct).toFixed(2)}%</span>` : `$${stock.toFixed(2)} <span style="font-size:12px;color:var(--muted)">(stale)</span>`}</span></div>
-    ${p.openStock ? `<div class="modal-row"><span class="modal-label">Stock at Open</span><span class="modal-val" style="color:var(--muted)">$${p.openStock.toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${p.openStockDate||''}</span></span></div>${stockMoveHtml}` : ''}
-    <div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${p.type==='P'?'PUT':'CALL'}</span></div>
+    ${(()=>{
+      // Stock Price row: label | pct change | price (right-aligned)
+      if (lp) {
+        const pctColor = lp.pct>=0?'var(--green)':'var(--red)';
+        const pctArrow = lp.pct>=0?'▲':'▼';
+        return `<div class="modal-row">
+          <span class="modal-label">Stock Price</span>
+          <span class="modal-val" style="display:flex;align-items:baseline;gap:10px">
+            <span style="font-size:13px;font-weight:600;color:${pctColor}">${pctArrow}${Math.abs(lp.pct).toFixed(2)}%</span>
+            <span style="font-size:16px;font-weight:700">$${lp.price.toFixed(2)}</span>
+          </span>
+        </div>`;
+      } else {
+        return `<div class="modal-row"><span class="modal-label">Stock Price</span><span class="modal-val">$${stock.toFixed(2)} <span style="font-size:12px;color:var(--muted)">(stale)</span></span></div>`;
+      }
+    })()}
+    ${p.openStock ? (()=>{
+      const dollarMove = (lp ? lp.price : stock) - p.openStock;
+      const pctMove = (dollarMove / p.openStock) * 100;
+      const moveColor = p.type==='P' ? (dollarMove<0?'var(--red)':'var(--green)') : (dollarMove>0?'var(--red)':'var(--green)');
+      const arrow = dollarMove>=0?'▲':'▼';
+      const dateLabel = p.openStockDate ? p.openStockDate.slice(5).replace('-','/') : '';
+      return `
+        <div class="modal-row">
+          <span class="modal-label">Stock at Open${dateLabel?' ('+dateLabel+')':''}</span>
+          <span class="modal-val">$${p.openStock.toFixed(2)}</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-label" style="padding-left:12px">vs. now</span>
+          <span class="modal-val" style="display:flex;align-items:baseline;gap:10px">
+            <span style="font-size:13px;font-weight:600;color:${moveColor}">${arrow}${Math.abs(pctMove).toFixed(1)}%</span>
+            <span style="color:${moveColor}">${dollarMove>=0?'+':''}$${dollarMove.toFixed(2)}</span>
+          </span>
+        </div>`;
+    })() : ''}
+    ${(()=>{
+      const _typeLabel = p.postype==='covered_call' ? 'Covered Call'
+        : p.postype==='long_call' ? 'Long Call'
+        : p.postype==='long_put'  ? 'Long Put'
+        : p.type==='P' && p.open>0 ? 'Put Credit'
+        : p.type==='C' && p.open>0 ? 'Call Credit'
+        : p.type==='P' ? 'Put Debit' : 'Call Debit';
+      const _strikesLabel = p.long ? `$${p.short}/$${p.long}` : `$${p.short}`;
+      return `<div class="modal-row"><span class="modal-label">Contracts</span><span class="modal-val">${p.cts} × ${_typeLabel} · ${_strikesLabel}</span></div>`;
+    })()}
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">${
       p.postype === 'covered_call'
         ? (() => { const sh = (STOCKS.find(s=>s.ticker===p.ticker)||{}).shares || (p.cts*100); return `${sh.toLocaleString()} shares · ~$${Math.round(stock * sh).toLocaleString()}`; })()
@@ -3048,10 +3103,9 @@ function showRollModal(idx) {
         const isCC = p.postype === 'covered_call';
         let nm, strikes, rc;
         if (isCC) {
-          // Single-leg covered call — no long leg
           nm = bsTheoPrice(p.ticker, ns, 'C', rExpStr);
           strikes = `$${ns} CALL`;
-          rc = (nm - curMid) * 100 * p.cts; // rolling for credit vs current mid
+          rc = (nm - curMid) * 100 * p.cts;
         } else {
           const nl = p.type==='P' ? ns-width : ns+width;
           const nsp = bsTheoPrice(p.ticker,ns,p.type,rExpStr);
@@ -3060,13 +3114,14 @@ function showRollModal(idx) {
           rc = (nm - curMid) * 100 * p.cts;
           strikes = p.type==='P' ? `$${ns}/$${nl}P` : `$${ns}/$${nl}C`;
         }
+        // rc > 0 = net credit (good), rc < 0 = net debit (costs money)
         const rcColor = rc>=0 ? 'var(--green)' : 'var(--red)';
-        const rcLabel = rc>=0 ? `CR $${Math.abs(rc).toFixed(0)}` : `DR $${Math.abs(rc).toFixed(0)}`;
+        const rcBig   = rc>=0 ? `CR $${Math.abs(rc).toFixed(0)}` : `Debit $${Math.abs(rc).toFixed(0)}`;
         return `<div class="modal-row">
           <span class="modal-label" style="color:${color}">${label} Δ${tgt.toFixed(2)}</span>
           <span class="modal-val" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-            <span style="font-size:16px;font-weight:700">${strikes}</span>
-            <span style="font-size:13px;color:var(--muted)">mid ~$${nm.toFixed(2)} · <span style="color:${rcColor};font-weight:700">${rcLabel}</span></span>
+            <span style="font-size:18px;font-weight:800;color:${rcColor}">${rcBig}</span>
+            <span style="font-size:13px;color:var(--muted)">${strikes}</span>
           </span>
         </div>`;
       }
@@ -3081,26 +3136,45 @@ function showRollModal(idx) {
 
     ${earningsMap[p.ticker]?`
     <div class="roll-divider"></div>
-    <div class="modal-row"><span class="modal-label">⚠ Earnings Risk</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]} — roll past this date</span></div>`:''}
+    <div class="modal-row"><span class="modal-label">⚠ Earnings</span><span class="modal-val" style="color:var(--purple)">${earningsMap[p.ticker]}</span></div>`:''}
 
-    ${flow?(()=>{
-      const _sent = flow.sentiment;
+    ${(()=>{
       const _isCC = p.postype === 'covered_call';
       const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
       const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
       const _isLongCall  = p.postype==='long_call';
       const _isLongPut   = p.postype==='long_put';
-      const isContra = (_isShortPut  && _sent==='bear')
-                    || (_isShortCall && _sent==='bull')
-                    || (_isLongCall  && _sent==='bear')
-                    || (_isLongPut   && _sent==='bull');
-      const flowColor = isContra ? '#ffffff' : _sent==='bull'?'var(--green)':_sent==='bear'?'var(--red)':'var(--muted)';
-      const contraTag = isContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
-      return `
-    <div class="roll-divider"></div>
-    <div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${_sent.toUpperCase()}${contraTag}</span></div>
-    <div class="modal-row"><span class="modal-label">Flow Premium</span><span class="modal-val">$${(flow.calls/1000).toFixed(0)}K calls · $${(flow.puts/1000).toFixed(0)}K puts</span></div>`;
-    })():''}
+      let rows = '';
+
+      // Flow sentiment row
+      if (flow) {
+        const _sent = flow.sentiment;
+        const isContra = (_isShortPut  && _sent==='bear')
+                      || (_isShortCall && _sent==='bull')
+                      || (_isLongCall  && _sent==='bear')
+                      || (_isLongPut   && _sent==='bull');
+        const flowColor = isContra ? 'var(--yellow)' : _sent==='bull'?'var(--green)':_sent==='bear'?'var(--red)':'var(--muted)';
+        const contraTag = isContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,.35);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
+        rows += `<div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${_sent.toUpperCase()}${contraTag}</span></div>`;
+      }
+
+      // Whale sentiment row
+      if (wRollArr.length) {
+        const wBull = wRollArr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+        const wBear = wRollArr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+        const wSent = wBull > wBear*1.4 ? 'bull' : wBear > wBull*1.4 ? 'bear' : 'mixed';
+        const wIsContra = (_isShortPut  && wSent==='bear')
+                       || (_isShortCall && wSent==='bull')
+                       || (_isLongCall  && wSent==='bear')
+                       || (_isLongPut   && wSent==='bull');
+        const wColor = wIsContra ? 'var(--yellow)' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'#ffffff';
+        const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIXED';
+        const wContraTag = wIsContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,.35);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
+        rows += `<div class="modal-row"><span class="modal-label">Whale Sentiment</span><span class="modal-val" style="color:${wColor}">${wLabel}${wContraTag}</span></div>`;
+      }
+
+      return rows ? `<div class="roll-divider"></div>${rows}` : '';
+    })()}
   `;
   document.getElementById('rollModal').dataset.posIdx = idx;
   document.getElementById('rollModal').classList.add('show');
@@ -3493,6 +3567,7 @@ function buildPayload() {
     livePrices:        livePrices,
     earningsMap:       earningsMap,
     flowData:          flowData,
+    whaleData:         whaleData,
     liveTs:            Date.now(),
     ts:                Date.now()
   };
@@ -3559,6 +3634,14 @@ async function driveLoad() {
     }
     if (data.flowData && typeof data.flowData === 'object') {
       Object.assign(flowData, data.flowData);
+    }
+    if (data.whaleData && typeof data.whaleData === 'object' && Object.keys(data.whaleData).length) {
+      Object.assign(whaleData, data.whaleData);
+      // Refresh the localStorage timestamp so the 8h TTL doesn't expire the Drive-restored data
+      try {
+        localStorage.setItem('rollwatch_whale_v1', JSON.stringify(whaleData));
+        localStorage.setItem('rollwatch_whale_ts_v1', String(Date.now()));
+      } catch(e) {}
     }
     // Show how stale the restored data is
     if (data.liveTs) {
@@ -4141,8 +4224,48 @@ function _runInlineSpreadCalc(sellId, buyId, widthId, ctsId, resultId) {
   el.innerHTML = html; el.style.color = '';
 }
 
-function calcAddSpread()   { _runInlineSpreadCalc('asc-sell','asc-buy','asc-width','asc-cts','ascResult'); }
-function calcCloseSpread() { _runInlineSpreadCalc('csc-sell','csc-buy','csc-width','csc-cts','cscResult'); }
+function calcAddSpread() {
+  const sell = parseFloat(document.getElementById('asc-sell')?.value);
+  const buy  = parseFloat(document.getElementById('asc-buy')?.value);
+  const el   = document.getElementById('ascResult');
+  if (!el) return;
+  if (isNaN(sell) || isNaN(buy)) {
+    el.textContent = 'Enter prices above to calculate';
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  const net = sell - buy;
+  const isCredit = net > 0;
+  const netColor = isCredit ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+  const label = isCredit ? 'Net Credit' : net < 0 ? 'Net Debit' : 'Net';
+  el.innerHTML = `<span style="color:${netColor};font-size:16px;font-weight:800">$${Math.abs(net).toFixed(2)}</span> <span style="color:var(--muted);font-size:10px">${label} per share · $${Math.abs(net * 100).toFixed(0)} per contract</span>`;
+  // Auto-populate Open Premium field
+  const openEl = document.getElementById('f-open');
+  if (openEl) openEl.value = Math.abs(net).toFixed(2);
+}
+function calcCloseSpread() {
+  const sell = parseFloat(document.getElementById('csc-sell')?.value);
+  const buy  = parseFloat(document.getElementById('csc-buy')?.value);
+  const el   = document.getElementById('cscResult');
+  if (!el) return;
+  if (isNaN(sell) || isNaN(buy)) {
+    el.textContent = 'Enter prices above to calculate';
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  const net = sell - buy;
+  const isCredit = net > 0;
+  const netColor = isCredit ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+  const label = isCredit ? 'Net Credit' : net < 0 ? 'Net Debit' : 'Net';
+  el.innerHTML = `<span style="color:${netColor};font-size:16px;font-weight:800">$${Math.abs(net).toFixed(2)}</span> <span style="color:var(--muted);font-size:10px">${label} per share · $${Math.abs(net * 100).toFixed(0)} per contract</span>`;
+  // Auto-populate closing price field and refresh P&L preview
+  const closePriceEl = document.getElementById('closePrice');
+  if (closePriceEl) {
+    closePriceEl.value = Math.abs(net).toFixed(2);
+    const p = closingIdx !== null ? POSITIONS[closingIdx] : null;
+    if (p) updateClosePctPreview(Math.abs(p.open));
+  }
+}
 
 function toggleAddSpreadCalc() {
   const body = document.getElementById('addSpreadCalcBody');
@@ -4267,7 +4390,7 @@ function confirmClose(idx) {
             <span>⇄ SPREAD CALCULATOR</span><span id="closeCalcChevron" style="font-size:12px">▼</span>
           </button>
           <div id="closeSpreadCalcBody" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px">
-            <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Compare bid/ask legs to find fair close price</div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:10px">Enter leg prices — net auto-fills Close Price above</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
               <div>
                 <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Sell Leg (short)</div>
@@ -4278,18 +4401,6 @@ function confirmClose(idx) {
               <div>
                 <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buy Leg (long)</div>
                 <input id="csc-buy" type="number" step="0.01" min="0" placeholder="e.g. 1.20"
-                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
-                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
-              </div>
-              <div>
-                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Strike Width</div>
-                <input id="csc-width" type="number" step="1" min="0" placeholder="e.g. 5"
-                  style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
-                  oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
-              </div>
-              <div>
-                <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Contracts</div>
-                <input id="csc-cts" type="number" step="1" min="1" value="1"
                   style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 9px;border-radius:4px;width:100%;outline:none"
                   oninput="calcCloseSpread()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
               </div>
@@ -5368,6 +5479,11 @@ renderOndsCard();
 renderWatchList();
 updatePortfolioStat();
 updatePnlBar();
+// Render whale feed if restored from storage (persistent like Flow)
+if (Object.keys(whaleData).length) {
+  renderWhaleFeed();
+  renderTable();
+}
 
 // Attempt Drive load — if Drive has newer data, reload UI
 driveLoad().then(function(loaded) {
@@ -5378,6 +5494,7 @@ driveLoad().then(function(loaded) {
     renderStocks();
     renderOndsCard();
     renderWatchList();
+    if (Object.keys(whaleData).length) renderWhaleFeed();
   }
   // Always re-run portfolio stat after Drive resolves so baseline
   // is displayed correctly against final POSITIONS state
