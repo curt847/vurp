@@ -222,6 +222,10 @@
   .watch-card .wc-pos.out{background:#ffffff;color:#0a0c0f;border:1px solid rgba(255,255,255,.8);font-weight:700}
   .watch-card .wc-remove{position:absolute;top:28px;right:6px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
   .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
+  .watch-card.entry-alert{animation:entry-glow 1.8s ease-in-out infinite}
+  .watch-card.entry-alert.bull-alert{border-color:var(--green) !important;box-shadow:0 0 12px rgba(0,232,138,0.4)}
+  .watch-card.entry-alert.bear-alert{border-color:var(--red) !important;box-shadow:0 0 12px rgba(255,61,90,0.4)}
+  @keyframes entry-glow{0%,100%{opacity:1}50%{opacity:.75}}
 
   .footer-note{text-align:center;color:var(--muted);font-size:9px;padding:16px;border-top:1px solid var(--border);letter-spacing:.5px}
 
@@ -3569,6 +3573,7 @@ const STORAGE_KEY       = 'rollwatch_positions_v2';
 const STOCK_STORAGE_KEY = 'rollwatch_stocks_v1';
 const CC_TRACK_KEY      = 'rollwatch_cctracked_v1';
 const NOTES_KEY         = 'rollwatch_notes_v1';
+const ENTRY_TARGETS_KEY = 'rollwatch_entry_targets_v1';
 const TRADELOG_KEY      = 'rollwatch_tradelog_v1';
 
 // Append-only closed trade log — never mutated, only pushed to
@@ -3576,6 +3581,7 @@ let TRADE_LOG = [];
 let CC_TRACKED = new Set(['ONDS', 'APLD']);
 let yahooReady = true; // false during fetchAll UW pass — defers pct colors until Yahoo corrects
 let TICKER_NOTES = {}; // ticker -> { text, ts }
+let ENTRY_TARGETS = {}; // ticker -> number (price target for entry alert)
 
 // Seed stock positions
 let STOCKS = [
@@ -3659,6 +3665,7 @@ function buildPayload() {
     tickerSectors:     TICKER_SECTORS,
     ccTracked:         [...CC_TRACKED],
     tickerNotes:       TICKER_NOTES,
+    entryTargets:      ENTRY_TARGETS,
     portfolioBaseline: portfolioBaseline,
     tradeLog:          TRADE_LOG,
     liveData:          liveData,
@@ -3713,6 +3720,7 @@ async function driveLoad() {
     if (data.tickerSectors && typeof data.tickerSectors === 'object') { TICKER_SECTORS = data.tickerSectors; }
     if (Array.isArray(data.ccTracked)) { CC_TRACKED = new Set(data.ccTracked); }
     if (data.tickerNotes && typeof data.tickerNotes === 'object') { TICKER_NOTES = data.tickerNotes; }
+    if (data.entryTargets && typeof data.entryTargets === 'object') { ENTRY_TARGETS = data.entryTargets; }
     if (Array.isArray(data.tradeLog)) {
       TRADE_LOG = data.tradeLog;
       localStorage.setItem(TRADELOG_KEY, JSON.stringify(TRADE_LOG));
@@ -3771,6 +3779,7 @@ function saveToStorage() {
     localStorage.setItem('rollwatch_sectors_v1', JSON.stringify(TICKER_SECTORS));
     localStorage.setItem(CC_TRACK_KEY,      JSON.stringify([...CC_TRACKED]));
     localStorage.setItem(NOTES_KEY,         JSON.stringify(TICKER_NOTES));
+    localStorage.setItem(ENTRY_TARGETS_KEY, JSON.stringify(ENTRY_TARGETS));
     localStorage.setItem(TRADELOG_KEY,      JSON.stringify(TRADE_LOG));
     if (portfolioBaseline) localStorage.setItem(PORT_KEY, JSON.stringify(portfolioBaseline));
     // Save last-known market data so it survives a page reload
@@ -3832,6 +3841,11 @@ function loadFromStorage() {
     if (rawNotes) {
       const savedNotes = JSON.parse(rawNotes);
       if (savedNotes && typeof savedNotes === 'object') { TICKER_NOTES = savedNotes; }
+    }
+    const rawET = localStorage.getItem(ENTRY_TARGETS_KEY);
+    if (rawET) {
+      const savedET = JSON.parse(rawET);
+      if (savedET && typeof savedET === 'object') { ENTRY_TARGETS = savedET; }
     }
     const rawLog = localStorage.getItem(TRADELOG_KEY);
     if (rawLog) {
@@ -4999,6 +5013,20 @@ document.getElementById('posModal').addEventListener('click', e => { if(e.target
 let editingStockIdx = null;
 
 // ══════════════════════════════════════════
+// ENTRY TARGETS
+// ══════════════════════════════════════════
+function setEntryTarget(ticker, val) {
+  const num = parseFloat(val);
+  if (!val || val === '' || isNaN(num) || num <= 0) {
+    delete ENTRY_TARGETS[ticker];
+  } else {
+    ENTRY_TARGETS[ticker] = num;
+  }
+  saveToStorage();
+  renderWatchList();
+}
+
+// ══════════════════════════════════════════
 // TICKER NOTES
 // ══════════════════════════════════════════
 function saveNote(ticker, text) {
@@ -5378,7 +5406,16 @@ function renderWatchList() {
       const bias     = BIAS[ticker] || 'neu';
       const isSell   = bias === 'sell';
 
-      const cardClass = isWatchOnly ? 'watch-card watch-only' : hasPos ? 'watch-card has-position' : 'watch-card';
+      const entryTarget    = ENTRY_TARGETS[ticker] || null;
+      // Bull: alert when price drops TO or BELOW target (good entry)
+      // Bear: alert when price rises TO or ABOVE target (good short entry)
+      const bullAlert = entryTarget && lp && bias === 'bull' && lp.price <= entryTarget;
+      const bearAlert = entryTarget && lp && bias === 'bear' && lp.price >= entryTarget;
+      const entryTriggered = bullAlert || bearAlert;
+      const baseCardClass = isWatchOnly ? 'watch-card watch-only' : hasPos ? 'watch-card has-position' : 'watch-card';
+      const cardClass = entryTriggered
+        ? baseCardClass + ' entry-alert ' + (bullAlert ? 'bull-alert' : 'bear-alert')
+        : baseCardClass;
 
       const priceColor = lp ? (lp.pct >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)';
       const priceHtml = lp
@@ -5417,6 +5454,28 @@ function renderWatchList() {
         style="width:100%;margin-bottom:4px;padding:2px 6px;border-radius:3px;background:${hasNote?'rgba(245,200,66,0.2)':'rgba(74,85,104,.1)'};border:1px solid ${hasNote?'rgba(245,200,66,0.55)':'var(--border)'};color:${hasNote?'var(--yellow)':'var(--muted)'};font-size:9px;font-family:inherit;font-weight:700;letter-spacing:.4px;cursor:pointer;display:flex;align-items:center;gap:4px">
         📝 ${hasNote?'NOTE':'ADD NOTE'}</button>`;
 
+      // Entry field styling: white text by default; green bg+white on bull hit; red bg+white on bear hit
+      const entryInputBg     = bullAlert ? 'var(--green)' : bearAlert ? 'var(--red)' : 'transparent';
+      const entryInputColor  = bullAlert ? '#000000' : entryTriggered ? '#ffffff' : '#ffffff';
+      const entryInputBorder = bullAlert ? 'var(--green)' : bearAlert ? 'var(--red)' : 'var(--border)';
+      const entryLabelColor  = bullAlert ? 'var(--green)' : bearAlert ? 'var(--red)' : 'var(--muted)';
+      const entryLabel       = bullAlert ? '⚡ ENTRY HIT' : bearAlert ? '⚡ ENTRY HIT' : '🎯 Entry Target';
+      const entryDollarColor = bullAlert ? '#000000' : entryTriggered ? '#ffffff' : 'var(--muted)';
+
+      const entryField = `<div style="margin-top:4px;margin-bottom:3px">
+        <div style="font-size:8px;color:${entryLabelColor};text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;font-weight:700">
+          ${entryLabel}
+        </div>
+        <div style="position:relative;display:flex;align-items:center">
+          <span style="position:absolute;left:7px;font-size:11px;color:${entryDollarColor};pointer-events:none;font-weight:700;z-index:1">$</span>
+          <input type="number" step="0.01" min="0" placeholder="—"
+            value="${entryTarget || ''}"
+            onchange="setEntryTarget('${ticker}', this.value)"
+            onblur="setEntryTarget('${ticker}', this.value)"
+            style="width:100%;padding:3px 7px 3px 16px;background:${entryInputBg};border:1px solid ${entryInputBorder};color:${entryInputColor};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;border-radius:3px;outline:none" />
+        </div>
+      </div>`;
+
       const tickerLabel = bias === 'bull'
         ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.65);border-radius:3px;padding:1px 6px;margin-bottom:2px;background:rgba(0,232,138,0.13);color:var(--green)">${ticker}</div>`
         : bias === 'bear'
@@ -5443,6 +5502,7 @@ function renderWatchList() {
         ${tickerLabel}
         ${priceHtml}
         ${closeHtml}
+        ${entryField}
         ${noteBtn}
         ${biasBtn}
         ${sectorSelect}
