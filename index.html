@@ -2888,11 +2888,26 @@ function closeWhaleFeed() {
   document.getElementById('whalePanel').classList.remove('open');
   document.getElementById('whalePanelBackdrop').style.display = 'none';
   _whaleFocusTicker = null;
+  _whaleFilter = 'all';
+  const fb = document.getElementById('whaleFocusBtn');
+  if (fb) { fb.style.display = 'none'; fb.classList.remove('active'); }
+  document.querySelectorAll('.whale-filter-btn').forEach(b => b.classList.remove('active'));
+  const allBtn = document.querySelector('.whale-filter-btn');
+  if (allBtn) allBtn.classList.add('active');
 }
 
 function setWhaleFilter(f, btn) {
   _whaleFilter = f;
-  if (f !== 'focus') _whaleFocusTicker = null;
+  // Only clear the focus ticker when explicitly going to a non-focus filter AND
+  // the user didn't click the pin button — clicking pin should always restore focus
+  if (f === 'focus' && _whaleFocusTicker) {
+    // Re-pin: make sure the focus button label is current
+    const fb = document.getElementById('whaleFocusBtn');
+    if (fb) { fb.style.display = ''; fb.textContent = `📌 ${_whaleFocusTicker}`; }
+  } else if (f !== 'focus') {
+    // Switching to all/bull/bear — keep _whaleFocusTicker in memory so
+    // the pin button can still snap back to it, just don't filter by it
+  }
   document.querySelectorAll('.whale-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderWhaleFeed();
