@@ -286,7 +286,7 @@
   .note-textarea:focus{border-color:var(--yellow)}
 
   /* P&L SUMMARY BAR */
-  .pnl-bar{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .pnl-bar{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
   .pnl-stat{background:var(--surface2);padding:8px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .pnl-stat-val{font-family:'DM Sans',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
   .pnl-stat-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}
@@ -508,16 +508,29 @@
 <!-- P&L SUMMARY BAR -->
 <div class="pnl-bar" id="pnlBar">
   <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-theta" style="color:var(--teal)">—</div>
+    <div class="pnl-stat-lbl">Est. Daily Theta</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-ext-45d" style="color:var(--accent)">—</div>
+    <div class="pnl-stat-lbl">Extrinsic &#8804;45d</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-toclose-45d" style="color:var(--yellow)">—</div>
+    <div class="pnl-stat-lbl">Cost to Close &#8804;45d</div>
+  </div>
+  <div class="pnl-stat">
+    <div class="pnl-stat-val" id="pnl-ext-pct" style="color:var(--text)">—</div>
+    <div class="pnl-stat-lbl">% Extrinsic &#8804;45d</div>
+    <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-ext-bar-fill" style="width:0%;background:var(--accent)"></div></div>
+  </div>
+  <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-collected" style="color:var(--accent)">—</div>
     <div class="pnl-stat-lbl">Premium Collected</div>
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-toclose" style="color:var(--text)">—</div>
     <div class="pnl-stat-lbl">Cost to Close</div>
-  </div>
-  <div class="pnl-stat">
-    <div class="pnl-stat-val" id="pnl-toclose-45d" style="color:var(--yellow)">—</div>
-    <div class="pnl-stat-lbl">Cost to Close &#8804;45d</div>
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-netpnl">—</div>
@@ -531,10 +544,6 @@
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-collateral" style="color:var(--muted)">—</div>
     <div class="pnl-stat-lbl">Total Collateral at Risk</div>
-  </div>
-  <div class="pnl-stat">
-    <div class="pnl-stat-val" id="pnl-theta" style="color:var(--teal)">—</div>
-    <div class="pnl-stat-lbl">Est. Daily Theta</div>
   </div>
 </div>
 
@@ -610,11 +619,11 @@
     <thead><tr>
       <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Ticker</th>
       <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Shares</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Cost Basis</th>
       <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Current $</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Mkt Value</th>
-      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Unreal G/L</th>
       <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Day %</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Mkt Value</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Cost Basis</th>
+      <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)">Unreal G/L</th>
       <th style="background:var(--surface);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)"></th>
     </tr></thead>
     <tbody id="stockBody"></tbody>
@@ -674,6 +683,18 @@
     </div>
   </div>
   <div id="mobCards"></div>
+
+  <!-- Mobile Stock Positions -->
+  <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:12px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Stock Positions</div>
+    <div id="mobStocks"></div>
+  </div>
+
+  <!-- Mobile Watch List -->
+  <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:12px">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Watch List</div>
+    <div id="mobWatch"></div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════ WHALE FEED PANEL -->
@@ -1782,13 +1803,74 @@ function renderMobile() {
       </div>`;
   });
   container.innerHTML=html;
+  renderMobileStocks();
+  renderMobileWatch();
+}
+
+function renderMobileStocks() {
+  const el = document.getElementById('mobStocks');
+  if (!el) return;
+  if (!STOCKS.length) { el.innerHTML = '<div style="color:var(--muted);font-size:11px">No stock positions</div>'; return; }
+  el.innerHTML = STOCKS.map(s => {
+    const lp = livePrices[s.ticker];
+    const current = (lp&&lp.price) || s.cost;
+    const value = current * s.shares;
+    const gl = value - s.cost * s.shares;
+    const glPct = ((current - s.cost) / s.cost) * 100;
+    const glColor = gl >= 0 ? 'var(--green)' : 'var(--red)';
+    const dayColor = lp ? (lp.pct >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)';
+    const dayArrow = lp ? (lp.pct >= 0 ? '▲' : '▼') : '';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px">${s.ticker}</span>
+        <span style="font-size:13px;font-weight:700;color:${dayColor}">${dayArrow}${lp?(yahooReady?Math.abs(lp.pct).toFixed(2)+'%':'…'):'—'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px">
+        <span style="color:var(--muted)">${s.shares.toLocaleString()} shares</span>
+        <span style="text-align:right;font-weight:600">$${current.toFixed(2)}</span>
+        <span style="color:var(--muted)">Mkt Value</span>
+        <span style="text-align:right;font-weight:600">$${(value/1000).toFixed(1)}K</span>
+        <span style="color:var(--muted)">Cost Basis</span>
+        <span style="text-align:right;color:var(--muted)">$${s.cost.toFixed(2)}</span>
+        <span style="color:var(--muted)">Unreal G/L</span>
+        <span style="text-align:right;font-weight:700;color:${glColor}">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMobileWatch() {
+  const el = document.getElementById('mobWatch');
+  if (!el) return;
+  const allTickers = [...new Set([...POSITIONS.map(p=>p.ticker), ...WATCHLIST])];
+  if (!allTickers.length) { el.innerHTML = '<div style="color:var(--muted);font-size:11px">No tickers on watch list</div>'; return; }
+  const posTickers = new Set(POSITIONS.map(p=>p.ticker));
+  el.innerHTML = allTickers.map(ticker => {
+    const lp = livePrices[ticker];
+    const bias = BIAS[ticker] || 'neu';
+    const hasPos = posTickers.has(ticker);
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARN':'→ NONE';
+    const dayColor = lp ? (lp.pct>=0?'var(--green)':'var(--red)') : 'var(--muted)';
+    const dayArrow = lp ? (lp.pct>=0?'▲':'▼') : '';
+    return `<div style="background:var(--surface);border:1px solid ${hasPos?'rgba(0,212,255,.3)':'var(--border)'};border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px">${ticker}</span>
+        ${hasPos?`<span style="font-size:9px;color:var(--accent);margin-left:6px">${POSITIONS.filter(p=>p.ticker===ticker).length} pos</span>`:''}
+      </div>
+      <div style="text-align:right">
+        ${lp?`<div style="font-weight:700;font-size:14px">$${lp.price.toFixed(2)} <span style="color:${dayColor};font-size:12px">${dayArrow}${Math.abs(lp.pct).toFixed(2)}%</span></div>`:'<div style="color:var(--muted);font-size:12px">—</div>'}
+        <div style="font-size:9px;font-weight:700;color:${biasColor};margin-top:2px">${biasLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
 // P&L SUMMARY BAR
 // ══════════════════════════════════════════
 function updatePnlBar() {
-  let totalCollected = 0, totalToClose = 0, totalCollateral = 0, toClose45d = 0;
+  let totalCollected = 0, totalToClose = 0, totalCollateral = 0, toClose45d = 0, ext45d = 0;
   POSITIONS.forEach(p => {
     if (isLongOption(p)) return; // long options: skip from credit metrics
     if (p.postype === 'covered_call') return;
@@ -1798,7 +1880,14 @@ function updatePnlBar() {
     totalCollected  += openPrem * 100 * p.cts;
     totalToClose    += cost;
     totalCollateral += p.collateral;
-    if (getDTE(p) <= 45) toClose45d += cost;
+    if (getDTE(p) <= 45) {
+      toClose45d += cost;
+      // Extrinsic ≤45d: pure time value remaining (what's still working for you)
+      const stock45 = getLiveStock(p);
+      const intr45  = p.type === 'P' ? Math.max(0, p.short - stock45) : Math.max(0, stock45 - p.short);
+      const { mid: mid45 } = getSpreadMid(p);
+      ext45d += Math.max(0, mid45 - intr45) * 100 * p.cts;
+    }
   });
   const netPnL    = totalCollected - totalToClose;
   const pctCaptured = totalCollected > 0 ? (netPnL / totalCollected) * 100 : 0;
@@ -1832,6 +1921,15 @@ function updatePnlBar() {
   });
 
   const fmt = v => '$' + Math.round(Math.abs(v)).toLocaleString();
+  // % Extrinsic ≤45d: what fraction of your close cost is still pure time value
+  // High = lots of theta left to decay, hold. Low = mostly intrinsic, theta play is done.
+  const extPct45 = toClose45d > 0 ? Math.max(0, Math.min(100, (ext45d / toClose45d) * 100)) : 0;
+  const extBarColor = extPct45 >= 60 ? 'var(--accent)' : extPct45 >= 30 ? 'var(--yellow)' : 'var(--muted)';
+  document.getElementById('pnl-ext-45d').textContent   = fmt(ext45d);
+  document.getElementById('pnl-ext-pct').textContent   = extPct45.toFixed(1) + '%';
+  document.getElementById('pnl-ext-pct').style.color   = extBarColor;
+  document.getElementById('pnl-ext-bar-fill').style.width = extPct45 + '%';
+  document.getElementById('pnl-ext-bar-fill').style.background = extBarColor;
   document.getElementById('pnl-collected').textContent = fmt(totalCollected);
   document.getElementById('pnl-toclose').textContent   = fmt(totalToClose);
   document.getElementById('pnl-toclose-45d').textContent = fmt(toClose45d);
@@ -5023,17 +5121,17 @@ function renderStocks() {
     return `<tr class="row" style="font-size:17px">
       <td><span class="ticker-name" style="font-size:19px;letter-spacing:1px">${s.ticker}</span><button onclick="refreshStockPrice('${s.ticker}',this)" class="ticker-refresh-btn" title="Refresh price">⟳</button></td>
       <td style="color:var(--text);font-weight:600">${s.shares.toLocaleString()}</td>
-      <td style="color:var(--muted)">$${s.cost.toFixed(2)}</td>
       <td class="${lp?'stock-otm':'price-neu'}" style="font-weight:600">
         $${current.toFixed(2)}
         ${openHtml}
       </td>
-      <td style="color:var(--text);font-weight:700">$${(value/1000).toFixed(1)}K</td>
-      <td class="${glClass}" style="font-weight:700">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</td>
       <td class="${dayClass}" style="font-weight:600">
         ${lp ? (yahooReady ? (lp.pct>=0?'▲':'▼')+Math.abs(lp.pct).toFixed(2)+'%' : '…') : '—'}
         ${dayGL!=null?`<div class="${dayGLClass}" style="font-size:11px">${dayGL>=0?'+':''}$${Math.round(Math.abs(dayGL)).toLocaleString()}</div>`:''}
       </td>
+      <td style="color:var(--text);font-weight:700">$${(value/1000).toFixed(1)}K</td>
+      <td style="color:var(--muted)">$${s.cost.toFixed(2)}</td>
+      <td class="${glClass}" style="font-weight:700">${gl>=0?'+':''}$${Math.round(gl).toLocaleString()} (${glPct>=0?'+':''}${glPct.toFixed(1)}%)</td>
       <td style="white-space:nowrap">${trackBtn} <button class="edit-x" onclick="showEditStockModal(${i})" title="Edit">✎</button> <button class="close-x" onclick="removeStock(${i})" title="Remove">✕</button></td>
     </tr>`;
   }).join('');
@@ -5044,9 +5142,11 @@ function renderStocks() {
   body.innerHTML += `<tr style="border-top:2px solid var(--border);font-size:17px">
     <td colspan="4" style="color:var(--muted);font-size:11px;padding:8px 10px">TOTAL</td>
     <td style="color:var(--text);font-weight:700;font-size:19px">$${(totalValue/1000).toFixed(1)}K</td>
+    <td></td>
     <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}</td>
-    <td colspan="2"></td>
+    <td></td>
   </tr>`;
+  if (document.getElementById('mobStocks')) renderMobileStocks();
 }
 
 function showAddStockModal() {
@@ -5304,7 +5404,7 @@ function renderWatchList() {
         : `<span class="wc-pos out">watching</span>`;
 
       const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
-      const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARNINGS':'→ NEUTRAL';
+      const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARN':'→ NONE';
       const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':bias==='earn'?'rgba(192,132,252,.12)':'rgba(74,85,104,.15)';
       const biasBtn = `<button onclick="cycleBias('${ticker}')" style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">${biasLabel}</button>`;
 
@@ -5356,6 +5456,7 @@ function renderWatchList() {
   }).join('');
 
   grid.innerHTML = html || '<div style="color:var(--muted);font-size:12px">No tickers yet — add one above</div>';
+  if (document.getElementById('mobWatch')) renderMobileWatch();
 }
 
 // ══════════════════════════════════════════
