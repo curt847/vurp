@@ -520,7 +520,7 @@
     <div class="pnl-stat-lbl">Cost to Close &#8804;45d</div>
   </div>
   <div class="pnl-stat">
-    <div class="pnl-stat-val" id="pnl-ext-pct" style="color:var(--text)">—</div>
+    <div class="pnl-stat-val" id="pnl-ext-pct" style="color:#f0a070">—</div>
     <div class="pnl-stat-lbl">% Extrinsic &#8804;45d</div>
     <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-ext-bar-fill" style="width:0%;background:var(--accent)"></div></div>
   </div>
@@ -1924,10 +1924,10 @@ function updatePnlBar() {
   // % Extrinsic ≤45d: what fraction of your close cost is still pure time value
   // High = lots of theta left to decay, hold. Low = mostly intrinsic, theta play is done.
   const extPct45 = toClose45d > 0 ? Math.max(0, Math.min(100, (ext45d / toClose45d) * 100)) : 0;
-  const extBarColor = extPct45 >= 60 ? 'var(--accent)' : extPct45 >= 30 ? 'var(--yellow)' : 'var(--muted)';
+  const extBarColor = extPct45 >= 60 ? '#f0a070' : extPct45 >= 30 ? '#c8845a' : 'var(--muted)';
   document.getElementById('pnl-ext-45d').textContent   = fmt(ext45d);
   document.getElementById('pnl-ext-pct').textContent   = extPct45.toFixed(1) + '%';
-  document.getElementById('pnl-ext-pct').style.color   = extBarColor;
+  document.getElementById('pnl-ext-pct').style.color   = '#f0a070';
   document.getElementById('pnl-ext-bar-fill').style.width = extPct45 + '%';
   document.getElementById('pnl-ext-bar-fill').style.background = extBarColor;
   document.getElementById('pnl-collected').textContent = fmt(totalCollected);
