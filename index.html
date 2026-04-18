@@ -1541,13 +1541,18 @@ function renderTable() {
                     || (_isShortCall && _sent==='bull')
                     || (_isLongCall  && _sent==='bear')
                     || (_isLongPut   && _sent==='bull');
-      const fc = isContra
-        ? 'fb-contra'
-        : flow.sentiment==='bull'?'fb-bull':flow.sentiment==='bear'?'fb-bear':'fb-neu';
-      const fi = flow.sentiment==='bull'?'↑ BULL':flow.sentiment==='bear'?'↓ BEAR':'→ NEUTRAL';
-      const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
-      const contraTag = isContra?`<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>`:'';
-      flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${contraTag}`;
+
+      // Only show badge for bull/bear — neutral is noise, just show dash
+      if (_sent === 'bull' || _sent === 'bear' || isContra) {
+        const fc = isContra
+          ? 'fb-contra'
+          : _sent==='bull' ? 'fb-bull' : 'fb-bear';
+        const fi = _sent==='bull' ? '↑ BULL' : _sent==='bear' ? '↓ BEAR' : '→ MIX';
+        const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
+        const confTag = flow.confidence ? `<span style="font-size:8px;color:${flow.confidence==='STRONG'?'var(--green)':flow.confidence==='MOD'?'var(--yellow)':'var(--muted)'};margin-left:3px;font-weight:700">${flow.confidence}</span>` : '';
+        const contraTag = isContra?`<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>`:'';
+        flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${confTag}${contraTag}`;
+      }
     }
 
     // ── Whale cell — near-term weighted (≤45 DTE gets 2× weight) ──
@@ -1561,10 +1566,20 @@ function renderTable() {
         const exp = w.expiry ? new Date(w.expiry+'T12:00:00').getTime() : Infinity;
         return s + w.premium * (exp <= cutoff45 ? 2 : 1);
       }, 0);
-      const bullPrem = weightedPrem(wArr, 'C');
-      const bearPrem = weightedPrem(wArr, 'P');
       const wTotalRaw = wArr.reduce((s,w)=>s+w.premium,0);
-      const wSent    = bullPrem > bearPrem*1.4 ? 'bull' : bearPrem > bullPrem*1.4 ? 'bear' : 'mixed';
+
+      // Use scored sentiment engine for the table badge
+      let wBullScore = 0, wBearScore = 0;
+      wArr.forEach(w => {
+        const ws = w.score * Math.sqrt(w.premium / 100000);
+        // Near-term boost
+        const exp = w.expiry ? new Date(w.expiry+'T12:00:00').getTime() : Infinity;
+        const ntBoost = exp <= cutoff45 ? 1.5 : 1;
+        if (ws > 0) wBullScore += ws * ntBoost; else wBearScore += ws * ntBoost;
+      });
+      const wSent = scoresToSentiment(wBullScore, wBearScore);
+      const wConf = sentimentConfidence(wBullScore, wBearScore);
+
       // Near-term trade count for tooltip context
       const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
       const _isCC4       = p.postype === 'covered_call';
@@ -1576,14 +1591,20 @@ function renderTable() {
                    || (_isShortCal4 && wSent==='bull')
                    || (_isLongC4    && wSent==='bear')
                    || (_isLongP4    && wSent==='bull');
-      const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIX';
-      const wColor = wContra ? 'var(--yellow)' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'#ffffff';
-      const wBg    = wContra ? 'rgba(245,200,66,0.08)' : wSent==='bull'?'rgba(0,232,138,0.1)':wSent==='bear'?'rgba(255,61,90,0.1)':'rgba(255,255,255,0.05)';
-      const wBorder= wContra ? 'rgba(245,200,66,0.35)' : wSent==='bull'?'rgba(0,232,138,0.3)':wSent==='bear'?'rgba(255,61,90,0.3)':'rgba(255,255,255,0.25)';
-      const wPrem  = wTotalRaw>=1e6?`$${(wTotalRaw/1e6).toFixed(1)}M`:`$${(wTotalRaw/1e3).toFixed(0)}K`;
-      const ntTag  = ntCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--accent);margin-left:3px;vertical-align:middle" title="${ntCount} near-term trade${ntCount!==1?'s':''} ≤45 DTE — driving sentiment">▲${ntCount}</span>` : '';
-      const wContraTag = wContra ? `<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>` : '';
-      whaleHtml = `<div onclick="openWhaleFeed('${p.ticker}')" style="cursor:pointer"><span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${wBg};color:${wColor};border:1px solid ${wBorder}">${wLabel} ${wPrem}</span>${ntTag}${wContraTag}</div>`;
+
+      // Only show whale badge for bull/bear/contra — mix is noise
+      if (wSent === 'bull' || wSent === 'bear' || wContra) {
+        const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIX';
+        const wColor = wContra ? 'var(--yellow)' : wSent==='bull'?'var(--green)':'var(--red)';
+        const wBg    = wContra ? 'rgba(245,200,66,0.08)' : wSent==='bull'?'rgba(0,232,138,0.1)':'rgba(255,61,90,0.1)';
+        const wBorder= wContra ? 'rgba(245,200,66,0.35)' : wSent==='bull'?'rgba(0,232,138,0.3)':'rgba(255,61,90,0.3)';
+        const wPrem  = wTotalRaw>=1e6?`$${(wTotalRaw/1e6).toFixed(1)}M`:`$${(wTotalRaw/1e3).toFixed(0)}K`;
+        const wConfColor = wConf==='STRONG'?'var(--green)':wConf==='MOD'?'var(--yellow)':'var(--muted)';
+        const ntTag  = ntCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--accent);margin-left:3px;vertical-align:middle" title="${ntCount} near-term trade${ntCount!==1?'s':''} ≤45 DTE — driving sentiment">▲${ntCount}</span>` : '';
+        const wContraTag = wContra ? `<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>` : '';
+        const wConfTag = `<span style="font-size:8px;color:${wConfColor};margin-left:3px;font-weight:700" title="Sentiment confidence">${wConf}</span>`;
+        whaleHtml = `<div onclick="openWhaleFeed('${p.ticker}')" style="cursor:pointer"><span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${wBg};color:${wColor};border:1px solid ${wBorder}">${wLabel} ${wPrem}</span>${wConfTag}${ntTag}${wContraTag}</div>`;
+      }
     }
 
     const idx = POSITIONS.indexOf(p);
@@ -2764,45 +2785,204 @@ function buildOCCId(p) {
   return `${p.ticker}${exp}${p.type}${strike}`;
 }
 
-async function fetchFlowAlerts(tickers) {
-  await Promise.all(tickers.map(async t=>{
-    try {
-      // Try flow-alerts endpoint first, fall back to flow-recent
-      let r = await uw(`/api/stock/${t}/flow-alerts`).catch(() => null);
-      if (!r || !(r.data && r.data.length)) {
-        r = await uw(`/api/stock/${t}/flow-recent`).catch(() => null);
-      }
-      if (!r || !(r.data && r.data.length)) {
-        console.log(`[RW] ${t} flow: no data from either endpoint`);
-        return;
-      }
-      console.log(`[RW] ${t} flow: ${r.data.length} rows, sample:`, JSON.stringify(r.data[0]).slice(0,200));
+// ══════════════════════════════════════════
+// SHARED FLOW FIELD EXTRACTOR
+// Handles every field name variation UW has ever used across API versions
+// ══════════════════════════════════════════
+function extractFlowFields(x) {
+  // ── Premium ──
+  const premium = parseFloat(
+    x.total_premium ?? x.premium ?? x.premium_value ?? x.notional ?? x.size ?? 0
+  );
 
-      let calls=0, puts=0, callCt=0, putCt=0;
-      r.data.forEach(x=>{
-        // Try multiple field name variations UW has used across API versions
-        const prem = parseFloat(
-          x.total_premium || x.premium || x.premium_value ||
-          x.notional || x.size || 0
-        );
-        const optType = (
-          x.option_type || x.call_put || x.type || x.side || ''
-        ).toLowerCase();
-        if (optType === 'call' || optType === 'c') { calls += prem; callCt++; }
-        else if (optType === 'put' || optType === 'p') { puts += prem; putCt++; }
+  // ── Option type (C/P) ──
+  const rawType = (x.type ?? x.option_type ?? x.call_put ?? x.put_call ?? '').toLowerCase();
+  const type = (rawType === 'call' || rawType === 'c') ? 'C'
+             : (rawType === 'put'  || rawType === 'p') ? 'P'
+             : null;
+
+  // ── Aggressor: UW returns total_ask_side_prem (buyer) and total_bid_side_prem (seller) ──
+  // Ask side = buyer initiated (bullish for calls, bearish for puts)
+  // Bid side = seller initiated (reverses naive assumption)
+  const askPrem = parseFloat(x.total_ask_side_prem ?? x.ask_side_prem ?? 0);
+  const bidPrem = parseFloat(x.total_bid_side_prem ?? x.bid_side_prem ?? 0);
+  let aggressor = '';
+  if (askPrem > 0 || bidPrem > 0) {
+    // Use whichever side dominates
+    if (askPrem > bidPrem * 1.5)      aggressor = 'buy';   // mostly ask-side = buyer
+    else if (bidPrem > askPrem * 1.5) aggressor = 'sell';  // mostly bid-side = seller
+    else                               aggressor = 'mixed'; // roughly split
+  }
+  // Also store the raw ratio for scoring nuance
+  const askRatio = (askPrem + bidPrem) > 0 ? askPrem / (askPrem + bidPrem) : 0.5;
+
+  // ── Order classification — exact UW field names ──
+  const isSweep       = !!(x.has_sweep ?? x.is_sweep ?? false);
+  const isFloor       = !!(x.has_floor ?? x.is_floor ?? false);  // floor = likely hedge, discount
+  const isMultileg    = !!(x.has_multileg ?? x.is_multileg ?? false); // spread = ambiguous direction
+  const isSingleleg   = !!(x.has_singleleg ?? x.is_singleleg ?? true);
+  const isAllOpening  = !!(x.all_opening_trades ?? x.is_opening ?? false); // all contracts opening new pos
+  const isGoldenSweep = !!(x.is_golden_sweep ?? x.golden_sweep ?? false);
+  const isBlock       = !!(x.is_block ?? x.block ?? false);
+
+  // alert_rule field: "RepeatedHits" = same strike/expiry hit again = conviction
+  const alertRule  = (x.alert_rule ?? x.alert ?? '').toLowerCase();
+  const isRepeat   = alertRule.includes('repeat') || alertRule.includes('repeated');
+  const isUnusual  = alertRule.includes('unusual') || !!(x.is_unusual ?? false);
+
+  // ── DTE — compute from expiry ──
+  const expiry = x.expiry ?? x.expiration_date ?? x.expires ?? x.expiration ?? '';
+  let dte = null;
+  if (expiry) {
+    const diff = (new Date(expiry) - new Date()) / 86400000;
+    dte = Math.round(diff);
+  }
+
+  // ── Vol/OI ratio — UW provides directly as a string ──
+  const volOiRaw = parseFloat(x.volume_oi_ratio ?? x.volOiRatio ?? '');
+  const volOiRatio = isFinite(volOiRaw) ? volOiRaw : null;
+  const oi         = parseFloat(x.open_interest ?? x.oi ?? 0);
+  const volume     = parseFloat(x.volume ?? x.total_size ?? 0);
+
+  // ── Strike / price / time ──
+  const strike         = parseFloat(x.strike ?? x.strike_price ?? 0);
+  const underlyingPrice = parseFloat(x.underlying_price ?? 0);
+  const price          = parseFloat(x.price ?? x.trade_price ?? 0);
+  const time           = x.created_at ?? x.timestamp ?? x.date ?? x.time ?? '';
+
+  return { premium, type, aggressor, askRatio, askPrem, bidPrem,
+           isSweep, isFloor, isMultileg, isSingleleg, isAllOpening,
+           isGoldenSweep, isBlock, isRepeat, isUnusual,
+           dte, strike, underlyingPrice, expiry, time,
+           oi, volume, volOiRatio, price,
+           alertRule, raw: x.option_symbol ?? x.symbol ?? '',
+           _rawFields: Object.keys(x) };
+}
+
+// ══════════════════════════════════════════
+// SENTIMENT SCORING ENGINE
+// Returns a score per trade. Positive = bullish signal, negative = bearish.
+// Magnitude reflects confidence. Scores are premium-weighted when aggregated.
+// ══════════════════════════════════════════
+function scoreFlowTrade(f) {
+  if (!f.type) return 0;
+
+  // ── Step 1: Base direction from option type ──
+  let base = f.type === 'C' ? 1 : -1;
+
+  // ── Step 2: Aggressor using ask/bid premium split ──
+  // UW gives us total_ask_side_prem (buyer) and total_bid_side_prem (seller)
+  // askRatio = fraction of premium that was buyer-initiated (0=all seller, 1=all buyer)
+  if (f.askPrem > 0 || f.bidPrem > 0) {
+    // Center at 0.5 (neutral). Scale linearly: 1.0=pure buy (×2.5 confirm), 0.0=pure sell (×2.5 reverse)
+    // Use a symmetric curve so bears can score as strongly as bulls
+    const deviation = f.askRatio - 0.5; // -0.5 to +0.5
+    const aggrMult = 1 + deviation * 3.0; // 0.5→-0.5 (×-0.5 all sell), 0.5→+2.5 (×+2.5 all buy)
+    base *= aggrMult;
+  } else {
+    // No bid/ask data — use option type as moderate signal
+    base *= 1.5;
+  }
+
+  // ── Step 3: Order type multipliers ──
+  let mult = 1.0;
+  if (f.isGoldenSweep)             mult *= 2.0;  // rarest, most aggressive
+  else if (f.isSweep)              mult *= 1.6;  // multi-exchange urgency
+  else if (f.isBlock)              mult *= 1.0;  // institutional but ambiguous
+  if (f.isRepeat)                  mult *= 1.4;  // same strike hit again = conviction
+  if (f.isUnusual)                 mult *= 1.2;  // UW flagged as unusual
+
+  // Discount ambiguous/hedging trade types
+  if (f.isFloor)                   mult *= 0.6;  // floor trades = often institutional hedge
+  if (f.isMultileg && !f.isSweep)  mult *= 0.7;  // spreads = direction ambiguous
+
+  // Reward confirmed opening positions (new money = conviction)
+  if (f.isAllOpening)              mult *= 1.1;  // opening = new money, but don't over-weight
+
+  // ── Step 4: DTE adjustment ──
+  let dteMult = 1.0;
+  if (f.dte !== null) {
+    if      (f.dte <= 7)   dteMult = 1.6;  // this week — pure directional
+    else if (f.dte <= 21)  dteMult = 1.3;  // near-term — likely directional
+    else if (f.dte <= 45)  dteMult = 1.1;  // standard
+    else if (f.dte <= 90)  dteMult = 0.85; // getting hedgy
+    else                   dteMult = 0.65; // LEAPS — likely hedge
+  }
+
+  // ── Step 5: Vol/OI ratio — UW provides directly ──
+  let voiMult = 1.0;
+  if (f.volOiRatio != null && isFinite(f.volOiRatio)) {
+    const voi = Number(f.volOiRatio);
+    if      (voi > 5)   voiMult = 1.4;
+    else if (voi > 2)   voiMult = 1.2;
+    else if (voi < 0.2) voiMult = 0.8;
+  }
+
+  return base * mult * dteMult * voiMult;
+}
+
+// ── Convert aggregate score to sentiment label ──
+// score > 0 = net bullish, < 0 = net bearish
+function scoresToSentiment(bullScore, bearScore) {
+  const net = bullScore + bearScore; // bearScore is already negative
+  const total = Math.abs(bullScore) + Math.abs(bearScore);
+  if (total === 0) return 'mix';
+  const ratio = net / total; // -1 to +1
+  // Wider bands: only call it mixed if truly ambiguous (within ±0.20)
+  if      (ratio >  0.20) return 'bull';
+  else if (ratio < -0.20) return 'bear';
+  else                    return 'mix';
+}
+
+// ── Confidence string for display ──
+function sentimentConfidence(bullScore, bearScore) {
+  const net = bullScore + bearScore;
+  const total = Math.abs(bullScore) + Math.abs(bearScore);
+  if (total === 0) return '';
+  const ratio = Math.abs(net) / total;
+  if (ratio > 0.72) return 'STRONG';  // raised from 0.60 — requires real conviction
+  if (ratio > 0.35) return 'MOD';
+  return 'WEAK';
+}
+
+async function fetchFlowAlerts(tickers) {
+  await Promise.all(tickers.map(async t => {
+    try {
+      let r = await uw(`/api/stock/${t}/flow-alerts`).catch(() => null);
+      if (!r || !(r.data && r.data.length))
+        r = await uw(`/api/stock/${t}/flow-recent`).catch(() => null);
+      if (!r || !(r.data && r.data.length)) {
+        console.log(`[RW] ${t} flow: no data`); return;
+      }
+      console.log(`[RW] ${t} flow sample — all fields:`, Object.keys(r.data[0]).join(', '));
+      console.log(`[RW] ${t} flow sample — values:`, JSON.stringify(r.data[0]).slice(0, 500));
+
+      let bullScore = 0, bearScore = 0, calls = 0, puts = 0, callCt = 0, putCt = 0;
+      let knownAggrCt = 0, unknownAggrCt = 0;
+      r.data.forEach(x => {
+        const f = extractFlowFields(x);
+        if (!f.type || f.premium <= 0) return;
+        if (f.type === 'C') { calls += f.premium; callCt++; }
+        else                { puts  += f.premium; putCt++;  }
+        if (f.askPrem > 0 || f.bidPrem > 0) knownAggrCt++; else unknownAggrCt++;
+        const score = scoreFlowTrade(f);
+        const weightedScore = score * Math.sqrt(f.premium / 100000);
+        if (weightedScore > 0) bullScore += weightedScore;
+        else                   bearScore += weightedScore;
       });
 
       const total = calls + puts;
-      console.log(`[RW] ${t} flow: calls=$${(calls/1000).toFixed(0)}K puts=$${(puts/1000).toFixed(0)}K total=$${(total/1000).toFixed(0)}K`);
-
       const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
       const threshold = bigNames.includes(t) ? 200000 : 50000;
-      if (total < threshold) { console.log(`[RW] ${t} flow: below threshold ($${threshold/1000}K)`); return; }
+      if (total < threshold) return;
 
-      const sentiment = calls>puts*1.4?'bull':puts>calls*1.4?'bear':'neu';
-      flowData[t]={sentiment, premium:total, calls, puts, callCt, putCt};
-      console.log(`[RW] ${t} flow: ${sentiment} isContra=${isContra}`);
-    } catch(e){ console.warn(`[RW] ${t} flow error:`, e); }
+      const sentiment   = scoresToSentiment(bullScore, bearScore);
+      const confidence  = sentimentConfidence(bullScore, bearScore);
+      const netRatio    = (Math.abs(bullScore) + Math.abs(bearScore)) > 0
+        ? ((bullScore + bearScore) / (Math.abs(bullScore) + Math.abs(bearScore))).toFixed(2) : '0';
+      flowData[t] = { sentiment, confidence, premium: total, calls, puts, callCt, putCt, bullScore, bearScore };
+      console.log(`[RW] ${t} flow: ${sentiment} (${confidence}) ratio=${netRatio} bull=${bullScore.toFixed(1)} bear=${bearScore.toFixed(1)} | aggressor known=${knownAggrCt} unknown=${unknownAggrCt} | calls=$${(calls/1000).toFixed(0)}K puts=$${(puts/1000).toFixed(0)}K`);
+    } catch(e) { console.warn(`[RW] ${t} flow error:`, e); }
   }));
 }
 
@@ -2818,7 +2998,6 @@ async function fetchWhales() {
   btn.disabled = true;
   openWhaleFeed(null);
 
-  // Derive tickers from POSITIONS (+ any watch-only that have livePrices)
   const whaleTickers = [...new Set([
     ...POSITIONS.map(p => p.ticker),
     ...Object.keys(livePrices)
@@ -2833,29 +3012,27 @@ async function fetchWhales() {
   await Promise.all(whaleTickers.map(async t => {
     try {
       let r = await uw(`/api/stock/${t}/flow-alerts`).catch(() => null);
-      if (!r || !(r.data && r.data.length)) {
+      if (!r || !(r.data && r.data.length))
         r = await uw(`/api/stock/${t}/flow-recent`).catch(() => null);
-      }
       if (!r || !(r.data && r.data.length)) return;
 
       const trades = [];
+      if (r.data.length) {
+        console.log(`[RW] 🐋 ${t} whale sample fields:`, Object.keys(r.data[0]).join(', '));
+        console.log(`[RW] 🐋 ${t} whale sample values:`, JSON.stringify(r.data[0]).slice(0, 500));
+      }
       r.data.forEach(x => {
-        const prem = parseFloat(x.total_premium || x.premium || x.premium_value || x.notional || x.size || 0);
-        if (prem < WHALE_THRESHOLD) return;
-        const optType = (x.option_type || x.call_put || x.type || x.side || '').toLowerCase();
-        const type = (optType==='call'||optType==='c') ? 'C' : (optType==='put'||optType==='p') ? 'P' : null;
-        if (!type) return;
-        const side = (x.side || x.sentiment || x.aggressor_ind || '').toLowerCase();
-        const strike = parseFloat(x.strike || x.strike_price || 0);
-        const expiry = x.expiry || x.expiration_date || x.expires || '';
-        const time   = x.created_at || x.timestamp || x.date || '';
-        trades.push({ premium: prem, type, side, strike, expiry, time,
-          raw: x.option_symbol || x.ticker || '' });
+        const f = extractFlowFields(x);
+        if (!f.type || f.premium < WHALE_THRESHOLD) return;
+        const score = scoreFlowTrade(f);
+        trades.push({ ...f, score });
       });
+
       if (trades.length) {
-        trades.sort((a,b) => b.premium - a.premium);
+        trades.sort((a, b) => b.premium - a.premium);
         whaleData[t] = trades;
-        console.log(`[RW] 🐋 ${t}: ${trades.length} whale trades, top $${(trades[0].premium/1000).toFixed(0)}K`);
+        console.log(`[RW] 🐋 ${t}: ${trades.length} whale trades, top $${(trades[0].premium/1000).toFixed(0)}K, scores:`,
+          trades.map(w => `${w.type}${w.aggressor?'/'+w.aggressor:''}=${w.score.toFixed(1)}`).join(' '));
       }
     } catch(e) { console.warn(`[RW] whale fetch ${t}:`, e); }
   }));
@@ -2918,7 +3095,6 @@ function renderWhaleFeed() {
   const statsBar = document.getElementById('whaleStatsBar');
   const sub = document.getElementById('whalePanelSub');
 
-  // Which tickers to show
   let tickers = Object.keys(whaleData).sort();
   if (!tickers.length) {
     body.innerHTML = `<div class="whale-empty">No $500K+ whale trades found on your tickers<br><span style="font-size:10px;margin-top:6px;display:block;opacity:.6">Try again later — whale flow is intermittent</span></div>`;
@@ -2926,33 +3102,33 @@ function renderWhaleFeed() {
     return;
   }
 
-  // Filter
+  // ── Per-ticker scored sentiment ──
+  function tickerSentiment(arr) {
+    let bullScore = 0, bearScore = 0;
+    arr.forEach(w => {
+      const ws = w.score * Math.sqrt(w.premium / 100000);
+      if (ws > 0) bullScore += ws; else bearScore += ws;
+    });
+    return {
+      sent: scoresToSentiment(bullScore, bearScore),
+      conf: sentimentConfidence(bullScore, bearScore),
+      bullScore, bearScore
+    };
+  }
+
+  // ── Filter ──
   if (_whaleFilter === 'focus' && _whaleFocusTicker) {
     tickers = tickers.filter(t => t === _whaleFocusTicker);
   } else if (_whaleFilter === 'bull') {
-    tickers = tickers.filter(t => {
-      const arr = whaleData[t];
-      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
-      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
-      return bull > bear;
-    });
+    tickers = tickers.filter(t => tickerSentiment(whaleData[t]).sent === 'bull');
   } else if (_whaleFilter === 'bear') {
-    tickers = tickers.filter(t => {
-      const arr = whaleData[t];
-      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
-      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
-      return bear > bull;
-    });
+    tickers = tickers.filter(t => tickerSentiment(whaleData[t]).sent === 'bear');
   } else if (_whaleFilter === 'contra') {
     tickers = tickers.filter(t => {
-      // Find any position on this ticker and check contra
       const pos = POSITIONS.find(p => p.ticker === t);
       if (!pos) return false;
-      const arr = whaleData[t];
-      const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
-      const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
-      const sent = bull > bear*1.4 ? 'bull' : bear > bull*1.4 ? 'bear' : 'mix';
-      const isCC = pos.postype==='covered_call';
+      const { sent } = tickerSentiment(whaleData[t]);
+      const isCC = pos.postype === 'covered_call';
       return (pos.type==='P' && !isLongOption(pos) && !isCC && sent==='bear')
           || (pos.type==='C' && !isLongOption(pos) && !isCC && sent==='bull')
           || (pos.postype==='long_call' && sent==='bear')
@@ -2960,18 +3136,18 @@ function renderWhaleFeed() {
     });
   }
 
-  // Global stats
-  let totalBull = 0, totalBear = 0, totalTrades = 0;
+  // ── Global stats (scored) ──
+  let totalBullPrem = 0, totalBearPrem = 0, totalTrades = 0;
   Object.values(whaleData).forEach(arr => {
     arr.forEach(w => {
-      if (w.type==='C') totalBull += w.premium;
-      else totalBear += w.premium;
+      if (w.score > 0) totalBullPrem += w.premium;
+      else             totalBearPrem += w.premium;
       totalTrades++;
     });
   });
-  const fmt = v => v>=1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1000).toFixed(0)}K`;
-  document.getElementById('wStatBull').textContent = fmt(totalBull);
-  document.getElementById('wStatBear').textContent = fmt(totalBear);
+  const fmt = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1000).toFixed(0)}K`;
+  document.getElementById('wStatBull').textContent  = fmt(totalBullPrem);
+  document.getElementById('wStatBear').textContent  = fmt(totalBearPrem);
   document.getElementById('wStatTrades').textContent = totalTrades;
   statsBar.style.display = 'grid';
 
@@ -2983,28 +3159,42 @@ function renderWhaleFeed() {
     return;
   }
 
+  // ── Confidence color ──
+  function confColor(conf) {
+    return conf==='STRONG'?'var(--green)':conf==='MOD'?'var(--yellow)':'var(--muted)';
+  }
+
   let html = '';
   tickers.forEach(t => {
     const arr = whaleData[t];
-    const bull = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
-    const bear = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
-    const total = bull + bear;
-    const sent = bull > bear*1.4 ? 'bull' : bear > bull*1.4 ? 'bear' : 'mix';
+    const { sent, conf, bullScore, bearScore } = tickerSentiment(arr);
+    const total = arr.reduce((s, w) => s + w.premium, 0);
+    const rawCalls = arr.filter(w=>w.type==='C').reduce((s,w)=>s+w.premium,0);
+    const rawPuts  = arr.filter(w=>w.type==='P').reduce((s,w)=>s+w.premium,0);
+
     const sentColor = sent==='bull'?'var(--green)':sent==='bear'?'var(--red)':'var(--yellow)';
     const sentLabel = sent==='bull'?'↑ BULLISH':sent==='bear'?'↓ BEARISH':'→ MIXED';
 
-    // Contra check for this ticker
+    // Contra check using scored sentiment
     const pos = POSITIONS.find(p => p.ticker === t);
-    const isCC = pos && pos.postype==='covered_call';
+    const isCC = pos && pos.postype === 'covered_call';
     const isContra = pos && (
       (pos.type==='P' && !isLongOption(pos) && !isCC && sent==='bear') ||
       (pos.type==='C' && !isLongOption(pos) && !isCC && sent==='bull') ||
       (pos.postype==='long_call' && sent==='bear') ||
       (pos.postype==='long_put'  && sent==='bull')
     );
-
     const contraWarn = isContra
       ? `<span style="background:rgba(245,200,66,0.08);color:var(--yellow);font-size:9px;font-weight:700;padding:2px 5px;border-radius:2px;border:1px solid rgba(245,200,66,.35)">⚠ CONTRA</span>` : '';
+
+    // Confidence bar — visual ratio of bull vs bear weighted score
+    const netAbs  = Math.abs(bullScore) + Math.abs(bearScore);
+    const bullPct = netAbs > 0 ? Math.round((bullScore / netAbs) * 100) : 50;
+    const bearPct = 100 - bullPct;
+    const confBar = `<div style="display:flex;height:3px;border-radius:2px;overflow:hidden;margin-top:5px;margin-bottom:2px">
+      <div style="width:${bullPct}%;background:var(--green);opacity:.7"></div>
+      <div style="width:${bearPct}%;background:var(--red);opacity:.7"></div>
+    </div>`;
 
     html += `<div class="whale-ticker-section">
       <div class="whale-ticker-hdr" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -3014,6 +3204,7 @@ function renderWhaleFeed() {
         </div>
         <div class="whale-ticker-summary">
           <span style="color:${sentColor};font-weight:700;font-size:11px">${sentLabel}</span>
+          <span style="color:${confColor(conf)};font-size:9px;font-weight:700">${conf}</span>
           <span style="color:var(--muted)">·</span>
           <span style="color:var(--text);font-weight:600">${fmt(total)}</span>
           <span style="color:var(--muted);font-size:9px">${arr.length} trade${arr.length!==1?'s':''}</span>
@@ -3021,35 +3212,68 @@ function renderWhaleFeed() {
         </div>
       </div>
       <div class="whale-trades">
+        ${confBar}
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);padding:4px 0 6px;text-transform:uppercase;letter-spacing:.5px">
           <span>
-            <span style="color:var(--green)">●CALL $${fmt(bull)}</span>
+            <span style="color:var(--green)">●CALL ${fmt(rawCalls)}</span>
             &nbsp;/&nbsp;
-            <span style="color:var(--red)">●PUT $${fmt(bear)}</span>
+            <span style="color:var(--red)">●PUT ${fmt(rawPuts)}</span>
           </span>
-          <span>${arr.length} whale trade${arr.length!==1?'s':''}</span>
+          <span style="color:var(--muted)">scored: <span style="color:var(--green)">${bullScore.toFixed(1)}↑</span> <span style="color:var(--red)">${Math.abs(bearScore).toFixed(1)}↓</span></span>
         </div>
-        ${arr.slice(0,8).map(w => {
-          const wColor = w.type==='C'?'var(--green)':'var(--red)';
-          const wLabel = w.type==='C'?'CALL':'PUT';
-          const pStr = w.premium>=1e6?`$${(w.premium/1e6).toFixed(2)}M`:`$${(w.premium/1e3).toFixed(0)}K`;
+        ${arr.slice(0, 8).map(w => {
+          const pStr   = w.premium >= 1e6 ? `$${(w.premium/1e6).toFixed(2)}M` : `$${(w.premium/1e3).toFixed(0)}K`;
           const strikeStr = w.strike ? `$${w.strike}` : '';
           const expiryStr = w.expiry ? w.expiry.slice(5).replace('-','/') : '';
-          const sideStr = w.side ? w.side.toUpperCase() : '';
-          const timeStr = w.time ? new Date(w.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
-          const detail = [strikeStr, expiryStr, sideStr, timeStr].filter(Boolean).join(' · ');
-          return `<div class="whale-trade-row">
-            <div class="whale-trade-left">
-              <div class="whale-type-dot" style="background:${wColor}"></div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:${wColor}">${wLabel}${strikeStr?' '+strikeStr:''}</div>
-                <div class="whale-trade-detail">${[expiryStr,sideStr,timeStr].filter(Boolean).join(' · ')}</div>
+          const timeStr   = w.time   ? new Date(w.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+          const dteStr    = w.dte !== null ? `${w.dte}d` : '';
+
+          // Direction: scored positive = bullish signal, negative = bearish
+          const tradeDir  = w.score > 0 ? 'bull' : w.score < 0 ? 'bear' : 'neu';
+          const dirColor  = tradeDir==='bull'?'var(--green)':tradeDir==='bear'?'var(--red)':'var(--muted)';
+          const typeLabel = w.type === 'C' ? 'CALL' : 'PUT';
+
+          // Aggressor badge — now based on real ask/bid premium split
+          const aggrBadge = (f => {
+            if (f.askPrem > 0 || f.bidPrem > 0) {
+              const pct = Math.round(f.askRatio * 100);
+              const color = f.askRatio >= 0.6 ? 'var(--green)' : f.askRatio <= 0.4 ? 'var(--red)' : 'var(--muted)';
+              const label = f.askRatio >= 0.6 ? `BUY ${pct}%` : f.askRatio <= 0.4 ? `SELL ${100-pct}%` : `MIX`;
+              const bg    = f.askRatio >= 0.6 ? 'rgba(0,232,138,.15)' : f.askRatio <= 0.4 ? 'rgba(255,61,90,.12)' : 'rgba(74,85,104,.2)';
+              const border= f.askRatio >= 0.6 ? 'rgba(0,232,138,.3)' : f.askRatio <= 0.4 ? 'rgba(255,61,90,.3)' : 'var(--border)';
+              return `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:${bg};color:${color};border:1px solid ${border}">${label}</span>`;
+            }
+            return `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)">?</span>`;
+          })(w);
+
+          // Order type badges
+          const orderTags = [
+            w.isGoldenSweep ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(245,200,66,.2);color:var(--yellow);border:1px solid rgba(245,200,66,.4)">⭐ GOLDEN</span>` : '',
+            !w.isGoldenSweep && w.isSweep ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.3)">SWEEP</span>` : '',
+            w.isBlock && !w.isSweep ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)">BLOCK</span>` : '',
+            w.isRepeat ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(255,140,66,.1);color:var(--orange);border:1px solid rgba(255,140,66,.3)">REPEAT</span>` : '',
+            w.isAllOpening ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(0,232,138,.08);color:var(--green);border:1px solid rgba(0,232,138,.2)">OPENING</span>` : '',
+            w.isFloor ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)">FLOOR</span>` : '',
+            w.isMultileg ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)">SPREAD</span>` : '',
+          ].filter(Boolean).join(' ');
+
+          const volOiStr = (w.volOiRatio != null && isFinite(w.volOiRatio)) ? `Vol/OI ${Number(w.volOiRatio).toFixed(1)}x` : '';
+          const metaRow  = [dteStr, volOiStr, expiryStr, timeStr].filter(Boolean).join(' · ');
+
+          return `<div class="whale-trade-row" style="flex-direction:column;align-items:stretch;gap:4px;padding:7px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="whale-type-dot" style="background:${dirColor}"></div>
+                <span style="font-size:12px;font-weight:700;color:${dirColor}">${typeLabel}${strikeStr?' '+strikeStr:''}</span>
+                ${aggrBadge}
+                ${orderTags}
               </div>
+              <span class="whale-trade-prem" style="color:${dirColor}">${pStr}</span>
             </div>
-            <div class="whale-trade-prem" style="color:${wColor}">${pStr}</div>
+            ${metaRow ? `<div class="whale-trade-detail" style="padding-left:14px">${metaRow}</div>` : ''}
           </div>`;
         }).join('')}
-        ${arr.length>8?`<div style="font-size:9px;color:var(--muted);padding:6px 0;text-align:center">+ ${arr.length-8} more trades</div>`:''}
+        ${arr.length > 8 ? `<div style="font-size:9px;color:var(--muted);padding:6px 0;text-align:center">+ ${arr.length-8} more trades</div>` : ''}
       </div>
     </div>`;
   });
