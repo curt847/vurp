@@ -226,6 +226,8 @@
   .watch-card.entry-alert.bull-alert{border-color:var(--green) !important;box-shadow:0 0 12px rgba(0,232,138,0.4)}
   .watch-card.entry-alert.bear-alert{border-color:var(--red) !important;box-shadow:0 0 12px rgba(255,61,90,0.4)}
   @keyframes entry-glow{0%,100%{opacity:1}50%{opacity:.75}}
+  .entry-icon-hit{animation:icon-pop 1.4s ease-in-out infinite}
+  @keyframes icon-pop{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 
   .footer-note{text-align:center;color:var(--muted);font-size:9px;padding:16px;border-top:1px solid var(--border);letter-spacing:.5px}
 
@@ -1607,9 +1609,12 @@ function renderTable() {
     }
 
     // Strikes display — single strike for long options
+    const openStockHtml = p.openStock
+      ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">open $${p.openStock.toFixed(2)}</div>`
+      : '';
     const strikesHtml = isLong
-      ? `<span class="strike-range">$${p.short}</span>`
-      : `<span class="strike-range">$${p.short} / $${p.long}</span>`;
+      ? `<span class="strike-range">$${p.short}</span>${openStockHtml}`
+      : `<span class="strike-range">$${p.short} / $${p.long}</span>${openStockHtml}`;
 
     // Collateral / cost basis display
     const collateralHtml = p.postype==='covered_call'
@@ -5496,9 +5501,17 @@ function renderWatchList() {
         ${SECTORS.map(s => `<option value="${s}"${s===currentSec?' selected':''}>${s}</option>`).join('')}
       </select>`;
 
-      return `<div class="${cardClass}">
+      // Large corner icon: bullseye when target is set, lightning bolt when hit
+      const cornerIcon = entryTriggered
+        ? `<span class="entry-icon-hit" style="position:absolute;bottom:6px;right:6px;font-size:26px;line-height:1;opacity:0.95;filter:drop-shadow(0 0 6px ${bullAlert?'rgba(0,232,138,0.8)':'rgba(255,61,90,0.8)'})" title="${bullAlert?'Entry hit — price at or below target':'Entry hit — price at or above target'}">⚡</span>`
+        : entryTarget
+          ? `<span style="position:absolute;bottom:6px;right:6px;font-size:26px;line-height:1;opacity:0.55" title="Watching for entry at $${entryTarget}">🎯</span>`
+          : '';
+
+      return `<div class="${cardClass}" style="position:relative">
         ${posBadge}
         ${removeBtn}
+        ${cornerIcon}
         ${tickerLabel}
         ${priceHtml}
         ${closeHtml}
