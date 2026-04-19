@@ -5660,7 +5660,7 @@ async function runAIAnalysis() {
     return {
       t:  ticker,
       s:  sector,
-      p:  lp ? (lp.price.toFixed(2) + (lp.pct >= 0 ? '+' : '') + lp.pct.toFixed(1) + '%') : '?',
+      p:  lp ? (lp.price.toFixed(2) + ' ' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct).toFixed(1) + '%') : '?',
       b:  bias,
       ip: hasPos ? 1 : 0,
       ps: posDetails || null,
