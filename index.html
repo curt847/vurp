@@ -5688,9 +5688,12 @@ async function runAIAnalysis() {
       method: 'GET'
     });
 
-    var data = await response.json();
+    var rawResp = await response.text();
+    console.log('[RollWatch AI] raw response:', rawResp.slice(0, 500));
+    var data = JSON.parse(rawResp);
     var rawText = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
     var clean = rawText.replace(/```json|```/g, '').trim();
+    console.log('[RollWatch AI] claude text:', clean.slice(0, 300));
     var results = JSON.parse(clean);
 
     function scColor(s) {
