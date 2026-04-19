@@ -226,6 +226,24 @@
   .watch-card.entry-alert.bull-alert{border-color:var(--green) !important;box-shadow:0 0 12px rgba(0,232,138,0.4)}
   .watch-card.entry-alert.bear-alert{border-color:var(--red) !important;box-shadow:0 0 12px rgba(255,61,90,0.4)}
   @keyframes entry-glow{0%,100%{opacity:1}50%{opacity:.75}}
+  #aiPanel{display:none;margin-top:16px;border:1px solid rgba(0,212,255,.3);border-radius:8px;background:rgba(0,212,255,.04);padding:16px 20px}
+  #aiPanel.open{display:block}
+  .aip-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .aip-title{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--accent);letter-spacing:1px;text-transform:uppercase}
+  .aip-close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:3px}
+  .aip-close:hover{color:var(--text);background:var(--surface2)}
+  .aip-block{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  .aip-block:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+  .aip-name{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .aip-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:.5px}
+  .aip-row{font-size:12px;color:var(--text);line-height:1.6;margin-bottom:3px}
+  .aip-sub{font-size:11px;color:var(--muted);line-height:1.5}
+  .aip-load{text-align:center;padding:24px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace}
+  .aip-dot{display:inline-block;animation:aip-pulse 1.2s ease-in-out infinite}
+  .aip-dot:nth-child(2){animation-delay:.2s}.aip-dot:nth-child(3){animation-delay:.4s}
+  @keyframes aip-pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
+  .aip-err{color:var(--red);font-size:12px;text-align:center;padding:16px}
+  .aip-ts{font-size:9px;color:var(--muted);text-align:right;margin-top:10px;font-family:'JetBrains Mono',monospace}
   .entry-icon-hit{animation:icon-pop 1.4s ease-in-out infinite}
   @keyframes icon-pop{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 
@@ -651,9 +669,17 @@
       <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
       <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px" onclick="if(confirm('Reset all sector assignments to saved default?'))resetSectors()" title="Reset sector assignments to saved default">↺ SECTORS</button>
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
     </div>
   </div>
   <div id="watchGrid"></div>
+  <div id="aiPanel">
+    <div class="aip-hdr">
+      <div class="aip-title">&#x1F916; AI Watchlist Analysis</div>
+      <button class="aip-close" onclick="document.getElementById('aiPanel').classList.remove('open')">&#x2715; CLOSE</button>
+    </div>
+    <div id="aipContent"></div>
+  </div>
 </div>
 
 <div class="footer-note">
@@ -5590,6 +5616,132 @@ function cycleBias(ticker) {
 function sortAndRenderWatch() {
   renderWatchList();
 }
+
+// AI WATCHLIST ANALYSIS
+
+async function runAIAnalysis() {
+  var panel   = document.getElementById('aiPanel');
+  var content = document.getElementById('aipContent');
+  var btn     = document.getElementById('aipBtn');
+
+  var posTickers = new Set(POSITIONS.map(function(p){ return p.ticker; }));
+  var allTickers = WATCHLIST.filter(function(t){ return !posTickers.has(t); });
+
+  if (!allTickers.length) {
+    content.innerHTML = '<div class="aip-err">No tickers to analyze.</div>';
+    panel.classList.add('open');
+    return;
+  }
+
+  panel.classList.add('open');
+  btn.disabled = true;
+  btn.textContent = 'ANALYZING...';
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Analyzing ' + allTickers.length + ' tickers\u2026</div></div>';
+
+  var tickerData = allTickers.map(function(ticker) {
+    var lp      = livePrices[ticker];
+    var bias    = BIAS[ticker] || 'neu';
+    var hasPos  = posTickers.has(ticker);
+    var sector  = getSector(ticker);
+    var note    = (TICKER_NOTES && TICKER_NOTES[ticker]) ? TICKER_NOTES[ticker].text : null;
+    var target  = (ENTRY_TARGETS && ENTRY_TARGETS[ticker]) ? '$' + ENTRY_TARGETS[ticker] : null;
+
+    var posDetails = POSITIONS.filter(function(p){ return p.ticker === ticker; }).map(function(p) {
+      var tl = p.postype === 'spread_credit' ? (p.type === 'P' ? 'P-CR' : 'C-CR')
+             : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'P-DB' : 'C-DB')
+             : p.postype === 'covered_call'  ? 'CC'
+             : p.postype === 'long_call'     ? 'Call'
+             : p.postype === 'long_put'      ? 'Put' : p.postype;
+      return tl + ' ' + p.short_strike + '/' + (p.long_strike || 'n/a') + ' exp:' + p.expiry + ' DTE:' + p.dte + ' cts:' + p.cts;
+    }).join(' | ');
+
+    return {
+      t:  ticker,
+      s:  sector,
+      p:  lp ? (lp.price.toFixed(2) + (lp.pct >= 0 ? '+' : '') + lp.pct.toFixed(1) + '%') : '?',
+      b:  bias,
+      ip: hasPos ? 1 : 0,
+      ps: posDetails || null,
+      et: target,
+      n:  note
+    };
+  });
+
+  var today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  var prompt = 'Options trading assistant for experienced credit spread seller. Today: ' + today + ' '
+    + 'Fields: t=ticker,s=sector,p=price+chg,b=bias(bull/bear/neu),ip=inPosition,ps=positions,et=entryTarget,n=note '
+    + JSON.stringify(tickerData) + ' '
+    + 'For each: sentiment(bullish/bearish/neutral/mixed), read(1-2 sentences), entry(good now or wait?), suggestion(specific trade idea), risk(key risk). '
+    + 'IN POSITION: note hold/roll/close. bull=sell puts/buy calls, bear=sell calls/buy puts. '
+    + 'Respond ONLY as raw JSON array no fences: [{"ticker":"X","sentiment":"bullish","read":"...","entry":"...","suggestion":"...","risk":"..."}] '
+    + 'Include all ' + allTickers.length + ' tickers.';
+
+  try {
+    var claudePayload = JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var response = await fetch(PROXY_URL + '?action=claude&data=' + encodeURIComponent(claudePayload), {
+      method: 'GET'
+    });
+
+    var data = await response.json();
+    var rawText = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
+    var clean = rawText.replace(/```json|```/g, '').trim();
+    var results = JSON.parse(clean);
+
+    function scColor(s) {
+      return s === 'bullish' ? 'var(--green)' : s === 'bearish' ? 'var(--red)' : s === 'mixed' ? 'var(--orange)' : 'var(--muted)';
+    }
+    function scBg(s) {
+      return s === 'bullish' ? 'var(--green-dim)' : s === 'bearish' ? 'var(--red-dim)' : s === 'mixed' ? 'var(--orange-dim)' : 'rgba(74,85,104,.15)';
+    }
+    function scLabel(s) {
+      return s === 'bullish' ? '\u2191 BULLISH' : s === 'bearish' ? '\u2193 BEARISH' : s === 'mixed' ? '\u2195 MIXED' : '\u2192 NEUTRAL';
+    }
+    function bcColor(b) {
+      return b === 'bull' ? 'var(--green)' : b === 'bear' ? 'var(--red)' : b === 'sell' ? 'var(--orange)' : 'var(--muted)';
+    }
+    function bcLabel(b) {
+      return b === 'bull' ? '\u2191 BULL' : b === 'bear' ? '\u2193 BEAR' : b === 'sell' ? 'SELL' : b === 'earn' ? 'EARN' : 'NONE';
+    }
+
+    var html = results.map(function(r) {
+      var td  = tickerData.find(function(t){ return t.t === r.ticker; }) || {};
+      var sc  = scColor(r.sentiment);
+      var sb  = scBg(r.sentiment);
+      var bc  = bcColor(td.b || 'neu');
+      var bl  = bcLabel(td.b || 'neu');
+      var posCount = POSITIONS.filter(function(p){ return p.ticker === r.ticker; }).length;
+      var posBadge = td.ip ? '<span class="aip-pill" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--accent)">' + posCount + ' pos</span>' : '';
+      var entryOk  = !(r.entry.toLowerCase().indexOf('wait') >= 0 || r.entry.toLowerCase().indexOf('avoid') >= 0);
+      var entryCol = entryOk ? 'var(--green)' : 'var(--orange)';
+      return '<div class="aip-block">'
+        + '<div class="aip-name">' + r.ticker + posBadge
+        + '<span class="aip-pill" style="background:' + sb + ';border:1px solid ' + sc + ';color:' + sc + '">' + scLabel(r.sentiment) + '</span>'
+        + '<span class="aip-pill" style="background:rgba(74,85,104,.15);border:1px solid ' + bc + ';color:' + bc + '">YOUR BIAS: ' + bl + '</span>'
+        + '<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:auto">' + (td.p || '') + '</span>'
+        + '</div>'
+        + '<div class="aip-row">\ud83d\udcca ' + r.read + '</div>'
+        + '<div class="aip-row" style="color:' + entryCol + '">\ud83c\udfaf ' + r.entry + '</div>'
+        + '<div class="aip-row" style="color:var(--accent)">\ud83d\udca1 ' + r.suggestion + '</div>'
+        + (r.risk ? '<div class="aip-sub">\u26a0 ' + r.risk + '</div>' : '')
+        + '</div>';
+    }).join('');
+
+    var ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+    content.innerHTML = html + '<div class="aip-ts">Generated ' + ts + ' \u00b7 Not financial advice</div>';
+
+  } catch(err) {
+    content.innerHTML = '<div class="aip-err">Analysis failed: ' + err.message + '</div>';
+    console.error('[RollWatch AI]', err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\ud83e\udd16 ANALYZE';
+}
+
 
 function renderWatchList() {
   const grid = document.getElementById('watchGrid');
