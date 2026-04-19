@@ -5679,12 +5679,10 @@ async function runAIAnalysis() {
     + 'Include all ' + allTickers.length + ' tickers.';
 
   try {
-    var claudePayload = JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var response = await fetch(PROXY_URL + '?action=claude&data=' + encodeURIComponent(claudePayload), {
+    // Step 1: write prompt to Drive as a temp file via GET
+    await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(prompt));
+    // Step 2: trigger Claude to read and process it
+    var response = await fetch(PROXY_URL + '?action=claude', {
       method: 'GET'
     });
 
