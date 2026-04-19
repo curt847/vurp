@@ -5868,7 +5868,15 @@ async function runAISuggest() {
     sectorExposure: sectorCount,
     strategyMix: stratCount,
     totalPositions: POSITIONS.length,
-    totalCollateral: POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0)
+    totalCollateral: POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0),
+    livePrices: (function() {
+      var prices = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        var lp = livePrices[t];
+        if (lp) prices[t] = '$' + lp.price.toFixed(2) + ' (' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct).toFixed(1) + '%)';
+      });
+      return prices;
+    })()
   };
 
   // Write profile to Drive then call Claude
