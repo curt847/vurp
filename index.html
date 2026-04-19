@@ -5431,14 +5431,16 @@ async function askClaudeSingle(idx) {
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   const prompt = JSON.stringify({
-    context: 'Single position deep-dive for experienced credit spread trader. Today: ' + today,
+    context: 'Single position analysis for experienced credit spread trader. Today: ' + today,
     position: posContext,
-    question: 'Should I hold, roll, or close this position? Give a direct recommendation with reasoning. '
-      + 'Consider: DTE remaining, % gain captured, delta risk, IV environment, flow direction, earnings risk. '
-      + 'If roll: suggest specific new strikes and expiry. '
-      + 'If close: explain whether to redeploy immediately or wait for a better entry. '
-      + 'If hold: give the specific condition that would change your mind. '
-      + 'Be direct and concise — no disclaimers needed.'
+    question: 'Respond ONLY as raw JSON, no fences: '
+      + '{"action":"HOLD"|"ROLL"|"CLOSE","reason":"1 short phrase","bullets":["2-4 short bullet points max"],'
+      + '"roll":{"strikes":"$X/$Y","expiry":"MonDD","credit":"$X.XX or debit"},"reentry":"price or condition to re-enter after closing, or null"} '
+      + 'action must be exactly one of HOLD ROLL CLOSE. '
+      + 'reason: single short phrase like Low delta or Earnings risk or 75% captured. '
+      + 'bullets: 2-4 concise points covering delta/DTE/flow/IV/earnings — no fluff. '
+      + 'roll: only if action=ROLL, otherwise null. '
+      + 'reentry: only if action=CLOSE, a specific price level or condition, otherwise null.'
   });
 
   try {
@@ -5447,28 +5449,49 @@ async function askClaudeSingle(idx) {
     const raw   = await resp.text();
     const data  = JSON.parse(raw);
     const text  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const r     = JSON.parse(clean);
 
-    // Render as formatted text — no JSON parsing needed for this one
-    const lines = text.split('\n').filter(l => l.trim());
-    const html  = lines.map(function(line) {
-      // Bold **text** pattern
-      line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Highlight HOLD / ROLL / CLOSE recommendation
-      if (/^(HOLD|ROLL|CLOSE)/i.test(line.trim())) {
-        const rec = line.trim().toUpperCase().startsWith('ROLL') ? 'var(--orange)'
-                  : line.trim().toUpperCase().startsWith('CLOSE') ? 'var(--green)'
-                  : 'var(--accent)';
-        return '<div style="font-size:15px;font-weight:700;color:' + rec + ';margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,.04);border-radius:4px;border-left:3px solid ' + rec + '">' + line + '</div>';
-      }
-      return '<div style="font-size:12px;color:var(--text);line-height:1.7;margin-bottom:4px">' + line + '</div>';
+    const actionColor = r.action === 'ROLL'  ? 'var(--orange)'
+                      : r.action === 'CLOSE' ? 'var(--red)'
+                      : 'var(--green)';
+
+    const bulletHtml = (r.bullets || []).map(function(b) {
+      return '<div style="display:flex;gap:6px;margin-bottom:4px">'
+        + '<span style="color:var(--muted);flex-shrink:0">\u2192</span>'
+        + '<span style="font-size:12px;color:var(--text);line-height:1.5">' + b + '</span>'
+        + '</div>';
     }).join('');
 
+    const rollHtml = r.roll
+      ? '<div style="margin-top:10px;padding:8px 10px;background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.3);border-radius:4px">'
+        + '<div style="font-size:9px;color:var(--orange);font-weight:700;letter-spacing:1px;margin-bottom:4px">ROLL TARGET</div>'
+        + '<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:700;color:var(--text)">'
+        + r.roll.strikes + ' &nbsp; ' + r.roll.expiry + '</div>'
+        + (r.roll.credit ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + r.roll.credit + '</div>' : '')
+        + '</div>'
+      : '';
+
+    const reentryHtml = r.reentry
+      ? '<div style="margin-top:10px;padding:8px 10px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.25);border-radius:4px">'
+        + '<div style="font-size:9px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px">RE-ENTRY</div>'
+        + '<div style="font-size:12px;color:var(--text)">' + r.reentry + '</div>'
+        + '</div>'
+      : '';
+
     const ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
-    content.innerHTML = '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
-      + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:13px;color:var(--text)">' + p.ticker + '</span>'
-      + '<span style="font-size:10px;color:var(--muted);margin-left:8px">' + typeLabel + ' ' + posContext.strikes + ' exp ' + p.expiry + ' · Δ' + (posContext.delta) + ' · ' + pctGain + '% captured</span>'
+    content.innerHTML =
+      '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px">'
+      + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:13px">' + p.ticker + '</span>'
+      + '<span style="font-size:10px;color:var(--muted)">' + typeLabel + ' ' + posContext.strikes + ' exp ' + p.expiry + ' · Δ' + posContext.delta + ' · ' + pctGain + '% captured</span>'
       + '</div>'
-      + html
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      + '<span style="font-family:\'JetBrains Mono\',monospace;font-size:20px;font-weight:700;color:' + actionColor + '">' + r.action + '</span>'
+      + '<span style="font-size:12px;color:var(--muted)">' + (r.reason || '') + '</span>'
+      + '</div>'
+      + bulletHtml
+      + rollHtml
+      + reentryHtml
       + '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:12px">' + ts + ' · Not financial advice</div>';
 
   } catch(err) {
