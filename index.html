@@ -222,6 +222,8 @@
   .watch-card .wc-pos.out{background:#ffffff;color:#0a0c0f;border:1px solid rgba(255,255,255,.8);font-weight:700}
   .watch-card .wc-remove{position:absolute;top:28px;right:6px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
   .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
+  .ai-signal{margin-top:5px;padding:3px 6px;border-radius:3px;background:rgba(0,232,138,0.12);border:1px solid rgba(0,232,138,0.4);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.4px;line-height:1.4;display:block}
+  .ai-signal.bear-signal{background:rgba(255,61,90,0.12);border-color:rgba(255,61,90,0.4);color:var(--red)}
   .watch-card.entry-alert{animation:entry-glow 1.8s ease-in-out infinite}
   .watch-card.entry-alert.bull-alert{border-color:var(--green) !important;box-shadow:0 0 12px rgba(0,232,138,0.4)}
   .watch-card.entry-alert.bear-alert{border-color:var(--red) !important;box-shadow:0 0 12px rgba(255,61,90,0.4)}
@@ -5518,6 +5520,7 @@ const WATCH_KEY  = 'rollwatch_watchlist_v1';
 const BIAS_KEY   = 'rollwatch_bias_v1';
 let WATCHLIST = []; // user additions persist via storage
 let BIAS      = {}; // ticker -> 'bull' | 'bear' | 'neu'
+let AI_SIGNALS = {}; // ticker -> { good: bool, trade_type, entry_detail, sentiment }
 
 // ── SECTOR MAP ──
 // Hardcoded defaults; user overrides stored in TICKER_SECTORS
@@ -5696,6 +5699,19 @@ async function runAIAnalysis() {
     var clean = rawText.replace(/```json|```/g, '').trim();
     console.log('[RollWatch AI] claude text:', clean.slice(0, 300));
     var results = JSON.parse(clean);
+
+    // Store signals for watch card badges
+    AI_SIGNALS = {};
+    results.forEach(function(r) {
+      var good = !(r.entry.toLowerCase().indexOf('wait') >= 0 || r.entry.toLowerCase().indexOf('avoid') >= 0);
+      AI_SIGNALS[r.ticker] = {
+        good:         good,
+        trade_type:   r.trade_type   || null,
+        entry_detail: r.entry_detail || null,
+        sentiment:    r.sentiment    || 'neutral'
+      };
+    });
+    renderWatchList(); // refresh cards to show signal badges
 
     function scColor(s) {
       return s === 'bullish' ? 'var(--green)' : s === 'bearish' ? 'var(--red)' : s === 'mixed' ? 'var(--orange)' : 'var(--muted)';
@@ -5912,6 +5928,14 @@ function renderWatchList() {
           ? `<span style="position:absolute;bottom:6px;right:6px;font-size:26px;line-height:1;opacity:0.55" title="Watching for entry at $${entryTarget}">🎯</span>`
           : '';
 
+      // AI entry signal badge
+      const sig = AI_SIGNALS[ticker];
+      const sigHtml = (sig && sig.good)
+        ? `<span class="ai-signal${sig.sentiment === 'bearish' ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
+        : (sig && !sig.good)
+          ? `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">⏳ wait</span>`
+          : '';
+
       return `<div class="${cardClass}" style="position:relative">
         ${posBadge}
         ${removeBtn}
@@ -5921,6 +5945,7 @@ function renderWatchList() {
         ${closeHtml}
         ${entryField}
         ${noteBtn}
+        ${sigHtml}
         ${biasBtn}
         ${sectorSelect}
       </div>`;
