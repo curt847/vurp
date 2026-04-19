@@ -5713,6 +5713,13 @@ async function runAIAnalysis() {
       return b === 'bull' ? '\u2191 BULL' : b === 'bear' ? '\u2193 BEAR' : b === 'sell' ? 'SELL' : b === 'earn' ? 'EARN' : 'NONE';
     }
 
+    // Sort: "good now" entries first
+    results.sort(function(a, b) {
+      var aGood = !(a.entry.toLowerCase().indexOf('wait') >= 0 || a.entry.toLowerCase().indexOf('avoid') >= 0);
+      var bGood = !(b.entry.toLowerCase().indexOf('wait') >= 0 || b.entry.toLowerCase().indexOf('avoid') >= 0);
+      return (bGood ? 1 : 0) - (aGood ? 1 : 0);
+    });
+
     var html = results.map(function(r) {
       var td  = tickerData.find(function(t){ return t.t === r.ticker; }) || {};
       var sc  = scColor(r.sentiment);
@@ -5726,7 +5733,7 @@ async function runAIAnalysis() {
       return '<div class="aip-block">'
         + '<div class="aip-name">' + r.ticker + posBadge
         + '<span class="aip-pill" style="background:' + sb + ';border:1px solid ' + sc + ';color:' + sc + '">' + scLabel(r.sentiment) + '</span>'
-        + '<span class="aip-pill" style="background:rgba(74,85,104,.15);border:1px solid ' + bc + ';color:' + bc + '">YOUR BIAS: ' + bl + '</span>'
+        + '<span class="aip-pill" style="background:transparent;border:1px dashed ' + bc + ';color:' + bc + ';opacity:0.85">you: ' + bl + '</span>'
         + '<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:auto">' + (td.p || '') + '</span>'
         + '</div>'
         + '<div class="aip-row">\ud83d\udcca ' + r.read + '</div>'
