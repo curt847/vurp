@@ -246,6 +246,18 @@
   @keyframes aip-pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
   .aip-err{color:var(--red);font-size:12px;text-align:center;padding:16px}
   .aip-ts{font-size:9px;color:var(--muted);text-align:right;margin-top:10px;font-family:'JetBrains Mono',monospace}
+  #suggestPanel{display:none;margin-top:10px;border:1px solid rgba(245,200,66,.3);border-radius:8px;background:rgba(245,200,66,.03);padding:16px 20px}
+  #suggestPanel.open{display:block}
+  .sug-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sug-title{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--yellow);letter-spacing:1px;text-transform:uppercase}
+  .sug-section{margin-bottom:16px}
+  .sug-section-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+  .sug-card{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .sug-card:last-child{border-bottom:none}
+  .sug-ticker{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;min-width:60px}
+  .sug-add{color:var(--green)}.sug-remove{color:var(--red)}.sug-caution{color:var(--orange)}
+  .sug-body{font-size:11px;color:var(--muted);line-height:1.5}
+  .sug-body strong{color:var(--text);font-weight:600}
   .entry-icon-hit{animation:icon-pop 1.4s ease-in-out infinite}
   @keyframes icon-pop{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 
@@ -674,6 +686,7 @@
         onblur="this.style.borderColor='var(--border)'" />
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="runAISuggest()" id="suggestBtn">&#x1F4A1; SUGGEST</button>
     </div>
   </div>
   <div id="watchGrid"></div>
@@ -683,6 +696,13 @@
       <button class="aip-close" onclick="document.getElementById('aiPanel').classList.remove('open')">&#x2715; CLOSE</button>
     </div>
     <div id="aipContent"></div>
+  </div>
+  <div id="suggestPanel">
+    <div class="sug-hdr">
+      <div class="sug-title">&#x1F4A1; Ticker Suggestions</div>
+      <button class="aip-close" onclick="document.getElementById('suggestPanel').classList.remove('open')">&#x2715; CLOSE</button>
+    </div>
+    <div id="suggestContent"></div>
   </div>
 </div>
 
@@ -5804,6 +5824,95 @@ async function runAIAnalysis() {
 
   btn.disabled = false;
   btn.textContent = '\ud83e\udd16 ANALYZE';
+}
+
+// ══════════════════════════════════════════
+// AI TICKER SUGGESTIONS
+// ══════════════════════════════════════════
+async function runAISuggest() {
+  var panel   = document.getElementById('suggestPanel');
+  var content = document.getElementById('suggestContent');
+  var btn     = document.getElementById('suggestBtn');
+
+  panel.classList.add('open');
+  btn.disabled = true;
+  btn.textContent = 'THINKING...';
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Building your trading profile\u2026</div></div>';
+
+  // Build profile from positions + watchlist
+  var posTickers  = new Set(POSITIONS.map(function(p){ return p.ticker; }));
+  var watchOnly   = WATCHLIST.filter(function(t){ return !posTickers.has(t); });
+  var posTickerList = Array.from(posTickers);
+
+  // Sector breakdown
+  var sectorCount = {};
+  posTickerList.concat(WATCHLIST).forEach(function(t) {
+    var s = getSector(t);
+    sectorCount[s] = (sectorCount[s] || 0) + 1;
+  });
+
+  // Strategy breakdown from positions
+  var stratCount = {};
+  POSITIONS.forEach(function(p) {
+    var k = p.postype === 'spread_credit' ? (p.type === 'P' ? 'Put CR' : 'Call CR')
+          : p.postype === 'covered_call'  ? 'CC'
+          : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'Put DB' : 'Call DB')
+          : p.postype === 'long_call'     ? 'Long Call'
+          : p.postype === 'long_put'      ? 'Long Put' : p.postype;
+    stratCount[k] = (stratCount[k] || 0) + 1;
+  });
+
+  var profile = {
+    positionTickers: posTickerList,
+    watchlistTickers: watchOnly,
+    sectorExposure: sectorCount,
+    strategyMix: stratCount,
+    totalPositions: POSITIONS.length,
+    totalCollateral: POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0)
+  };
+
+  // Write profile to Drive then call Claude
+  var step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(JSON.stringify(profile)));
+  var step1text = await step1.text();
+
+  var response = await fetch(PROXY_URL + '?action=suggest&count=' + posTickerList.length, { method: 'GET' });
+  var rawResp  = await response.text();
+
+  try {
+    var data     = JSON.parse(rawResp);
+    var rawText  = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
+    var clean    = rawText.replace(/```json|```/g, '').trim();
+    var result   = JSON.parse(clean);
+
+    function renderCards(items, cls) {
+      if (!items || !items.length) return '<div style="color:var(--muted);font-size:11px">None</div>';
+      return items.map(function(item) {
+        return '<div class="sug-card">'
+          + '<div class="sug-ticker ' + cls + '">' + item.ticker + '</div>'
+          + '<div class="sug-body"><strong>' + (item.reason || '') + '</strong>'
+          + (item.detail ? ' — ' + item.detail : '')
+          + (item.trade ? '<br><span style="color:var(--accent);font-size:10px">\ud83d\udca1 ' + item.trade + '</span>' : '')
+          + '</div></div>';
+      }).join('');
+    }
+
+    var ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+    content.innerHTML =
+      '<div class="sug-section"><div class="sug-section-label">\u2795 Add to Watchlist</div>'
+      + renderCards(result.add, 'sug-add') + '</div>'
+      + '<div class="sug-section"><div class="sug-section-label">\u2796 Consider Removing</div>'
+      + renderCards(result.remove, 'sug-remove') + '</div>'
+      + '<div class="sug-section"><div class="sug-section-label">\u26a0 Worth Watching</div>'
+      + renderCards(result.watch, 'sug-caution') + '</div>'
+      + '<div class="aip-ts">Generated ' + ts + ' \u00b7 Not financial advice</div>';
+
+  } catch(err) {
+    content.innerHTML = '<div class="aip-err">Suggestions failed: ' + err.message + '<br><span style="font-size:10px;color:var(--muted)">' + rawResp.slice(0,200) + '</span></div>';
+    console.error('[RollWatch SUGGEST]', err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\ud83d\udca1 SUGGEST';
 }
 
 
