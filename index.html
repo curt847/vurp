@@ -3282,7 +3282,7 @@ function renderWhaleFeed() {
           </span>
           <span style="color:var(--muted)">scored: <span style="color:var(--green)">${bullScore.toFixed(1)}↑</span> <span style="color:var(--red)">${Math.abs(bearScore).toFixed(1)}↓</span></span>
         </div>
-        ${arr.slice(0, 8).map(w => {
+        ${arr.map(w => {
           const pStr   = w.premium >= 1e6 ? `$${(w.premium/1e6).toFixed(2)}M` : `$${(w.premium/1e3).toFixed(0)}K`;
           const strikeStr = w.strike ? `$${w.strike}` : '';
           const expiryStr = w.expiry ? w.expiry.slice(5).replace('-','/') : '';
@@ -3312,7 +3312,7 @@ function renderWhaleFeed() {
             w.isGoldenSweep ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(245,200,66,.2);color:var(--yellow);border:1px solid rgba(245,200,66,.4)">⭐ GOLDEN</span>` : '',
             !w.isGoldenSweep && w.isSweep ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.3)">SWEEP</span>` : '',
             w.isBlock && !w.isSweep ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)">BLOCK</span>` : '',
-            w.isRepeat ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(255,140,66,.1);color:var(--orange);border:1px solid rgba(255,140,66,.3)">REPEAT</span>` : '',
+            w.isRepeat ? `` : '',
             w.isAllOpening ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(0,232,138,.08);color:var(--green);border:1px solid rgba(0,232,138,.2)">OPENING</span>` : '',
             w.isFloor ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)">FLOOR</span>` : '',
             w.isMultileg ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)">SPREAD</span>` : '',
@@ -3334,7 +3334,6 @@ function renderWhaleFeed() {
             ${metaRow ? `<div class="whale-trade-detail" style="padding-left:14px">${metaRow}</div>` : ''}
           </div>`;
         }).join('')}
-        ${arr.length > 8 ? `<div style="font-size:9px;color:var(--muted);padding:6px 0;text-align:center">+ ${arr.length-8} more trades</div>` : ''}
       </div>
     </div>`;
   });
