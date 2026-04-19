@@ -5393,7 +5393,43 @@ async function askClaudeSingle(idx) {
   if (!p) return;
 
   modal.classList.add('show');
-  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Analyzing ' + p.ticker + '\u2026</div></div>';
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching live data for ' + p.ticker + '\u2026</div></div>';
+
+  // Fetch fresh IV rank + flow before building context
+  try {
+    const ivrResp = await uw('/api/stock/' + p.ticker + '/iv-rank');
+    const ivrArr  = Array.isArray(ivrResp && ivrResp.data) ? ivrResp.data : [];
+    if (ivrArr.length) {
+      const val = parseFloat(ivrArr[0].iv_rank_1y);
+      if (!isNaN(val)) {
+        if (!liveData[p.ticker]) liveData[p.ticker] = {};
+        liveData[p.ticker].ivr = Math.round(val);
+      }
+    }
+  } catch(e) {}
+
+  try {
+    let fr = await uw('/api/stock/' + p.ticker + '/flow-alerts').catch(function(){ return null; });
+    if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + p.ticker + '/flow-recent').catch(function(){ return null; });
+    if (fr && fr.data && fr.data.length) {
+      let bullScore = 0, bearScore = 0, calls = 0, puts = 0;
+      fr.data.forEach(function(x) {
+        const f = extractFlowFields(x);
+        if (!f.type || f.premium <= 0) return;
+        if (f.type === 'C') calls += f.premium; else puts += f.premium;
+        const w = scoreFlowTrade(f) * Math.sqrt(f.premium / 100000);
+        if (w > 0) bullScore += w; else bearScore += w;
+      });
+      const total = calls + puts;
+      const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
+      if (total >= (bigNames.includes(p.ticker) ? 200000 : 50000)) {
+        flowData[p.ticker] = {
+          sentiment:  scoresToSentiment(bullScore, bearScore),
+          confidence: sentimentConfidence(bullScore, bearScore)
+        };
+      }
+    }
+  } catch(e) {}
 
   // Build rich position context
   const lp    = livePrices[p.ticker] || {};
@@ -5439,7 +5475,10 @@ async function askClaudeSingle(idx) {
       + 'reason: single short phrase like Low delta or Earnings risk or 75% captured. '
       + 'bullets: 2-4 concise points covering delta/DTE/flow/IV/earnings — no fluff. '
       + 'roll: only if action=ROLL, otherwise null. '
-      + 'reentry: only if action=CLOSE, a specific price level or condition, otherwise null.'
+      + 'reentry: only if action=CLOSE. Must be direction-correct for the structure: '
+      + 'Put credit spread = bullish trade, re-enter on a PULLBACK (stock drops toward support). '
+      + 'Call credit spread = bearish trade, re-enter on a RALLY (stock rises toward resistance). '
+      + 'Give a specific price level to watch for, not support/resistance jargon. null if not applicable.'
   });
 
   try {
@@ -5458,35 +5497,35 @@ async function askClaudeSingle(idx) {
     const bulletHtml = (r.bullets || []).map(function(b) {
       return '<div style="display:flex;gap:6px;margin-bottom:4px">'
         + '<span style="color:var(--muted);flex-shrink:0">\u2192</span>'
-        + '<span style="font-size:12px;color:var(--text);line-height:1.5">' + b + '</span>'
+        + '<span style="font-size:13px;color:var(--text);line-height:1.7">' + b + '</span>'
         + '</div>';
     }).join('');
 
     const rollHtml = r.roll
       ? '<div style="margin-top:10px;padding:8px 10px;background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.3);border-radius:4px">'
         + '<div style="font-size:9px;color:var(--orange);font-weight:700;letter-spacing:1px;margin-bottom:4px">ROLL TARGET</div>'
-        + '<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:700;color:var(--text)">'
+        + '<div style="font-family:\'JetBrains Mono\',monospace;font-size:15px;font-weight:700;color:var(--text)">'
         + r.roll.strikes + ' &nbsp; ' + r.roll.expiry + '</div>'
-        + (r.roll.credit ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + r.roll.credit + '</div>' : '')
+        + (r.roll.credit ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + r.roll.credit + '</div>' : '')
         + '</div>'
       : '';
 
     const reentryHtml = r.reentry
       ? '<div style="margin-top:10px;padding:8px 10px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.25);border-radius:4px">'
         + '<div style="font-size:9px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px">RE-ENTRY</div>'
-        + '<div style="font-size:12px;color:var(--text)">' + r.reentry + '</div>'
+        + '<div style="font-size:13px;color:var(--text)">' + r.reentry + '</div>'
         + '</div>'
       : '';
 
     const ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
     content.innerHTML =
       '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px">'
-      + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:13px">' + p.ticker + '</span>'
-      + '<span style="font-size:10px;color:var(--muted)">' + typeLabel + ' ' + posContext.strikes + ' exp ' + p.expiry + ' · Δ' + posContext.delta + ' · ' + pctGain + '% captured</span>'
+      + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:15px">' + p.ticker + '</span>'
+      + '<span style="font-size:11px;color:var(--muted)">' + typeLabel + ' ' + posContext.strikes + ' exp ' + p.expiry + ' · Δ' + posContext.delta + ' · ' + pctGain + '% captured</span>'
       + '</div>'
-      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
-      + '<span style="font-family:\'JetBrains Mono\',monospace;font-size:20px;font-weight:700;color:' + actionColor + '">' + r.action + '</span>'
-      + '<span style="font-size:12px;color:var(--muted)">' + (r.reason || '') + '</span>'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+      + '<span style="font-family:\'JetBrains Mono\',monospace;font-size:22px;font-weight:700;color:' + actionColor + '">' + r.action + '</span>'
+      + '<span style="font-size:13px;color:var(--muted)">' + (r.reason || '') + '</span>'
       + '</div>'
       + bulletHtml
       + rollHtml
