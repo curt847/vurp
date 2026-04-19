@@ -5679,10 +5679,13 @@ async function runAIAnalysis() {
     + 'Include all ' + allTickers.length + ' tickers.';
 
   try {
-    // Step 1: write prompt to Drive as a temp file via GET
-    await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(prompt));
-    // Step 2: trigger Claude to read and process it
-    var response = await fetch(PROXY_URL + '?action=claude', {
+    // Step 1: write ONLY the compact ticker JSON to Drive (small enough for URL)
+    var tickerJson = JSON.stringify(tickerData);
+    var step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(tickerJson));
+    var step1text = await step1.text();
+    console.log('[RollWatch AI] writeContext response:', step1text.slice(0, 100));
+    // Step 2: trigger Claude — Apps Script builds the prompt from Drive + calls API
+    var response = await fetch(PROXY_URL + '?action=claude&count=' + allTickers.length, {
       method: 'GET'
     });
 
