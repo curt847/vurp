@@ -1386,7 +1386,7 @@ function getFiltered() {
         const scoreDiff = getAlertScore(getAlertLevel(b))-getAlertScore(getAlertLevel(a));
         return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
       }
-      case 'expiry':     return a.expiry.localeCompare(b.expiry);
+      case 'expiry':     { const expDiff=a.expiry.localeCompare(b.expiry); return expDiff!==0?expDiff:a.ticker.localeCompare(b.ticker); }
       case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); return dteDiff!==0?dteDiff:a.ticker.localeCompare(b.ticker); }
       case 'collateral': return b.collateral-a.collateral;
       case 'remain':     return b.remain-a.remain;
