@@ -2123,26 +2123,40 @@ function renderOndsCard() {
       ? '<div style="color:var(--muted);font-size:10px">No active covered calls</div>'
       : ondsCCs.map(p => {
           const dte = getDTE(p);
-          const distToStrike = Math.abs(price - p.short);
+          const signedDist = p.short - price;  // positive = OTM, negative = ITM
+          const distToStrike = Math.abs(signedDist);
+          const distPct = p.short > 0 ? distToStrike / p.short * 100 : 0;
+          const distLabel = signedDist >= 0 ? 'OTM' : 'ITM';
           const { mid } = getSpreadMid(p);
           const openPrem = Math.abs(p.open);
           const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
-          const t1Fire = price > 0 && distToStrike <= p.short * 0.05;  // within 5% of strike — immediate roll
-          const t2Fire = pctGain >= 50;
-          const t3Fire = dte <= 21;
-          const watchDTE = dte <= 26 && dte > 21;
-          const watchProfit = pctGain >= 35 && pctGain < 50;
-          const trigger1Class = t1Fire ? 'fire' : price > 0 && distToStrike <= p.short * 0.05 ? 'warn' : 'ok';  // warn within 5%
-          const trigger2Class = t2Fire ? 'fire' : pctGain < 0 ? 'warn' : watchProfit ? 'warn' : 'ok';
-          const trigger3Class = t3Fire ? 'fire' : watchDTE ? 'warn' : 'ok';
+          // Extrinsic remaining as % of open premium
+          const extVal   = calcExtrinsic(p).value;
+          const extRemPct = openPrem > 0 ? (extVal / openPrem) * 100 : 100;
+
+          // Distance to strike: green >5%, orange 2-5%, red <2% or ITM
+          const trigger1Class = signedDist < 0 ? 'fire'
+                              : distPct < 2    ? 'fire'
+                              : distPct < 5    ? 'warn' : 'ok';
+
+          // Decay: green if positive, grey if underwater (not actionable)
+          const trigger2Class = pctGain < 0 ? 'ok' : pctGain >= 50 ? 'fire' : pctGain >= 25 ? 'warn' : 'ok';
+
+          // DTE: green >10, orange 5-10, red <=5
+          const trigger3Class = dte <= 5 ? 'fire' : dte <= 10 ? 'warn' : 'ok';
+
+          // Extrinsic remaining: red <=15%, orange <=25%
+          const trigger4Class = extRemPct <= 15 ? 'fire' : extRemPct <= 25 ? 'warn' : 'ok';
+
           const _expDate = new Date(p.expiry + 'T12:00:00');
           const mo = _expDate.toLocaleString('en-US',{month:'short'});
           const dy = _expDate.getDate();
           return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ${dte}d · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
-              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} to strike</span>
-              <span class="onds-trigger ${trigger2Class}">${pctGain >= 0 ? "💰" : "⚠️"} ${pctGain.toFixed(0)}% ${pctGain >= 0 ? "decay" : "underwater"}</span>
+              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(1)}% ${distLabel}</span>
+              <span class="onds-trigger ${trigger2Class}" style="${pctGain < 0 ? 'color:var(--muted)' : ''}">${pctGain >= 0 ? "💰" : "⚠️"} ${pctGain.toFixed(0)}% ${pctGain >= 0 ? "decay" : "underwater"}</span>
               <span class="onds-trigger ${trigger3Class}">📅 ${dte}d DTE</span>
+              <span class="onds-trigger ${trigger4Class}">⏳ ${extRemPct.toFixed(0)}% extrinsic left</span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
