@@ -2984,13 +2984,12 @@ function scoreFlowTrade(f) {
 // ── Convert aggregate score to sentiment label ──
 // score > 0 = net bullish, < 0 = net bearish
 function scoresToSentiment(bullScore, bearScore) {
-  const net = bullScore + bearScore; // bearScore is already negative
+  const net = bullScore + bearScore;
   const total = Math.abs(bullScore) + Math.abs(bearScore);
   if (total === 0) return 'mix';
   const ratio = net / total; // -1 to +1
-  // Wider bands: only call it mixed if truly ambiguous (within ±0.20)
-  if      (ratio >  0.20) return 'bull';
-  else if (ratio < -0.20) return 'bear';
+  if      (ratio >  0.40) return 'bull';  // needs clear majority
+  else if (ratio < -0.40) return 'bear';
   else                    return 'mix';
 }
 
@@ -3000,8 +2999,10 @@ function sentimentConfidence(bullScore, bearScore) {
   const total = Math.abs(bullScore) + Math.abs(bearScore);
   if (total === 0) return '';
   const ratio = Math.abs(net) / total;
-  if (ratio > 0.72) return 'STRONG';  // raised from 0.60 — requires real conviction
-  if (ratio > 0.35) return 'MOD';
+  // STRONG: needs both a lopsided ratio AND meaningful total score weight
+  // This prevents a single tiny floor trade from hitting STRONG
+  if (ratio > 0.80 && total >= 3.0) return 'STRONG';
+  if (ratio > 0.55 && total >= 1.0) return 'MOD';
   return 'WEAK';
 }
 
