@@ -212,19 +212,20 @@
   .watch-card.watch-only{border:2px solid rgba(255,255,255,.5);background:var(--surface);color:var(--text)}
   .watch-card.watch-only .wc-ticker{color:var(--text)}
   .watch-card.watch-only:hover{border-color:rgba(255,255,255,.85)}
-  /* Top row: pos badge + X on same line */
-  .watch-card .wc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+
+  /* Top row: badge left, X absolute top-right */
+  .watch-card .wc-top{display:flex;align-items:center;margin-bottom:8px}
   .watch-card .wc-top-left{display:flex;align-items:center;gap:6px}
   .watch-card .wc-pos{font-size:9px;padding:2px 6px;border-radius:3px;display:inline-block}
   .watch-card .wc-pos.in{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
   .watch-card .wc-pos.out{background:#ffffff;color:#0a0c0f;border:1px solid rgba(255,255,255,.8);font-weight:700}
-  .watch-card .wc-remove{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
+  .watch-card .wc-remove{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
   .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
   /* Hero row: ticker left (inline), price block right */
   .watch-card .wc-hero{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px}
   .watch-card .wc-price-block{text-align:right;flex-shrink:0;margin-left:8px}
-  .watch-card .wc-price{font-size:15px;font-weight:700;line-height:1.1;text-align:right}
-  .watch-card .wc-change{font-size:13px;font-weight:700;letter-spacing:-0.3px;text-align:right}
+  .watch-card .wc-price{font-size:18px;font-weight:700;line-height:1.1;text-align:right}
+  .watch-card .wc-change{font-size:15px;font-weight:700;letter-spacing:-0.3px;text-align:right}
   /* Big ticker hero — inline-block so border hugs text */
   .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:800;font-size:34px;letter-spacing:-1px;text-transform:uppercase;color:var(--text);line-height:1;display:inline-block}
   .watch-card .wc-iv{font-size:9px;color:var(--muted);margin-top:3px}
@@ -6266,11 +6267,14 @@ function renderWatchList() {
           ? `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">⏳ wait</span>`
           : '';
 
+      // Spacer so bias button aligns across pos cards and watch cards (watch cards may show sigHtml)
+      const sigSpacer = !isWatchOnly && !sig ? `<span class="ai-signal" style="visibility:hidden">​</span>` : '';
+
       return `<div class="${cardClass}" style="position:relative">
+        ${removeBtn}
         <div class="wc-top">
           <div class="wc-top-left">
             ${posBadge}
-            ${removeBtn}
           </div>
         </div>
         ${cornerIcon}
@@ -6281,7 +6285,7 @@ function renderWatchList() {
         ${closeHtml}
         ${entryField}
         ${noteBtn}
-        ${sigHtml}
+        ${sigHtml}${sigSpacer}
         ${biasBtn}
         ${sectorSelect}
       </div>`;
