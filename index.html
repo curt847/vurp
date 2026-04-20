@@ -212,19 +212,21 @@
   .watch-card.watch-only{border:2px solid rgba(255,255,255,.5);background:var(--surface);color:var(--text)}
   .watch-card.watch-only .wc-ticker{color:var(--text)}
   .watch-card.watch-only:hover{border-color:rgba(255,255,255,.85)}
-  /* Card top row: pos badge left, price+X right */
-  .watch-card .wc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
-  .watch-card .wc-top-left{display:flex;align-items:center}
-  .watch-card .wc-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+  /* Top row: pos badge + X on same line */
+  .watch-card .wc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .watch-card .wc-top-left{display:flex;align-items:center;gap:6px}
   .watch-card .wc-pos{font-size:9px;padding:2px 6px;border-radius:3px;display:inline-block}
   .watch-card .wc-pos.in{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
-  .watch-card .wc-pos.out{background:rgba(255,255,255,.12);color:var(--muted);border:1px solid rgba(255,255,255,.2);font-weight:700}
+  .watch-card .wc-pos.out{background:#ffffff;color:#0a0c0f;border:1px solid rgba(255,255,255,.8);font-weight:700}
+  .watch-card .wc-remove{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
+  .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
+  /* Hero row: ticker left (inline), price block right */
+  .watch-card .wc-hero{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px}
+  .watch-card .wc-price-block{text-align:right;flex-shrink:0;margin-left:8px}
   .watch-card .wc-price{font-size:15px;font-weight:700;line-height:1.1;text-align:right}
   .watch-card .wc-change{font-size:13px;font-weight:700;letter-spacing:-0.3px;text-align:right}
-  .watch-card .wc-remove{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 2px;border-radius:3px;margin-top:3px;align-self:flex-end}
-  .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
-  /* Big ticker hero */
-  .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:800;font-size:34px;letter-spacing:-1px;text-transform:uppercase;color:var(--text);line-height:1}
+  /* Big ticker hero — inline-block so border hugs text */
+  .watch-card .wc-ticker{font-family:'DM Sans',sans-serif;font-weight:800;font-size:34px;letter-spacing:-1px;text-transform:uppercase;color:var(--text);line-height:1;display:inline-block}
   .watch-card .wc-iv{font-size:9px;color:var(--muted);margin-top:3px}
   .ai-signal{margin-top:5px;padding:3px 6px;border-radius:3px;background:rgba(0,232,138,0.12);border:1px solid rgba(0,232,138,0.4);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.4px;line-height:1.4;display:block}
   .ai-signal.bear-signal{background:rgba(255,61,90,0.12);border-color:rgba(255,61,90,0.4);color:var(--red)}
@@ -6230,16 +6232,16 @@ function renderWatchList() {
       </div>`;
 
       const tickerLabel = bias === 'bull'
-        ? `<div class="wc-ticker" style="border:1px solid rgba(0,232,138,0.5);border-radius:4px;padding:2px 6px;margin-bottom:4px;background:rgba(0,232,138,0.1);color:var(--green)">${ticker}</div>`
+        ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.5);border-radius:4px;padding:2px 8px;background:rgba(0,232,138,0.1);color:var(--green)">${ticker}</div>`
         : bias === 'bear'
-          ? `<div class="wc-ticker" style="border:1px solid rgba(255,61,90,0.5);border-radius:4px;padding:2px 6px;margin-bottom:4px;background:rgba(255,61,90,0.1);color:var(--red)">${ticker}</div>`
+          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,61,90,0.1);color:var(--red)">${ticker}</div>`
           : isSell
-            ? `<div class="wc-ticker" style="border:1px solid rgba(255,140,66,0.5);border-radius:4px;padding:2px 6px;margin-bottom:4px;background:rgba(255,140,66,0.1);color:var(--orange)">${ticker}</div>`
+            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,140,66,0.1);color:var(--orange)">${ticker}</div>`
             : bias === 'earn'
-              ? `<div class="wc-ticker" style="border:1px solid rgba(192,132,252,0.5);border-radius:4px;padding:2px 6px;margin-bottom:4px;background:rgba(192,132,252,0.1);color:#c084fc">${ticker}</div>`
+              ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(192,132,252,0.5);border-radius:4px;padding:2px 8px;background:rgba(192,132,252,0.1);color:#c084fc">${ticker}</div>`
               : hasNote
-                ? `<div class="wc-ticker" style="border:1px solid rgba(245,200,66,0.4);border-radius:4px;padding:2px 6px;margin-bottom:4px;background:rgba(245,200,66,0.07);color:var(--yellow)">${ticker}</div>`
-                : `<div class="wc-ticker" style="border:1px solid transparent;border-radius:4px;padding:2px 6px;margin-bottom:4px">${ticker}</div>`;
+                ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.4);border-radius:4px;padding:2px 8px;background:rgba(245,200,66,0.07);color:var(--yellow)">${ticker}</div>`
+                : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:4px;padding:2px 8px">${ticker}</div>`;
 
       // Sector dropdown
       const currentSec = getSector(ticker);
@@ -6266,14 +6268,16 @@ function renderWatchList() {
 
       return `<div class="${cardClass}" style="position:relative">
         <div class="wc-top">
-          <div class="wc-top-left">${posBadge}</div>
-          <div class="wc-top-right">
-            ${priceHtml}
+          <div class="wc-top-left">
+            ${posBadge}
             ${removeBtn}
           </div>
         </div>
         ${cornerIcon}
-        ${tickerLabel}
+        <div class="wc-hero">
+          ${tickerLabel}
+          <div class="wc-price-block">${priceHtml}</div>
+        </div>
         ${closeHtml}
         ${entryField}
         ${noteBtn}
