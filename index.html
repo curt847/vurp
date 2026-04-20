@@ -347,7 +347,7 @@
   .onds-metric{text-align:center}
   .onds-metric-val{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;line-height:1}
   .onds-metric-lbl{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-  .onds-trigger{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border)}
+  .onds-trigger{display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600;padding:4px 8px;border-radius:4px;border:1px solid var(--border)}
   .onds-trigger.ok{border-color:rgba(0,232,138,.3);background:var(--green-dim);color:var(--green)}
   .onds-trigger.warn{border-color:rgba(255,140,66,.4);background:var(--orange-dim);color:var(--orange)}
   .onds-trigger.fire{border-color:rgba(255,61,90,.4);background:var(--red-dim);color:var(--red)}
@@ -2150,9 +2150,9 @@ function renderOndsCard() {
           const dy = _expDate.getDate();
           return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ${dte}d · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
-              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(1)}% ${distLabel}</span>
+              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
-              <span class="onds-trigger ${trigger3Class}">⏳ ${extRemPct.toFixed(0)}% Extrinsic</span>
+              <span class="onds-trigger ${trigger3Class}">⏳ ${extRemPct.toFixed(0)}% Ext</span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
