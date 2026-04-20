@@ -6272,7 +6272,7 @@ function renderWatchList() {
         </div>
         <div style="display:flex;justify-content:space-between;align-items:baseline">
           <span style="font-size:13px;font-weight:700;color:${hasPos ? closeColor : 'transparent'};line-height:1.1">$${Math.round(closeCost||0).toLocaleString()}</span>
-          <span style="font-size:13px;font-weight:700;color:${hasPos ? collColor : 'transparent'};line-height:1.1">$${(collateral/1000).toFixed(1)}K</span>
+          <span style="font-size:13px;font-weight:700;color:${hasPos ? collColor : 'transparent'};line-height:1.1">$${Math.round(collateral).toLocaleString()}</span>
         </div>`;
 
       const posBadge = hasPos
