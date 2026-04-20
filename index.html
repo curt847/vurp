@@ -1510,10 +1510,10 @@ function renderTable() {
         const _dir = _stock2 > p.short ? 'ITM' : `${_absPct}% below`;
         statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ${_dir}</span>`;
       }
-      else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">📅 ROLL 21d</span>`;
-      else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
-      else if (ccRoll === 'dte_watch')    statusHtml += ` <span class="pill pill-orange" style="margin-left:2px">📅 30d SOON</span>`;
-      else if (ccRoll === 'profit_watch') statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 35% DECAY</span>`;
+      else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">📅 ROLL 21d</span>`;
+      else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ ROLL 50%</span>`;
+      else if (ccRoll === 'dte_watch')    statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">📅 30d SOON</span>`;
+      else if (ccRoll === 'profit_watch') statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔷 35% DECAY</span>`;
     } else {
       // Profit-side alert for spreads/longs
       const profitLevel = getProfitLevel(p, liveGain);
@@ -1698,9 +1698,14 @@ function renderTable() {
     })();
     const hasNote = !!TICKER_NOTES[p.ticker];
     const noteTooltip = hasNote ? TICKER_NOTES[p.ticker].text.slice(0,80).replace(/'/g,"&#39;") : 'Add note';
-    const tickerNameInner = ernImminent
-      ? '<span class="ticker-name ern-imminent">' + p.ticker + '</span>'
-      : '<span class="ticker-name">' + p.ticker + '</span>';
+    const _tBias = BIAS[p.ticker] || 'neu';
+    const _tBoxStyle = ernImminent
+      ? 'display:inline-block;border:2px solid rgba(167,139,250,.7);border-radius:4px;padding:1px 5px;background:rgba(167,139,250,.1);box-shadow:0 0 6px rgba(167,139,250,.3)'
+      : _tBias==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.5);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.08)'
+      : _tBias==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.5);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.08)'
+      : _tBias==='sell' ? 'display:inline-block;border:1px solid rgba(255,140,66,.5);border-radius:4px;padding:1px 5px;background:rgba(255,140,66,.08)'
+      : 'display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 5px';
+    const tickerNameInner = `<span class="ticker-name${ernImminent?' ern-imminent':''}" style="${_tBoxStyle}">${p.ticker}</span>`;
     const tickerNameHtml = '<span onclick="openNoteModal(\'' + p.ticker + '\')" title="' + noteTooltip + '" style="cursor:pointer">' + tickerNameInner + '</span>';
     const tdStyle = hasNote ? ' style="outline:2px solid var(--yellow);outline-offset:-2px;background:var(--yellow-dim)"' : '';
     const refreshBtn = '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button>';
@@ -6355,7 +6360,7 @@ function renderWatchList() {
         const days = Math.round((ed - tod) / 86400000);
         if (days < 0) return '';
         const label = days === 0 ? 'EARN TODAY' : days === 1 ? 'EARN TMW' : `EARN ${days}d`;
-        return `<div style="font-size:8px;font-weight:700;color:#c084fc;letter-spacing:.5px;margin-top:2px">${label}</div>`;
+        return `<div style="font-size:10px;font-weight:700;color:#c084fc;letter-spacing:.5px;margin-top:2px">${label}</div>`;
       })() : '';
 
       const tickerLabel = earnImminentWatch
