@@ -2116,6 +2116,7 @@ function renderOndsCard() {
       .filter(e => e.ticker === trackerTicker && e.typeLabel === 'CC')
       .reduce((s, e) => s + (e.pnlTotal || 0), 0);
     const openCCPrem  = ondsCCs.reduce((s, p) => s + Math.abs(p.open) * 100 * p.cts, 0);
+    const currentCCVal = ondsCCs.reduce((s, p) => s + (getSpreadMid(p).mid || 0) * 100 * p.cts, 0);
     const premBanked  = closedCCPnl + openCCPrem;
 
     // Triggers HTML
@@ -2163,8 +2164,8 @@ function renderOndsCard() {
         <span style="font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;color:var(--text)">${price > 0 ? '$' + price.toFixed(2) : '—'}</span>
         <span style="color:var(--accent);font-size:13px">${value > 0 ? '$' + (value/1000).toFixed(1) + 'K' : ''}</span>
         <span class="onds-metric-val ${glClass}" style="font-size:16px">${price > 0 ? (gl >= 0 ? '+' : '') + '$' + Math.round(gl).toLocaleString() : '—'}</span>
-        ${(openCCPrem > 0 || premBanked > 0) ? `<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-start">
-          ${openCCPrem > 0 ? '<span style="color:var(--green);font-size:13px;font-weight:600">+$' + Math.round(openCCPrem).toLocaleString() + ' open</span>' : ''}
+        ${(currentCCVal > 0 || premBanked > 0) ? `<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-start">
+          ${currentCCVal > 0 ? '<span style="color:var(--green);font-size:13px;font-weight:600">+$' + Math.round(currentCCVal).toLocaleString() + ' open</span>' : ''}
           ${premBanked > 0 ? '<span style="color:var(--teal);font-size:11px;font-weight:600" title="Closed CC P&L + open CC premium collected">+$' + Math.round(premBanked).toLocaleString() + ' all-time</span>' : ''}
         </div>` : ''}
       </div>
