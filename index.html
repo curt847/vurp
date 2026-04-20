@@ -5616,7 +5616,11 @@ async function askClaudeSingle(idx) {
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences — cite ivr, flow, price action, earnings if relevant","action":"close+reenter|close+wait|add|hold","action_reason":"1 sentence specific reasoning for the action","suggestion":"concrete trade with specific strikes and expiry, or empty string if waiting","risk":"single biggest specific threat"}';
 
-    const step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(singlePrompt));
+    const step1 = await fetch(PROXY_URL + '?action=writeContext', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'content=' + encodeURIComponent(singlePrompt)
+    });
     await step1.text();
     const resp  = await fetch(PROXY_URL + '?action=singleAnalysis');
     const raw   = await resp.text();
@@ -6112,9 +6116,13 @@ async function runAIAnalysis() {
     + 'Include all ' + allTickers.length + ' tickers.';
 
   try {
-    // Step 1: write ONLY the compact ticker JSON to Drive (small enough for URL)
+    // Step 1: write ticker JSON to Drive via POST (safe for large payloads)
     var tickerJson = JSON.stringify(tickerData);
-    var step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(tickerJson));
+    var step1 = await fetch(PROXY_URL + '?action=writeContext', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'content=' + encodeURIComponent(tickerJson)
+    });
     var step1text = await step1.text();
     console.log('[RollWatch AI] writeContext response:', step1text.slice(0, 100));
     // Step 2: trigger Claude — Apps Script builds the prompt from Drive + calls API
@@ -6282,8 +6290,12 @@ async function runAISuggest() {
     })()
   };
 
-  // Write profile to Drive then call Claude
-  var step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(JSON.stringify(profile)));
+  // Write profile to Drive via POST (content too large for URL params)
+  var step1 = await fetch(PROXY_URL + '?action=writeContext', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'content=' + encodeURIComponent(JSON.stringify(profile))
+  });
   var step1text = await step1.text();
 
   var response = await fetch(PROXY_URL + '?action=suggest&count=' + posTickerList.length, { method: 'GET' });
