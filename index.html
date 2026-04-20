@@ -372,6 +372,7 @@
     .stats-bar, .pnl-bar, .flow-bar, .controls,
     .table-wrap, #ondsCard, .notes-fab, .notes-panel,
     .footer-note, .modal-overlay,
+    #desktopStocks, #desktopWatch, #desktopWatchDivider,
     div[style*="Stock Positions"], div[style*="Watch List"] { display: none !important }
 
     /* Slim down the header */
@@ -655,7 +656,7 @@
   </div>
 </div>
 
-<div style="padding:0 20px 8px">
+<div id="desktopStocks" style="padding:0 20px 8px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
     <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Stock Positions</div>
     <button class="action-btn" onclick="showAddStockModal()" style="border-color:var(--accent);color:var(--accent)">+ ADD STOCK</button>
@@ -676,8 +677,8 @@
 </div>
 
 <!-- WATCH LIST -->
-<div style="margin:24px 20px 20px;border-top:2px solid var(--border)"></div>
-<div style="padding:0 20px 20px">
+<div id="desktopWatchDivider" style="margin:24px 20px 20px;border-top:2px solid var(--border)"></div>
+<div id="desktopWatch" style="padding:0 20px 20px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
@@ -981,66 +982,8 @@
 // POSITIONS
 // ══════════════════════════════════════════
 const POSITIONS = [
-  {ticker:"USO", type:"C",short:140,long:144,cts:2,dte:6,  expiry:"2026-04-08",stock:137.92,iv:99.8, remain:39.0,gain:-12.2,collateral:800, open:1.56,shortMid:6.13,  longMid:4.57},
-  {ticker:"BSX", type:"C",short:63, long:65, cts:2,dte:22, expiry:"2026-04-24",stock:62.82, iv:44.3, remain:42.5,gain:-2.4, collateral:400, open:0.85,shortMid:2.65,  longMid:1.80},
-  {ticker:"INTC",type:"P",short:47, long:45, cts:5,dte:22, expiry:"2026-04-24",stock:50.38, iv:74.5, remain:34.9,gain:47.1, collateral:1000,open:0.70,shortMid:2.09,  longMid:1.39},
-  {ticker:"VRT", type:"P",short:245,long:240,cts:1,dte:22, expiry:"2026-04-24",stock:261.29,iv:72.9, remain:41.4,gain:5.9,  collateral:500, open:2.07,shortMid:11.07, longMid:9.00},
-  {ticker:"ADBE",type:"C",short:245,long:250,cts:1,dte:29, expiry:"2026-05-01",stock:242.92,iv:37.7, remain:46.6,gain:-5.0, collateral:500, open:2.33,shortMid:9.55,  longMid:7.22},
-  {ticker:"LLY", type:"P",short:970,long:960,cts:1,dte:29, expiry:"2026-05-01",stock:935.58,iv:31.8, remain:87.0,gain:-53.4,collateral:1000,open:8.70,shortMid:63.00, longMid:54.30},
-  {ticker:"MRK", type:"P",short:118,long:116,cts:2,dte:29, expiry:"2026-05-01",stock:120.87,iv:33.6, remain:26.5,gain:26.4, collateral:400, open:0.53,shortMid:3.04,  longMid:2.51},
-  {ticker:"NOW", type:"C",short:105,long:110,cts:1,dte:29, expiry:"2026-05-01",stock:102.00,iv:61.1, remain:38.0,gain:15.6, collateral:500, open:1.90,shortMid:5.65,  longMid:3.75},
-  {ticker:"GLW", type:"P",short:133,long:131,cts:2,dte:36, expiry:"2026-05-08",stock:147.92,iv:76.6, remain:21.5,gain:33.8, collateral:400, open:0.43,shortMid:7.40,  longMid:6.97},
-  {ticker:"IONQ",type:"C",short:30, long:31, cts:2,dte:36, expiry:"2026-05-08",stock:29.30, iv:95.1, remain:56.0,gain:-51.4,collateral:200, open:0.56,shortMid:3.10,  longMid:2.54},
-  {ticker:"AMD", type:"P",short:220,long:210,cts:4,dte:43, expiry:"2026-05-15",stock:217.50,iv:54.9, remain:50.1,gain:-37.5,collateral:4000,open:5.01,shortMid:17.13, longMid:12.12},
-  {ticker:"BA",  type:"P",short:210,long:205,cts:1,dte:43, expiry:"2026-05-15",stock:208.22,iv:38.6, remain:65.3,gain:-31.6,collateral:500, open:3.26,shortMid:12.20, longMid:8.94},
-  {ticker:"CRM", type:"C",short:190,long:195,cts:1,dte:43, expiry:"2026-05-15",stock:187.18,iv:39.7, remain:43.0,gain:4.4,  collateral:500, open:2.15,shortMid:8.93,  longMid:6.78},
-  {ticker:"DUOL",type:"C",short:105,long:110,cts:1,dte:43, expiry:"2026-05-15",stock:96.54, iv:91.1, remain:35.0,gain:0.0,  collateral:500, open:1.75,shortMid:8.70,  longMid:6.95},
-  {ticker:"FLUT",type:"C",short:105,long:110,cts:1,dte:43, expiry:"2026-05-15",stock:106.38,iv:66.7, remain:45.0,gain:-13.6,collateral:500, open:2.25,shortMid:10.40, longMid:8.05},
-  {ticker:"IBM", type:"P",short:245,long:235,cts:2,dte:43, expiry:"2026-05-15",stock:248.16,iv:42.9, remain:36.3,gain:27.5, collateral:2000,open:3.63,shortMid:12.73, longMid:9.10},
-  {ticker:"JPM", type:"P",short:290,long:285,cts:1,dte:43, expiry:"2026-05-15",stock:294.60,iv:32.6, remain:37.8,gain:24.4, collateral:500, open:1.89,shortMid:10.82, longMid:8.93},
-  {ticker:"LASR",type:"P",short:70, long:65, cts:2,dte:43, expiry:"2026-05-15",stock:60.12, iv:91.6, remain:39.9,gain:23.3, collateral:1000,open:1.99,shortMid:13.74, longMid:11.75},
-  {ticker:"MS",  type:"P",short:175,long:170,cts:1,dte:43, expiry:"2026-05-15",stock:165.81,iv:37.3, remain:56.4,gain:-6.5, collateral:500, open:2.82,shortMid:13.50, longMid:10.68},
-  {ticker:"PLTR",type:"P",short:150,long:140,cts:3,dte:43, expiry:"2026-05-15",stock:148.46,iv:56.2, remain:43.3,gain:30.4, collateral:3000,open:4.33,shortMid:12.28, longMid:7.95},
-  {ticker:"RDDT",type:"P",short:145,long:140,cts:1,dte:43, expiry:"2026-05-15",stock:136.00,iv:81.7, remain:59.6,gain:6.9,  collateral:500, open:2.98,shortMid:20.55, longMid:17.57},
-  {ticker:"WDAY",type:"C",short:130,long:135,cts:1,dte:43, expiry:"2026-05-15",stock:132.26,iv:47.3, remain:33.7,gain:19.8, collateral:500, open:1.68,shortMid:9.98,  longMid:8.30},
-  {ticker:"WDC", type:"P",short:290,long:280,cts:1,dte:43, expiry:"2026-05-15",stock:294.97,iv:83.6, remain:45.8,gain:28.4, collateral:1000,open:4.58,shortMid:30.21, longMid:26.27},
-  {ticker:"AMAT",type:"P",short:350,long:340,cts:1,dte:77, expiry:"2026-06-18",stock:348.47,iv:56.9, remain:50.6,gain:-7.0, collateral:1000,open:5.06,shortMid:37.08, longMid:32.02},
-  {ticker:"AMZN",type:"P",short:220,long:210,cts:1,dte:77, expiry:"2026-06-18",stock:209.77,iv:34.0, remain:39.8,gain:20.2, collateral:1000,open:3.98,shortMid:17.91, longMid:13.93},
-  {ticker:"AMZN",type:"P",short:215,long:210,cts:1,dte:77, expiry:"2026-06-18",stock:209.77,iv:34.9, remain:49.0,gain:4.7,  collateral:500, open:2.45,shortMid:16.38, longMid:13.93},
-  {ticker:"APLD",type:"P",short:32, long:26, cts:1,dte:77, expiry:"2026-06-18",stock:24.56, iv:102.2,remain:68.0,gain:-12.3,collateral:600, open:4.08,shortMid:9.55,  longMid:5.47},
-  {ticker:"APLD",type:"P",short:30, long:24, cts:1,dte:77, expiry:"2026-06-18",stock:24.56, iv:102.6,remain:66.3,gain:-16.7,collateral:600, open:3.98,shortMid:8.38,  longMid:4.40},
-  {ticker:"AVGO",type:"P",short:340,long:330,cts:1,dte:77, expiry:"2026-06-18",stock:314.55,iv:100.0,remain:63.2,gain:-23.9,collateral:1000,open:6.32,shortMid:42.35, longMid:35.73},
-  {ticker:"FLUT",type:"C",short:105,long:110,cts:1,dte:77, expiry:"2026-06-18",stock:106.38,iv:59.0, remain:34.0,gain:26.1, collateral:500, open:1.70,shortMid:12.51, longMid:10.55},
-  {ticker:"HUT", type:"P",short:60, long:55, cts:2,dte:77, expiry:"2026-06-18",stock:48.11, iv:100.0,remain:71.9,gain:-10.6,collateral:1000,open:3.59,shortMid:16.47, longMid:12.88},
-  {ticker:"META",type:"P",short:650,long:645,cts:2,dte:77, expiry:"2026-06-18",stock:574.46,iv:100.0,remain:81.4,gain:-43.8,collateral:1000,open:4.07,shortMid:149.14,longMid:145.76},
-  {ticker:"RDDT",type:"P",short:160,long:150,cts:2,dte:77, expiry:"2026-06-18",stock:136.00,iv:60.7, remain:68.8,gain:0.0,  collateral:2000,open:6.88,shortMid:30.06, longMid:27.13},
-  {ticker:"AMZN",type:"P",short:235,long:225,cts:1,dte:106,expiry:"2026-07-17",stock:209.77,iv:100.0,remain:65.5,gain:0.0,  collateral:1000,open:6.55,shortMid:59.02, longMid:23.80},
-  {ticker:"RDDT",type:"P",short:145,long:140,cts:2,dte:106,expiry:"2026-07-17",stock:136.00,iv:60.7, remain:60.0,gain:-4.8, collateral:1000,open:3.00,shortMid:22.03, longMid:19.03},
-  {ticker:"APP", type:"P",short:420,long:410,cts:1,dte:141,expiry:"2026-08-21",stock:386.37,iv:100.0,remain:64.6,gain:-4.8, collateral:1000,open:6.46,shortMid:111.76,longMid:105.30},
-  {ticker:"HIMS",type:"P",short:24, long:22, cts:5,dte:141,expiry:"2026-08-21",stock:19.14, iv:87.0, remain:75.0,gain:-9.5, collateral:1000,open:1.50,shortMid:7.38,  longMid:5.88},
-  {ticker:"HOOD",type:"P",short:75, long:65, cts:4,dte:141,expiry:"2026-08-21",stock:68.90, iv:63.6, remain:54.2,gain:2.9,  collateral:4000,open:5.42,shortMid:14.57, longMid:9.15},
-  {ticker:"JPM", type:"P",short:300,long:290,cts:2,dte:141,expiry:"2026-08-21",stock:294.60,iv:28.3, remain:39.0,gain:8.9,  collateral:2000,open:3.90,shortMid:23.60, longMid:19.70},
-  {ticker:"META",type:"P",short:580,long:570,cts:1,dte:141,expiry:"2026-08-21",stock:574.46,iv:100.0,remain:47.4,gain:7.4,  collateral:1000,open:4.74,shortMid:55.98, longMid:51.24},
-  {ticker:"MSTR",type:"P",short:135,long:130,cts:1,dte:141,expiry:"2026-08-21",stock:119.83,iv:71.3, remain:61.0,gain:1.6,  collateral:500, open:3.05,shortMid:30.65, longMid:27.60},
-  {ticker:"NBIS",type:"P",short:100,long:95, cts:1,dte:141,expiry:"2026-08-21",stock:108.82,iv:100.0,remain:53.5,gain:2.4,  collateral:500, open:2.68,shortMid:20.43, longMid:17.76},
-  {ticker:"TSLA",type:"P",short:380,long:370,cts:1,dte:141,expiry:"2026-08-21",stock:360.59,iv:100.0,remain:55.0,gain:-3.4, collateral:1000,open:5.50,shortMid:49.75, longMid:44.25},
-  {ticker:"ASTS",type:"P",short:100,long:95, cts:2,dte:169,expiry:"2026-09-18",stock:92.62, iv:101.1,remain:77.5,gain:-3.3, collateral:1000,open:3.87,shortMid:29.20, longMid:25.33},
-  {ticker:"AVGO",type:"P",short:320,long:310,cts:3,dte:169,expiry:"2026-09-18",stock:314.55,iv:45.2, remain:47.7,gain:18.5, collateral:3000,open:4.77,shortMid:41.55, longMid:36.78},
-  {ticker:"GOOG",type:"P",short:280,long:275,cts:2,dte:169,expiry:"2026-09-18",stock:294.46,iv:100.0,remain:35.0,gain:30.3, collateral:1000,open:1.75,shortMid:19.70, longMid:17.95},
-  {ticker:"HUT", type:"P",short:55, long:50, cts:4,dte:169,expiry:"2026-09-18",stock:48.11, iv:100.0,remain:52.0,gain:19.0, collateral:2000,open:2.60,shortMid:16.72, longMid:13.00},
-  {ticker:"IREN",type:"P",short:40, long:35, cts:3,dte:169,expiry:"2026-09-18",stock:34.77, iv:89.5, remain:44.5,gain:33.7, collateral:1500,open:2.23,shortMid:11.28, longMid:9.05},
-  {ticker:"NVDA",type:"P",short:175,long:170,cts:1,dte:169,expiry:"2026-09-18",stock:177.39,iv:100.0,remain:44.8,gain:11.5, collateral:500, open:2.24,shortMid:17.42, longMid:15.18},
-  {ticker:"TSLA",type:"P",short:370,long:365,cts:3,dte:169,expiry:"2026-09-18",stock:360.59,iv:100.0,remain:50.0,gain:3.5,  collateral:1500,open:2.50,shortMid:47.85, longMid:45.25},
-  {ticker:"APLD",type:"P",short:30, long:24, cts:5,dte:197,expiry:"2026-10-16",stock:24.56, iv:100.0,remain:66.4,gain:9.3,  collateral:3000,open:3.98,shortMid:10.34, longMid:6.36},
-  {ticker:"APLD",type:"P",short:28, long:25, cts:2,dte:197,expiry:"2026-10-16",stock:24.56, iv:100.0,remain:58.9,gain:-2.1, collateral:600, open:1.77,shortMid:8.95,  longMid:7.18},
-  {ticker:"ASTS",type:"P",short:110,long:100,cts:2,dte:197,expiry:"2026-10-16",stock:92.62, iv:101.1,remain:68.0,gain:12.2, collateral:2000,open:6.80,shortMid:37.08, longMid:30.28},
-  {ticker:"GOOG",type:"P",short:280,long:275,cts:2,dte:197,expiry:"2026-10-16",stock:294.46,iv:100.0,remain:40.0,gain:20.3, collateral:1000,open:2.00,shortMid:21.25, longMid:19.30},
-  {ticker:"HUT", type:"P",short:50, long:45, cts:1,dte:197,expiry:"2026-10-16",stock:48.11, iv:92.3, remain:73.7,gain:-18.1,collateral:500, open:3.68,shortMid:13.98, longMid:10.30},
-  {ticker:"META",type:"P",short:600,long:590,cts:1,dte:197,expiry:"2026-10-16",stock:574.46,iv:100.0,remain:47.5,gain:15.9, collateral:1000,open:4.75,shortMid:74.55, longMid:69.80},
-  {ticker:"RKLB",type:"P",short:70, long:65, cts:3,dte:197,expiry:"2026-10-16",stock:67.73, iv:82.3, remain:64.0,gain:1.8,  collateral:1500,open:3.20,shortMid:17.38, longMid:14.18},
-  {ticker:"SOFI",type:"P",short:20, long:17, cts:7,dte:260,expiry:"2026-12-18",stock:15.85, iv:58.7, remain:60.7,gain:12.1, collateral:2100,open:1.82,shortMid:5.92,  longMid:4.10},
-  {ticker:"APLD",type:"P",short:32, long:27, cts:1,dte:288,expiry:"2027-01-15",stock:24.56, iv:100.0,remain:70.7,gain:-0.5, collateral:500, open:3.54,shortMid:13.06, longMid:9.52},
-];
+  // Positions are loaded from localStorage / Google Drive on init — no hardcoded defaults
+]
 
 // ══════════════════════════════════════════
 // STATE & CONFIG
