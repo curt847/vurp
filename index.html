@@ -1561,7 +1561,7 @@ function renderTable() {
           : _sent==='bull' ? 'fb-bull' : 'fb-bear';
         const fi = _sent==='bull' ? '↑ BULL' : _sent==='bear' ? '↓ BEAR' : '→ MIX';
         const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
-        const confTag = flow.confidence ? `<span style="font-size:8px;color:${flow.confidence==='STRONG'?'var(--green)':flow.confidence==='MOD'?'var(--yellow)':'var(--muted)'};margin-left:3px;font-weight:700">${flow.confidence}</span>` : '';
+        const confTag = flow.confidence ? `<span style="font-size:8px;color:${flow.confidence==='STRONG'?'var(--green)':flow.confidence==='MOD'?'#cbd5e1':'var(--muted)'};margin-left:3px;font-weight:700">${flow.confidence}</span>` : '';
         const contraTag = isContra?`<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>`:'';
         flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${confTag}${contraTag}`;
       }
@@ -1611,7 +1611,7 @@ function renderTable() {
         const wBg    = wContra ? 'rgba(245,200,66,0.08)' : wSent==='bull'?'rgba(0,232,138,0.1)':'rgba(255,61,90,0.1)';
         const wBorder= wContra ? 'rgba(245,200,66,0.35)' : wSent==='bull'?'rgba(0,232,138,0.3)':'rgba(255,61,90,0.3)';
         const wPrem  = wTotalRaw>=1e6?`$${(wTotalRaw/1e6).toFixed(1)}M`:`$${(wTotalRaw/1e3).toFixed(0)}K`;
-        const wConfColor = wConf==='STRONG'?'var(--green)':wConf==='MOD'?'var(--yellow)':'var(--muted)';
+        const wConfColor = wConf==='STRONG'?'var(--green)':wConf==='MOD'?'#cbd5e1':'var(--muted)';
         const ntTag  = ntCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--accent);margin-left:3px;vertical-align:middle" title="${ntCount} near-term trade${ntCount!==1?'s':''} ≤45 DTE — driving sentiment">▲${ntCount}</span>` : '';
         const wContraTag = wContra ? `<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>` : '';
         const wConfTag = `<span style="font-size:8px;color:${wConfColor};margin-left:3px;font-weight:700" title="Sentiment confidence">${wConf}</span>`;
@@ -3174,7 +3174,7 @@ function renderWhaleFeed() {
 
   // ── Confidence color ──
   function confColor(conf) {
-    return conf==='STRONG'?'var(--green)':conf==='MOD'?'var(--yellow)':'var(--muted)';
+    return conf==='STRONG'?'var(--green)':conf==='MOD'?'#cbd5e1':'var(--muted)';
   }
 
   let html = '';
@@ -5473,43 +5473,40 @@ async function askClaudeSingle(idx) {
   };
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  const prompt = 'Options trading assistant for experienced credit spread / covered call seller. Today: ' + today + '. '
-    + 'Field guide: t=ticker, s=sector, p=price+todayChg, b=user_bias(bull/bear/neu), '
-    + 'ps=existing_positions(type strikes/exp/DTE/contracts/pctGainSoFar — factor these into your suggestion; adding more is fine if conditions support it but note increased concentration), '
-    + 'n=userNote, ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
-    + 'iv=current_implied_volatility_percent, flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
-    + 'earn=upcoming_earnings(avoid_new_positions_within_2_weeks). '
-    + 'CRITICAL: use the actual ivr number provided — never assume low IV if ivr=unavailable, just omit IV commentary. '
-    + JSON.stringify(tickerData) + ' '
-    + 'The user already has positions (shown in ps). The question is: IS THIS A GOOD TIME TO ADD MORE? '
-    + 'Focus on current market conditions for this ticker, not on managing the existing position. '
-    + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade (e.g. $5-$10 wide spreads x1-2 contracts). Note if your suggestion falls outside this range. '
-    + 'Provide: sentiment(bullish/bearish/neutral/mixed), '
-    + 'read(2 sentences max — cite ivr, flow direction, price action, earnings if relevant), '
-    + 'entry("good now" or "wait for X" — be specific about what to wait for), '
-    + 'suggestion(concrete new trade with specific strikes and expiry if conditions support adding — prefer 30-45 DTE for new entries unless high IV or earnings makes shorter expiry clearly better; factor in existing positions and note concentration if adding), '
-    + 'risk(biggest specific threat to adding here). '
-    + 'Respond ONLY as raw JSON, no markdown fences: {"ticker":"X","sentiment":"...","read":"...","entry":"...","suggestion":"...","risk":"..."}';
+
+  // Determine gain% on this position to drive exit vs add-more framing
+  const { mid: posMid } = getSpreadMid(p);
+  const gainPct = p.open > 0 ? Math.round((1 - posMid / Math.abs(p.open)) * 100) : null;
+  const isNearMax = gainPct !== null && gainPct >= 75;
 
   try {
-    const singlePrompt = 'Options trading assistant for experienced credit spread / covered call seller. Today: ' + today + '. '
-      + 'Field guide: t=ticker, s=sector, p=price+todayChg, b=user_bias(bull/bear/neu), '
-      + 'ps=existing_positions(type strikes/exp/DTE/contracts/pctGainSoFar), '
-      + 'n=userNote, ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
-      + 'iv=current_implied_volatility_percent, flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
-      + 'earn=upcoming_earnings(avoid_new_positions_within_2_weeks). '
-      + 'CRITICAL: use the actual ivr number provided. Respond ONLY as raw JSON, no markdown, no preamble: '
-      + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences max citing ivr/flow/price","entry":"good now OR wait for X","suggestion":"concrete trade with specific strikes and expiry","risk":"biggest specific threat"} '
-      + 'Data: ' + JSON.stringify(tickerData);
+    const singlePrompt = 'You are an options trading assistant for an experienced credit spread / covered call seller. Today: ' + today + '. '
+      + 'FIELD GUIDE: t=ticker, s=sector, p=current price+todayChg, b=user_bias(bull/bear/neu), '
+      + 'ps=existing_positions(type strikes/expiry/DTE/contracts/pctGainSoFar), '
+      + 'n=userNote, ivr=IV_rank_0to100(50+=elevated good for premium selling; <30=low avoid selling premium), '
+      + 'iv=current_implied_volatility_pct, flow=optionsFlowSentiment(confidence) total$ calls$ puts$, '
+      + 'earn=upcoming_earnings_date. '
+      + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
+      + 'DATA: ' + JSON.stringify(tickerData) + ' '
+      + (isNearMax
+          ? 'This position is near max profit (' + gainPct + '% captured). The PRIMARY question is the EXIT DECISION: '
+            + '(A) close now and RE-ENTER IMMEDIATELY with a new position at current levels, or '
+            + '(B) close now and WAIT for a better entry (pullback, IV expansion, cleaner setup). '
+            + 'Base this on: current momentum/trend, IV rank (is premium still worth selling right now?), flow sentiment, and how extended the move is. '
+            + 'Also flag if earnings is within 2 weeks of a potential new expiry. '
+          : 'The position has ' + (gainPct !== null ? gainPct + '% gain so far' : 'an open gain') + '. The PRIMARY question is: SHOULD THE USER ADD ANOTHER POSITION on this ticker? '
+            + 'Consider current conditions — momentum, IV rank, flow, earnings proximity. Note concentration risk if adding to an existing position. ')
+      + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
+      + 'Respond ONLY as raw JSON, no markdown, no preamble: '
+      + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences — cite ivr, flow, price action, earnings if relevant","action":"close+reenter|close+wait|add|hold","action_reason":"1 sentence specific reasoning for the action","suggestion":"concrete trade with specific strikes and expiry, or empty string if waiting","risk":"single biggest specific threat"}';
 
     const step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(singlePrompt));
     await step1.text();
-    const resp  = await fetch(PROXY_URL + '?action=claude&count=1');
+    const resp  = await fetch(PROXY_URL + '?action=singleAnalysis');
     const raw   = await resp.text();
     const data  = JSON.parse(raw);
     const text  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
-    // Extract JSON object robustly in case model adds any preamble
     const jsonMatch = clean.match(/\{[\s\S]*\}/);
     const r = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
 
@@ -5519,8 +5516,6 @@ async function askClaudeSingle(idx) {
 
     const sc = scColor(r.sentiment);
     const sb = scBg(r.sentiment);
-    const entryOk  = !(r.entry.toLowerCase().includes('wait') || r.entry.toLowerCase().includes('avoid'));
-    const entryCol = entryOk ? 'var(--green)' : 'var(--orange)';
 
     const typeLabel = p.postype === 'spread_credit' ? (p.type === 'P' ? 'Put Credit Spread' : 'Call Credit Spread')
                     : p.postype === 'covered_call'  ? 'Covered Call'
@@ -5531,30 +5526,43 @@ async function askClaudeSingle(idx) {
     const posCount = POSITIONS.filter(pos => pos.ticker === ticker).length;
     const ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
 
+    // Action badge config
+    const actionCfg = {
+      'close+reenter': { label: '↺ CLOSE & RE-ENTER',  color: 'var(--accent)',  bg: 'rgba(0,212,255,.1)',  border: 'rgba(0,212,255,.4)'  },
+      'close+wait':    { label: '⏸ CLOSE & WAIT',      color: 'var(--yellow)', bg: 'var(--yellow-dim)',   border: 'rgba(245,200,66,.4)' },
+      'add':           { label: '＋ ADD POSITION',      color: 'var(--green)',  bg: 'var(--green-dim)',    border: 'rgba(0,232,138,.3)'  },
+      'hold':          { label: '◈ HOLD',               color: 'var(--muted)', bg: 'rgba(74,85,104,.15)', border: 'var(--border)'       },
+    };
+    const act = actionCfg[r.action] || { label: r.action || '—', color: 'var(--muted)', bg: 'rgba(74,85,104,.15)', border: 'var(--border)' };
+    const contextLabel = isNearMax ? 'Near max profit · Exit decision' : 'Add another position?';
+
     content.innerHTML =
-      // Header: ticker + existing position context
+      // Header
       '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'
       + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:17px">' + ticker + '</span>'
-      + '<span style="font-size:11px;color:var(--muted)">' + lp.price ? '$' + lp.price.toFixed(2) : '' + '</span>'
-      + '<span style="font-size:10px;color:var(--accent);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);padding:1px 6px;border-radius:3px">' + posCount + ' existing pos</span>'
-      + '<span style="font-size:9px;color:var(--muted);margin-left:4px">Add more?</span>'
+      + '<span style="font-size:11px;color:var(--muted)">' + (lp && lp.price ? '$' + lp.price.toFixed(2) : '') + '</span>'
+      + (gainPct !== null ? '<span style="font-size:10px;color:' + (gainPct>=75?'var(--green)':'var(--muted)') + ';background:rgba(0,232,138,.08);border:1px solid rgba(0,232,138,.2);padding:1px 6px;border-radius:3px">' + gainPct + '% captured</span>' : '')
+      + '<span style="font-size:9px;color:var(--muted);margin-left:auto">' + contextLabel + '</span>'
       + '</div>'
-      // Sentiment badge
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+      // Sentiment + IVR row
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
       + '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;background:' + sb + ';border:1px solid ' + sc + ';color:' + sc + '">' + scLabel(r.sentiment) + '</span>'
       + (ivrStr !== 'unavailable' ? '<span style="font-size:10px;color:var(--muted)">IVR ' + ivrStr + '</span>' : '')
       + '</div>'
       // Read
-      + '<div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:8px">\ud83d\udcca ' + r.read + '</div>'
-      // Entry timing
-      + '<div style="font-size:13px;color:' + entryCol + ';margin-bottom:8px;font-weight:600">\ud83c\udfaf ' + r.entry + '</div>'
-      // Suggestion
-      + '<div style="margin-top:6px;padding:8px 10px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;margin-bottom:8px">'
-      + '<div style="font-size:9px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px">SUGGESTED TRADE</div>'
-      + '<div style="font-size:13px;color:var(--text);line-height:1.6">' + r.suggestion + '</div>'
+      + '<div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:10px">📊 ' + r.read + '</div>'
+      // Action recommendation
+      + '<div style="padding:8px 12px;background:' + act.bg + ';border:1px solid ' + act.border + ';border-radius:4px;margin-bottom:8px">'
+      + '<div style="font-size:14px;font-weight:700;color:' + act.color + ';letter-spacing:.5px;margin-bottom:4px">' + act.label + '</div>'
+      + '<div style="font-size:12px;color:var(--text);line-height:1.5">' + (r.action_reason || '') + '</div>'
       + '</div>'
+      // Suggested trade (only if there is one)
+      + (r.suggestion ? '<div style="padding:8px 10px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;margin-bottom:8px">'
+        + '<div style="font-size:9px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px">SUGGESTED TRADE</div>'
+        + '<div style="font-size:13px;color:var(--text);line-height:1.6">' + r.suggestion + '</div>'
+        + '</div>' : '')
       // Risk
-      + (r.risk ? '<div style="font-size:11px;color:var(--orange);margin-top:2px">\u26a0 ' + r.risk + '</div>' : '')
+      + (r.risk ? '<div style="font-size:11px;color:var(--orange);margin-top:2px">⚠ ' + r.risk + '</div>' : '')
       + '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:12px">' + ts + ' · Not financial advice</div>';
 
   } catch(err) {
