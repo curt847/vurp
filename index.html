@@ -6267,8 +6267,8 @@ function renderWatchList() {
           ? `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">⏳ wait</span>`
           : '';
 
-      // Spacer so bias button aligns across pos cards and watch cards (watch cards may show sigHtml)
-      const sigSpacer = !isWatchOnly && !sig ? `<span class="ai-signal" style="visibility:hidden">​</span>` : '';
+      // Spacer so bias button aligns across all cards when no signal yet
+      const sigSpacer = !sig ? `<span class="ai-signal" style="visibility:hidden">​</span>` : '';
 
       return `<div class="${cardClass}" style="position:relative">
         ${removeBtn}
