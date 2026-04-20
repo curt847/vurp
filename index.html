@@ -2159,22 +2159,25 @@ function renderOndsCard() {
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
 
+    const ccCts   = ondsCCs.reduce((s,p) => s + p.cts, 0);
+    const covPct   = shares > 0 ? Math.round(ccCts * 100 / shares * 100) : 0;
+
     return `<div class="onds-block">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
-        <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
           <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
             <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--accent)">${trackerTicker}</span>
             <span style="font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;color:var(--text)">${price > 0 ? '$' + price.toFixed(2) : '—'}</span>
           </div>
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span class="onds-metric-val ${glClass}" style="font-size:13px;font-weight:700">${price > 0 ? (gl >= 0 ? '+' : '') + '$' + Math.round(gl).toLocaleString() : '—'}</span>
-            <span class="onds-metric-val ${glClass}" style="font-size:12px;opacity:.8">${price > 0 ? (glPct >= 0 ? '+' : '') + glPct.toFixed(1) + '%' : ''}</span>
-            <span style="color:var(--muted);font-size:14px;font-weight:600">${value > 0 ? '$' + (value/1000).toFixed(1) + 'K' : ''}</span>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <span class="onds-metric-val ${glClass}" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">${price > 0 ? (gl >= 0 ? '+' : '') + '$' + Math.round(gl).toLocaleString() : '—'}</span>
+            <span class="onds-metric-val ${glClass}" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">${price > 0 ? (glPct >= 0 ? '+' : '') + glPct.toFixed(1) + '%' : ''}</span>
+            <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">${value > 0 ? '$' + (value/1000).toFixed(1) + 'K' : ''}</span>
           </div>
-          <div style="color:var(--muted);font-size:10px;margin-top:2px">${shares.toLocaleString()} shares · cost basis $${basis.toFixed(2)}${shares > 0 ? ' · ' + Math.round(ondsCCs.reduce((s,p) => s + p.cts*100, 0) / shares * 100) + '% covered' : ''}</div>
+          <div style="color:var(--muted);font-size:10px;margin-top:2px">${covPct}% covered · ${ccCts} contract${ccCts !== 1 ? 's' : ''}</div>
         </div>
-        <div style="border:1px solid rgba(0,212,255,.25);border-radius:5px;padding:6px 12px;display:flex;flex-direction:column;gap:3px;min-width:110px;flex-shrink:0">
-          <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(0,212,255,.15);padding-bottom:3px;margin-bottom:1px">CC Premium</div>
+        <div style="border:1px solid rgba(0,212,255,.25);border-radius:5px;padding:6px 12px;display:flex;flex-direction:column;gap:3px;min-width:110px;flex-shrink:0;align-self:flex-start">
+          <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(0,212,255,.15);padding-bottom:3px;margin-bottom:1px;text-align:center">CC Premium</div>
           ${currentCCVal > 0 ? `<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="color:var(--muted);font-size:9px">open</span><span style="color:var(--green);font-size:13px;font-weight:600">+$${Math.round(currentCCVal).toLocaleString()}</span></div>` : ''}
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="color:var(--muted);font-size:9px">all-time</span><span style="color:var(--teal);font-size:12px;font-weight:600" title="Net P&L on closed CCs + unrealized gain on open CCs">${(premBanked >= 0 ? '+' : '') + '$' + Math.round(premBanked).toLocaleString()}</span></div>
         </div>
