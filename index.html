@@ -6110,6 +6110,34 @@ async function runAISuggest() {
         if (lp) prices[t] = '$' + lp.price.toFixed(2) + ' (' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct).toFixed(1) + '%)';
       });
       return prices;
+    })(),
+    ivrByTicker: (function() {
+      var out = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        var ivr = liveData[t] && liveData[t].ivr != null ? Math.round(liveData[t].ivr) : null;
+        if (ivr !== null) out[t] = ivr + '/100';
+      });
+      return out;
+    })(),
+    flowByTicker: (function() {
+      var out = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        var fd = flowData[t];
+        if (fd && fd.sentiment) {
+          out[t] = fd.sentiment + '(' + fd.confidence + ')';
+          if (fd.calls != null && fd.puts != null) {
+            out[t] += ' $' + ((fd.calls + fd.puts)/1000).toFixed(0) + 'K calls:$' + (fd.calls/1000).toFixed(0) + 'K puts:$' + (fd.puts/1000).toFixed(0) + 'K';
+          }
+        }
+      });
+      return out;
+    })(),
+    earningsByTicker: (function() {
+      var out = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        if (earningsMap[t]) out[t] = earningsMap[t];
+      });
+      return out;
     })()
   };
 
