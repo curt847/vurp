@@ -5850,8 +5850,27 @@ async function runAIAnalysis() {
     try {
       var ivResp = await uw('/api/stock/' + t + '/iv-rank');
       var arr = Array.isArray(ivResp && ivResp.data) ? ivResp.data : [];
-      if (arr.length) { var val = parseFloat(arr[0].iv_rank_1y); if (!isNaN(val)) watchIV[t] = Math.round(val); }
+      if (arr.length) {
+        // Try multiple field names — UW API is inconsistent
+        var val = parseFloat(arr[0].iv_rank_1y || arr[0].iv_rank || arr[0].ivRank || arr[0].rank);
+        if (!isNaN(val)) watchIV[t] = Math.round(val);
+      }
     } catch(e) {}
+    // Fallback 1: use IVR already cached from main refresh (liveData populated by refreshIV())
+    if (watchIV[t] === undefined && liveData[t] && liveData[t].ivr != null) {
+      watchIV[t] = Math.round(liveData[t].ivr);
+    }
+    // Fallback 2: try interpolated-iv endpoint which also carries rank data
+    if (watchIV[t] === undefined) {
+      try {
+        var ivResp2 = await uw('/api/stock/' + t + '/interpolated-iv');
+        var arr2 = Array.isArray(ivResp2 && ivResp2.data) ? ivResp2.data : [];
+        if (arr2.length) {
+          var val2 = parseFloat(arr2[0].iv_rank_1y || arr2[0].iv_rank || arr2[0].rank || arr2[0].iv_percentile);
+          if (!isNaN(val2)) watchIV[t] = Math.round(val2);
+        }
+      } catch(e) {}
+    }
     try {
       var fr = await uw('/api/stock/' + t + '/flow-alerts').catch(function(){ return null; });
       if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + t + '/flow-recent').catch(function(){ return null; });
@@ -5880,7 +5899,8 @@ async function runAIAnalysis() {
     var sector  = getSector(ticker);
     var note    = (TICKER_NOTES && TICKER_NOTES[ticker]) ? TICKER_NOTES[ticker].text : null;
     var target  = (ENTRY_TARGETS && ENTRY_TARGETS[ticker]) ? '$' + ENTRY_TARGETS[ticker] : null;
-    var ivr     = watchIV[ticker]   !== undefined ? watchIV[ticker] + '%ile' : null;
+    var ivr     = watchIV[ticker] !== undefined ? watchIV[ticker] : (liveData[ticker] && liveData[ticker].ivr != null ? Math.round(liveData[ticker].ivr) : null);
+    var ivrStr  = ivr !== null ? ivr + '/100' : 'unavailable';
     var flow    = watchFlow[ticker] ? watchFlow[ticker].sentiment + '(' + watchFlow[ticker].confidence + ')' : null;
 
     var posDetails = POSITIONS.filter(function(p){ return p.ticker === ticker; }).map(function(p) {
@@ -5901,16 +5921,19 @@ async function runAIAnalysis() {
       ps:   posDetails || null,
       et:   target,
       n:    note,
-      ivr:  ivr,
+      ivr:  ivrStr,
       flow: flow
     };
   });
 
   var today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   var prompt = 'Options trading assistant for experienced credit spread seller. Today: ' + today + ' '
-    + 'Fields: t=ticker,s=sector,p=price+chg,b=bias(bull/bear/neu),ip=inPosition,ps=positions,et=entryTarget,n=note '
+    + 'Fields: t=ticker, s=sector, p=price+chg, b=user_bias(bull/bear/neu), ip=inPosition, ps=positions, et=entryTarget, n=note, '
+    + 'ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium_selling), '
+    + 'flow=options_flow_sentiment. '
+    + 'IMPORTANT: ivr is the 1-year IV rank percentile 0-100. Use the actual number provided — do NOT assume low IV if ivr is unavailable, instead omit IV commentary. '
     + JSON.stringify(tickerData) + ' '
-    + 'For each: sentiment(bullish/bearish/neutral/mixed), read(1-2 sentences), entry(good now or wait?), suggestion(specific trade idea), risk(key risk). '
+    + 'For each: sentiment(bullish/bearish/neutral/mixed), read(1-2 sentences referencing actual ivr value if available), entry(good now or wait?), suggestion(specific trade idea), risk(key risk). '
     + 'IN POSITION: note hold/roll/close. bull=sell puts/buy calls, bear=sell calls/buy puts. '
     + 'Respond ONLY as raw JSON array no fences: [{"ticker":"X","sentiment":"bullish","read":"...","entry":"...","suggestion":"...","risk":"..."}] '
     + 'Include all ' + allTickers.length + ' tickers.';
