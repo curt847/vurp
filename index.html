@@ -93,10 +93,10 @@
   .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
   /* Put Credit + Call Debit = BULLISH — light blue */
   .type-P-cr{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.4)}
-  .type-C-db{background:rgba(99,179,237,.35);color:#0d1f2d;border:1px solid rgba(99,179,237,.7);font-weight:800}
+  .type-C-db{background:rgba(99,179,237,.35);color:#fff;border:1px solid rgba(99,179,237,.7);font-weight:800}
   /* Call Credit + Put Debit = BEARISH — pink */
   .type-C-cr{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.4)}
-  .type-P-db{background:rgba(255,100,180,.35);color:#1a0010;border:1px solid rgba(255,100,180,.7);font-weight:800}
+  .type-P-db{background:rgba(255,100,180,.35);color:#fff;border:1px solid rgba(255,100,180,.7);font-weight:800}
   /* Covered call — muted gray */
   .type-cc{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   /* Long call — green */
@@ -1227,11 +1227,32 @@ function getSpreadMid(p) {
 
   // Real UW data — two-leg spread mid computed from live NBBO
   const liveMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMid_${p.short}_${p.long}_${p.type}`]);
-  if (liveMid != null) return { mid: Math.max(0, liveMid), isLive: true, isBs: false };
+  if (liveMid != null) {
+    // Sanity floor: if stock has blown through both legs, cached mid may be stale/garbage
+    const S2 = getLiveStock(p);
+    const w2 = p.long ? Math.abs(p.short - p.long) : 0;
+    const isDebit2 = p.postype === 'spread_debit';
+    const bothITM2 = S2 > 0 && p.long && w2 > 0 && (
+      isDebit2 ? (p.type === 'C' ? S2 > p.short : S2 < p.short)
+               : (p.type === 'C' ? S2 > p.long  : S2 < p.long)
+    );
+    const floored = bothITM2 ? Math.max(liveMid, w2 * 0.90) : liveMid;
+    return { mid: Math.min(Math.max(0, floored), w2 || Infinity), isLive: true, isBs: false };
+  }
 
   // BS fallback — stored under separate key so we can distinguish it
   const bsMid = (liveData[p.ticker]&&liveData[p.ticker][`spreadMidBS_${p.short}_${p.long}_${p.type}`]);
-  if (bsMid != null) return { mid: Math.max(0, bsMid), isLive: false, isBs: true };
+  if (bsMid != null) {
+    const S3 = getLiveStock(p);
+    const w3 = p.long ? Math.abs(p.short - p.long) : 0;
+    const isDebit3 = p.postype === 'spread_debit';
+    const bothITM3 = S3 > 0 && p.long && w3 > 0 && (
+      isDebit3 ? (p.type === 'C' ? S3 > p.short : S3 < p.short)
+               : (p.type === 'C' ? S3 > p.long  : S3 < p.long)
+    );
+    const floored3 = bothITM3 ? Math.max(bsMid, w3 * 0.90) : bsMid;
+    return { mid: Math.min(Math.max(0, floored3), w3 || Infinity), isLive: false, isBs: true };
+  }
 
   // Partial: short leg only
   const sBid = (liveData[p.ticker]&&liveData[p.ticker][`bid_${p.short}_${p.type}`]);
