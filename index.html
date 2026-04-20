@@ -1694,7 +1694,7 @@ function renderTable() {
       const tod = new Date(); tod.setHours(0,0,0,0);
       const earnDate = new Date(e + 'T00:00:00');
       const daysUntil = Math.round((earnDate - tod) / 86400000);
-      return daysUntil === 0 || daysUntil === 1;
+      return daysUntil >= 0 && daysUntil <= 6;
     })();
     const hasNote = !!TICKER_NOTES[p.ticker];
     const noteTooltip = hasNote ? TICKER_NOTES[p.ticker].text.slice(0,80).replace(/'/g,"&#39;") : 'Add note';
@@ -1892,8 +1892,8 @@ function renderMobileWatch() {
     const lp = livePrices[ticker];
     const bias = BIAS[ticker] || 'neu';
     const hasPos = posTickers.has(ticker);
-    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
-    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARN':'→ NONE';
+    const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
+    const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NONE';
     const dayColor = lp ? (lp.pct>=0?'var(--green)':'var(--red)') : 'var(--muted)';
     const dayArrow = lp ? (lp.pct>=0?'▲':'▼') : '';
     return `<div style="background:var(--surface);border:1px solid ${hasPos?'rgba(0,212,255,.3)':'var(--border)'};border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
@@ -2502,7 +2502,7 @@ async function fetchEarningsOnly() {
   btn.disabled = true;
   btn.textContent = '⟳ EARN…';
 
-  const allTickers = [...new Set(POSITIONS.map(p => p.ticker))];
+  const allTickers = [...new Set([...POSITIONS.map(p => p.ticker), ...WATCHLIST])];
   await withTimeout(fetchEarnings(allTickers), 20000).catch(() => {});
 
   renderTable();
@@ -5828,7 +5828,7 @@ function removeWatchTicker(ticker) {
 
 function cycleBias(ticker) {
   const current = BIAS[ticker] || 'neu';
-  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : current === 'sell' ? 'earn' : 'neu';
+  BIAS[ticker] = current === 'neu' ? 'bull' : current === 'bull' ? 'bear' : current === 'bear' ? 'sell' : 'neu';
   saveWatchList();
   renderWatchList();
   renderTable();
@@ -6032,7 +6032,7 @@ async function runAIAnalysis() {
       return b === 'bull' ? 'var(--green)' : b === 'bear' ? 'var(--red)' : b === 'sell' ? 'var(--orange)' : 'var(--muted)';
     }
     function bcLabel(b) {
-      return b === 'bull' ? '\u2191 BULL' : b === 'bear' ? '\u2193 BEAR' : b === 'sell' ? 'SELL' : b === 'earn' ? 'EARN' : 'NONE';
+      return b === 'bull' ? '\u2191 BULL' : b === 'bear' ? '\u2193 BEAR' : b === 'sell' ? 'SELL' : 'NONE';
     }
 
     // Sort: "good now" entries first
@@ -6296,9 +6296,9 @@ function renderWatchList() {
         ? `<span class="wc-pos in">${posCount} pos</span>`
         : `<span class="wc-pos out">watching</span>`;
 
-      const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':bias==='earn'?'#c084fc':'var(--muted)';
-      const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':bias==='earn'?'📅 EARN':'→ NONE';
-      const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':bias==='earn'?'rgba(192,132,252,.12)':'rgba(74,85,104,.15)';
+      const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
+      const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NONE';
+      const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':'rgba(74,85,104,.15)';
       const biasBtn = `<button onclick="cycleBias('${ticker}')" style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">${biasLabel}</button>`;
 
       const removeBtn = isWatch
@@ -6332,17 +6332,35 @@ function renderWatchList() {
         </div>
       </div>`;
 
-      const tickerLabel = bias === 'bull'
-        ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.5);border-radius:4px;padding:2px 8px;background:rgba(0,232,138,0.1);color:var(--green)">${ticker}</div>`
-        : bias === 'bear'
-          ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,61,90,0.1);color:var(--red)">${ticker}</div>`
-          : isSell
-            ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,140,66,0.1);color:var(--orange)">${ticker}</div>`
-            : bias === 'earn'
-              ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(192,132,252,0.5);border-radius:4px;padding:2px 8px;background:rgba(192,132,252,0.1);color:#c084fc">${ticker}</div>`
+      // Earnings proximity check (7-day window) — automatic, replaces earn bias
+      const earnDate = earningsMap[ticker];
+      const earnImminentWatch = (() => {
+        if (!earnDate) return false;
+        const tod = new Date(); tod.setHours(0,0,0,0);
+        const ed = new Date(earnDate + 'T00:00:00');
+        const days = Math.round((ed - tod) / 86400000);
+        return days >= 0 && days <= 6;
+      })();
+      const earnBadgeHtml = earnDate ? (() => {
+        const tod = new Date(); tod.setHours(0,0,0,0);
+        const ed = new Date(earnDate + 'T00:00:00');
+        const days = Math.round((ed - tod) / 86400000);
+        if (days < 0) return '';
+        const label = days === 0 ? 'EARN TODAY' : days === 1 ? 'EARN TMW' : `EARN ${days}d`;
+        return `<div style="font-size:8px;font-weight:700;color:#c084fc;letter-spacing:.5px;margin-top:2px">${label}</div>`;
+      })() : '';
+
+      const tickerLabel = earnImminentWatch
+        ? `<div><div class="wc-ticker" style="display:inline-block;border:2px solid rgba(192,132,252,0.7);border-radius:4px;padding:2px 8px;background:rgba(192,132,252,0.12);color:#c084fc;box-shadow:0 0 8px rgba(192,132,252,0.3)">${ticker}</div>${earnBadgeHtml}</div>`
+        : bias === 'bull'
+          ? `<div><div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.5);border-radius:4px;padding:2px 8px;background:rgba(0,232,138,0.1);color:var(--green)">${ticker}</div></div>`
+          : bias === 'bear'
+            ? `<div><div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,61,90,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,61,90,0.1);color:var(--red)">${ticker}</div></div>`
+            : isSell
+              ? `<div><div class="wc-ticker" style="display:inline-block;border:1px solid rgba(255,140,66,0.5);border-radius:4px;padding:2px 8px;background:rgba(255,140,66,0.1);color:var(--orange)">${ticker}</div></div>`
               : hasNote
-                ? `<div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.4);border-radius:4px;padding:2px 8px;background:rgba(245,200,66,0.07);color:var(--yellow)">${ticker}</div>`
-                : `<div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:4px;padding:2px 8px">${ticker}</div>`;
+                ? `<div><div class="wc-ticker" style="display:inline-block;border:1px solid rgba(245,200,66,0.4);border-radius:4px;padding:2px 8px;background:rgba(245,200,66,0.07);color:var(--yellow)">${ticker}</div></div>`
+                : `<div><div class="wc-ticker" style="display:inline-block;border:1px solid transparent;border-radius:4px;padding:2px 8px">${ticker}</div></div>`;
 
       // Sector dropdown
       const currentSec = getSector(ticker);
