@@ -1741,12 +1741,8 @@ function renderTable() {
 
     const _tBoxStyle = ernImminent
       ? 'display:inline-block;border:2px solid rgba(167,139,250,.7);border-radius:4px;padding:1px 5px;background:rgba(167,139,250,.1);box-shadow:0 0 6px rgba(167,139,250,.3)'
-      : _tBias==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.5);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.08)'
-      : _tBias==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.5);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.08)'
-      : _tBias==='sell' ? 'display:inline-block;border:1px solid rgba(255,140,66,.5);border-radius:4px;padding:1px 5px;background:rgba(255,140,66,.08)'
       : _flowSig==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.35);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.04)'
       : _flowSig==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.35);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.04)'
-      : _flowSig==='weak' ? 'display:inline-block;border:1px solid rgba(203,213,225,.2);border-radius:4px;padding:1px 5px'
       : hasNote ? 'display:inline-block;border:2px solid rgba(245,200,66,.6);border-radius:4px;padding:1px 5px;background:rgba(245,200,66,.08);box-shadow:0 0 6px rgba(245,200,66,.25)'
       : 'display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 5px';
 
