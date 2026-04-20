@@ -107,7 +107,7 @@
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
   .strike-range{color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600}
-  .dte-val{font-weight:500}
+  .dte-val{color:var(--green);font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
   .stock-itm{color:var(--red);font-weight:700}
@@ -1325,20 +1325,18 @@ function getRollCost(p) {
 // Returns the highest-priority CC roll trigger, or null if none firing
 function getCCRollTrigger(p) {
   if (p.postype !== 'covered_call') return null;
-  const stock    = getLiveStock(p);
   const dte      = getDTE(p);
-  const { mid, isLive } = getSpreadMid(p);
+  const ext      = calcExtrinsic(p);
   const openPrem = Math.abs(p.open);
-  const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
-  const distToStrike = p.short - stock; // positive = stock below strike (OTM = safe)
+  // Remaining extrinsic as % of original premium collected
+  const extRemainPct = openPrem > 0 ? (ext.value / openPrem) * 100 : 100;
 
-  // Red triggers
-  if (stock > 0 && distToStrike <= p.short * 0.05) return 'strike';  // within 5% of strike (or ITM)
-  if (dte <= 21)                                    return 'dte';     // hard 21 DTE deadline
-  if (isLive && pctGain >= 50)                      return 'profit';  // 50% max profit
+  // Red: ≤15% extrinsic remaining — almost nothing left, act now
+  if (extRemainPct <= 15) return 'dte';
 
-  // Yellow triggers
-  if (dte <= 26)                                    return 'dte_watch';
+  // Orange: ≤25% extrinsic remaining — thinning, start thinking about next cycle
+  if (extRemainPct <= 25) return 'dte_watch';
+
   return null;
 }
 
@@ -1472,7 +1470,9 @@ function renderTable() {
         ? `<span style="color:var(--orange);font-size:9px" title="Delta from prior session — hit Refresh Live"> ~stale</span>`
         : `<span style="color:var(--muted);font-size:9px"> ~BS</span>`;
 
-    const dteClass=getDTE(p)<=7?'dte-urgent':getDTE(p)<=21?'dte-near':'dte-val';
+    const dteClass = p.postype === 'covered_call'
+      ? (getDTE(p) <= 5  ? 'dte-urgent' : getDTE(p) <= 10 ? 'dte-near' : 'dte-val')
+      : (getDTE(p) <= 21 ? 'dte-urgent' : getDTE(p) <= 30 ? 'dte-near' : 'dte-val');
     const sClass=itm?'stock-itm':Math.abs(stock-p.short)/p.short<0.03?'stock-atm':'stock-otm';
     const chgHtml=lp
       ? yahooReady
@@ -1504,7 +1504,9 @@ function renderTable() {
     const liveGain = calcLiveGain(p);
     const liveGainClass = isLongOption(p)
       ? (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg')
-      : (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg');
+      : p.postype === 'covered_call'
+        ? (liveGain >= 0 ? 'pnl-pos' : 'pnl-neu')   // CC: green=decay working, grey=underwater (not actionable)
+        : (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg');
     const liveGainStr = (liveGain >= 0 ? '+' : '') + liveGain.toFixed(1) + '%';
 
 
@@ -1548,20 +1550,21 @@ function renderTable() {
 
     // CC roll triggers — color logic:
     // RED   = actionable for bad reason (stock near/through strike)
-    // BLUE  = actionable for good reason (profit target or DTE deadline — good exits)
-    // ORANGE = watch, not yet actionable (26-30d window)
+    // BLUE  = actionable for good reason (extrinsic nearly gone — roll now)
+    // ORANGE = watch, extrinsic thinning (start thinking about next cycle)
     if (p.postype === 'covered_call') {
-      if (ccRoll === 'strike') {
-        const _stock2 = getLiveStock(p);
-        const _distPct = p.short > 0 ? ((_stock2 - p.short) / p.short * 100) : 0;
-        const _absPct = Math.abs(_distPct).toFixed(1);
-        const _dir = _stock2 > p.short ? 'ITM' : `${_absPct}% below`;
-        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ${_dir}</span>`;
+      if (ccRoll === 'dte') {
+        const _ext2 = calcExtrinsic(p);
+        const _op2  = Math.abs(p.open);
+        const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ROLL ${_pct2}% left</span>`;
       }
-      else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">📅 ROLL 21d</span>`;
-      else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ ROLL 50%</span>`;
-      else if (ccRoll === 'dte_watch')    statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">📅 30d SOON</span>`;
-      else if (ccRoll === 'profit_watch') statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔷 35% DECAY</span>`;
+      else if (ccRoll === 'dte_watch') {
+        const _ext3 = calcExtrinsic(p);
+        const _op3  = Math.abs(p.open);
+        const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
+        statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">👁 ${_pct3}% left</span>`;
+      }
     } else {
       // Profit-side alert for spreads/longs
       const profitLevel = getProfitLevel(p, liveGain);
@@ -1803,7 +1806,17 @@ function renderTable() {
         ${getDTE(p)}d
         <div style="color:var(--muted);font-size:10px;font-weight:400">${p.expiry.slice(5).replace('-','/')}</div>
       </td>
-      <td class="${p.postype==='covered_call' ? (itm ? '' : Math.abs(stock-p.short)/p.short<0.05 ? 'stock-atm' : 'stock-otm') : dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px${p.postype==='covered_call'&&itm ? ';color:var(--muted)' : ''}">$${stock.toFixed(2)}${chgHtml}</td>
+      <td class="${p.postype==='covered_call' ? (itm ? '' : Math.abs(stock-p.short)/p.short<0.05 ? 'stock-atm' : 'stock-otm') : dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px${p.postype==='covered_call'&&itm ? ';color:var(--muted)' : ''}">$${stock.toFixed(2)}${chgHtml}${(()=>{
+        if (p.postype !== 'covered_call' || stock <= 0 || p.short <= 0) return '';
+        const _dist  = p.short - stock;  // positive = OTM, negative = ITM
+        const _pct   = Math.abs(_dist) / p.short * 100;
+        const _label = _dist >= 0 ? 'OTM' : 'ITM';
+        const _color = _dist < 0 ? 'var(--red)'
+                     : _pct < 2  ? 'var(--red)'
+                     : _pct < 5  ? 'var(--orange)'
+                     : 'var(--green)';
+        return `<div style="font-size:10px;font-weight:600;color:${_color};margin-top:1px">$${Math.abs(_dist).toFixed(2)} / ${_pct.toFixed(1)}% ${_label}</div>`;
+      })()}</td>
       <td class="delta-cell ${p.postype==='covered_call' ? '' : dClass}" style="${p.postype==='covered_call' ? 'color:var(--muted)' : ''}">${deltaLabel}</td>
       <td>${extHtml}</td>
       <td class="iv-val">${iv.toFixed(1)}%${(liveData[p.ticker]&&liveData[p.ticker].iv)?'<span style="color:var(--green);font-size:8px"> ●</span>':'<span style="color:var(--muted);font-size:8px"> ~</span>'}${(() => { const ivr = liveData[p.ticker]&&liveData[p.ticker].ivr; if (ivr==null) return ''; return `<div style="font-size:11px;font-weight:600;color:var(--muted)">IVR ${Math.round(ivr)}</div>`; })()}</td>
