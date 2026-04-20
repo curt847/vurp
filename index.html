@@ -872,6 +872,7 @@
         <select class="form-select" id="f-postype" onchange="onPosTypeChange()">
           <option value="spread_credit">Credit Spread</option>
           <option value="spread_debit">Debit Spread</option>
+          <option value="iron_condor">Iron Condor</option>
           <option value="covered_call">Covered Call</option>
           <option value="long_call">Long Call</option>
           <option value="long_put">Long Put</option>
@@ -892,6 +893,23 @@
       <div class="form-group long-strike-group">
         <label class="form-label">Long Strike $</label>
         <input class="form-input" id="f-long" type="number" placeholder="e.g. 140"/>
+      </div>
+      <!-- Iron Condor extra strikes (hidden unless iron_condor selected) -->
+      <div class="form-group ic-group" style="display:none">
+        <label class="form-label">Short Call Strike $</label>
+        <input class="form-input" id="f-ic-sc" type="number" placeholder="e.g. 160"/>
+      </div>
+      <div class="form-group ic-group" style="display:none">
+        <label class="form-label">Long Call Strike $</label>
+        <input class="form-input" id="f-ic-lc" type="number" placeholder="e.g. 170"/>
+      </div>
+      <div class="form-group ic-group" style="display:none">
+        <label class="form-label">Call Credit $</label>
+        <input class="form-input" id="f-ic-callcredit" type="number" step="0.01" placeholder="e.g. 1.20"/>
+      </div>
+      <div class="form-group ic-group" style="display:none">
+        <label class="form-label">Put Credit $</label>
+        <input class="form-input" id="f-ic-putcredit" type="number" step="0.01" placeholder="e.g. 1.10"/>
       </div>
       <!-- Row 4: Contracts | Expiry Date -->
       <div class="form-group">
@@ -1698,18 +1716,45 @@ function renderTable() {
     })();
     const hasNote = !!TICKER_NOTES[p.ticker];
     const noteTooltip = hasNote ? TICKER_NOTES[p.ticker].text.slice(0,80).replace(/'/g,"&#39;") : 'Add note';
+
+    // ── Composite flow signal for ticker box outline ──
+    // Weighs: flow sentiment + whale sentiment (whale counts more if STRONG)
+    // + IVR context (high IVR = elevated = more weight on bearish signals)
     const _tBias = BIAS[p.ticker] || 'neu';
+    const _ivr   = liveData[p.ticker] && liveData[p.ticker].ivr != null ? liveData[p.ticker].ivr : null;
+    let _flowScore = 0;
+    if (flow && (flow.sentiment === 'bull' || flow.sentiment === 'bear')) {
+      const _fMult = flow.confidence === 'STRONG' ? 2 : flow.confidence === 'MOD' ? 1.2 : 0.7;
+      _flowScore += (flow.sentiment === 'bull' ? 1 : -1) * _fMult;
+    }
+    if (wArr.length && (wSent === 'bull' || wSent === 'bear')) {
+      const _wMult = wConf === 'STRONG' ? 2.5 : wConf === 'MOD' ? 1.5 : 0.8;
+      _flowScore += (wSent === 'bull' ? 1 : -1) * _wMult;
+    }
+    // IVR nudge: high IV slightly amplifies directional signals (premium environment)
+    if (_ivr !== null && Math.abs(_flowScore) > 0) {
+      const _ivrNudge = _ivr >= 70 ? 1.15 : _ivr >= 50 ? 1.05 : 1.0;
+      _flowScore *= _ivrNudge;
+    }
+    const _flowSig = _flowScore >= 1.5 ? 'bull' : _flowScore <= -1.5 ? 'bear' : Math.abs(_flowScore) >= 0.7 ? 'weak' : null;
+
     const _tBoxStyle = ernImminent
       ? 'display:inline-block;border:2px solid rgba(167,139,250,.7);border-radius:4px;padding:1px 5px;background:rgba(167,139,250,.1);box-shadow:0 0 6px rgba(167,139,250,.3)'
       : _tBias==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.5);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.08)'
       : _tBias==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.5);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.08)'
       : _tBias==='sell' ? 'display:inline-block;border:1px solid rgba(255,140,66,.5);border-radius:4px;padding:1px 5px;background:rgba(255,140,66,.08)'
+      : _flowSig==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.35);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.04)'
+      : _flowSig==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.35);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.04)'
+      : _flowSig==='weak' ? 'display:inline-block;border:1px solid rgba(203,213,225,.2);border-radius:4px;padding:1px 5px'
+      : hasNote ? 'display:inline-block;border:2px solid rgba(245,200,66,.6);border-radius:4px;padding:1px 5px;background:rgba(245,200,66,.08);box-shadow:0 0 6px rgba(245,200,66,.25)'
       : 'display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 5px';
+
     const tickerNameInner = `<span class="ticker-name${ernImminent?' ern-imminent':''}" style="${_tBoxStyle}">${p.ticker}</span>`;
     const tickerNameHtml = '<span onclick="openNoteModal(\'' + p.ticker + '\')" title="' + noteTooltip + '" style="cursor:pointer">' + tickerNameInner + '</span>';
-    const tdStyle = hasNote ? ' style="outline:2px solid var(--yellow);outline-offset:-2px;background:var(--yellow-dim)"' : '';
+    // Notes: yellow glow on the td is replaced — now inline box around ticker only (like earnings)
+    const tdStyle = '';
     const refreshBtn = '<button onclick="refreshTicker(\'' + p.ticker + '\',this)" title="Refresh" class="ticker-refresh-btn">⟳</button>';
-    const tickerCell = '<td' + tdStyle + '><div style="display:flex;align-items:center;gap:2px">' + tickerNameHtml + refreshBtn + '</div>' + (ernHtml ? '<div>' + ernHtml + '</div>' : '') + '</td>';
+    const tickerCell = '<td><div style="display:flex;align-items:center;gap:2px">' + tickerNameHtml + refreshBtn + '</div>' + (ernHtml ? '<div>' + ernHtml + '</div>' : '') + '</td>';
     const tr=document.createElement('tr');
     const isSellBias = (BIAS[p.ticker] || 'neu') === 'sell';
     tr.className=`row${itm?' row-itm':''}${isSellBias?' row-sell':''}`;
@@ -4214,35 +4259,53 @@ function recalcAllCollateral() {
 function onPosTypeChange() {
   const pt = document.getElementById('f-postype').value;
   const longGroup = document.querySelector('.long-strike-group');
+  const icGroups  = document.querySelectorAll('.ic-group');
   const typeSelect = document.getElementById('f-type');
   const shortLabel = document.getElementById('f-short-label');
+  const openLabel  = document.querySelector('label[for="f-open"], label.form-label + #f-open')
+                  || [...document.querySelectorAll('.form-label')].find(l => l.nextElementSibling && l.nextElementSibling.id === 'f-open');
   const isSingleLeg = pt === 'long_call' || pt === 'long_put';
+  const isIC = pt === 'iron_condor';
 
-  if (pt === 'covered_call') {
+  icGroups.forEach(g => g.style.display = isIC ? 'flex' : 'none');
+
+  if (isIC) {
+    longGroup.style.display = 'none';
+    typeSelect.disabled = true;
+    typeSelect.value = 'P';
+    shortLabel.textContent = 'Short Put Strike $';
+    const lgLabel = longGroup.querySelector('label');
+    if (lgLabel) lgLabel.textContent = 'Long Put Strike $';
+    if (openLabel) openLabel.textContent = 'Total Net Credit $ (call credit + put credit)';
+  } else if (pt === 'covered_call') {
     longGroup.style.display = 'none';
     typeSelect.value = 'C';
     typeSelect.disabled = true;
     shortLabel.textContent = 'Short Strike $';
+    if (openLabel) openLabel.textContent = 'Open Premium $ (per share — credit received or debit paid)';
   } else if (pt === 'long_call') {
     longGroup.style.display = 'none';
     typeSelect.value = 'C';
     typeSelect.disabled = true;
     shortLabel.textContent = 'Strike $';
+    if (openLabel) openLabel.textContent = 'Open Premium $ (per share — credit received or debit paid)';
   } else if (pt === 'long_put') {
     longGroup.style.display = 'none';
     typeSelect.value = 'P';
     typeSelect.disabled = true;
     shortLabel.textContent = 'Strike $';
+    if (openLabel) openLabel.textContent = 'Open Premium $ (per share — credit received or debit paid)';
   } else {
     longGroup.style.display = 'flex';
     typeSelect.disabled = false;
     shortLabel.textContent = 'Short Strike $';
+    if (openLabel) openLabel.textContent = 'Open Premium $ (per share — credit received or debit paid)';
   }
   updateCollateralPreview();
   const _chg = document.getElementById('conviction-hold-group');
   if (_chg) {
     const _pt2 = document.getElementById('f-postype').value;
-    _chg.style.display = (_pt2==='covered_call'||_pt2==='long_call'||_pt2==='long_put') ? 'none' : 'flex';
+    _chg.style.display = (_pt2==='covered_call'||_pt2==='long_call'||_pt2==='long_put'||_pt2==='iron_condor') ? 'none' : 'flex';
   }
 }
 
@@ -4257,6 +4320,19 @@ function updateCollateralPreview() {
   }
   const short = parseFloat(document.getElementById('f-short').value);
   const cts   = parseInt(document.getElementById('f-cts').value) || 1;
+  if (pt === 'iron_condor') {
+    const lp = parseFloat(document.getElementById('f-long').value);
+    const sc = parseFloat(document.getElementById('f-ic-sc').value);
+    const lc = parseFloat(document.getElementById('f-ic-lc').value);
+    if (isNaN(short) || isNaN(lp) || isNaN(sc) || isNaN(lc)) { prev.style.display='none'; return; }
+    const putWidth  = Math.abs(short - lp);
+    const callWidth = Math.abs(lc - sc);
+    const maxWidth  = Math.max(putWidth, callWidth);
+    const col = maxWidth * 100 * cts;
+    calc.textContent = `$${col.toLocaleString()} (max wing width: $${maxWidth} × ${cts} cts)`;
+    calc.style.color = 'var(--accent)';
+    prev.style.display = 'block'; return;
+  }
   if (pt === 'long_call' || pt === 'long_put') {
     const open = parseFloat(document.getElementById('f-open').value);
     if (isNaN(short) || isNaN(open)) { prev.style.display='none'; return; }
@@ -4274,7 +4350,7 @@ function updateCollateralPreview() {
 }
 
 // Wire up live preview
-['f-short','f-long','f-cts','f-open'].forEach(id => {
+['f-short','f-long','f-cts','f-open','f-ic-sc','f-ic-lc','f-ic-callcredit','f-ic-putcredit'].forEach(id => {
   var _el=document.getElementById(id);if(_el)_el.addEventListener('input', updateCollateralPreview);
 });
 
@@ -4285,8 +4361,8 @@ function showAddModal() {
   editingIdx = null;
   document.getElementById('posModalTitle').textContent = '+ Add Position';
   document.getElementById('posSaveBtn').textContent = 'SAVE';
-  ['f-ticker','f-short','f-long','f-cts','f-expiry','f-open']
-    .forEach(id => document.getElementById(id).value = '');
+  ['f-ticker','f-short','f-long','f-cts','f-expiry','f-open','f-ic-sc','f-ic-lc','f-ic-callcredit','f-ic-putcredit']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('f-type').value = 'P';
   const _cvClear = document.getElementById('f-conviction'); if(_cvClear) _cvClear.checked = false;
   document.getElementById('f-postype').value = 'spread_credit';
@@ -4363,6 +4439,43 @@ function savePosition() {
   const open    = parseFloat(document.getElementById('f-open').value);
   const err     = document.getElementById('posFormError');
   const isSingleLeg = postype === 'long_call' || postype === 'long_put';
+
+  // ── Iron Condor: validate + save as two separate spread_credit legs ──
+  if (postype === 'iron_condor') {
+    const icSC = parseFloat(document.getElementById('f-ic-sc').value);
+    const icLC = parseFloat(document.getElementById('f-ic-lc').value);
+    const icCC = parseFloat(document.getElementById('f-ic-callcredit').value);
+    const icPC = parseFloat(document.getElementById('f-ic-putcredit').value);
+    if (!ticker)                  { err.textContent='Ticker required';          err.style.display='block'; return; }
+    if (isNaN(short))             { err.textContent='Short put strike required'; err.style.display='block'; return; }
+    if (isNaN(long))              { err.textContent='Long put strike required';  err.style.display='block'; return; }
+    if (isNaN(icSC))              { err.textContent='Short call strike required';err.style.display='block'; return; }
+    if (isNaN(icLC))              { err.textContent='Long call strike required'; err.style.display='block'; return; }
+    if (isNaN(icCC)||isNaN(icPC)) { err.textContent='Call and put credits required'; err.style.display='block'; return; }
+    if (isNaN(cts)||cts<1)        { err.textContent='Contracts required';       err.style.display='block'; return; }
+    if (!expiry)                  { err.textContent='Expiry required';           err.style.display='block'; return; }
+    err.style.display = 'none';
+
+    const liveStockNow = (livePrices[ticker] && livePrices[ticker].price) || null;
+    const todayStr = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+
+    // Put leg: short put (higher) / long put (lower)
+    const putShort = Math.max(short, long);
+    const putLong  = Math.min(short, long);
+    const putCol   = Math.abs(putShort - putLong) * 100 * cts;
+    const putLeg   = { ticker, type:'P', postype:'spread_credit', short:putShort, long:putLong, cts, dte:calcDTE(expiry), expiry, stock:liveStockNow||putShort, openStock:liveStockNow||null, openStockDate:liveStockNow?todayStr:null, open:Math.abs(icPC), collateral:putCol, gain:0, remain:50, shortMid:icPC, longMid:0, convictionHold:false };
+
+    // Call leg: short call (lower) / long call (higher)
+    const callShort = Math.min(icSC, icLC);
+    const callLong  = Math.max(icSC, icLC);
+    const callCol   = Math.abs(callLong - callShort) * 100 * cts;
+    const callLeg   = { ticker, type:'C', postype:'spread_credit', short:callShort, long:callLong, cts, dte:calcDTE(expiry), expiry, stock:liveStockNow||callShort, openStock:liveStockNow||null, openStockDate:liveStockNow?todayStr:null, open:Math.abs(icCC), collateral:callCol, gain:0, remain:50, shortMid:icCC, longMid:0, convictionHold:false };
+
+    POSITIONS.push(putLeg, callLeg);
+    closePosModal();
+    renderTable(); updateStats(); saveToStorage();
+    return;
+  }
 
   if (!ticker)                                        { err.textContent='Ticker required';       err.style.display='block'; return; }
   if (isNaN(short))                                   { err.textContent='Strike required';       err.style.display='block'; return; }
