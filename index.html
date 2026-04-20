@@ -1507,7 +1507,7 @@ function renderTable() {
         const _distPct = p.short > 0 ? ((_stock2 - p.short) / p.short * 100) : 0;
         const _absPct = Math.abs(_distPct).toFixed(1);
         const _dir = _stock2 > p.short ? 'ITM' : `${_absPct}% below`;
-        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;color:var(--red)">🔔 ${_dir}</span>`;
+        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:3px 10px">🔔 ${_dir}</span>`;
       }
       else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">📅 ROLL 21d</span>`;
       else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
@@ -2033,7 +2033,7 @@ function renderOndsCard() {
           const { mid } = getSpreadMid(p);
           const openPrem = Math.abs(p.open);
           const pctGain  = openPrem > 0 ? ((openPrem - mid) / openPrem) * 100 : 0;
-          const t1Fire = price > 0 && distToStrike <= p.short * 0.03;  // within 3% of strike — immediate roll
+          const t1Fire = price > 0 && distToStrike <= p.short * 0.05;  // within 5% of strike — immediate roll
           const t2Fire = pctGain >= 50;
           const t3Fire = dte <= 21;
           const watchDTE = dte <= 26 && dte > 21;
