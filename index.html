@@ -900,7 +900,8 @@
       </div>
       <div class="form-group">
         <label class="form-label">Expiry Date</label>
-        <input class="form-input" id="f-expiry" type="date"/>
+        <input class="form-input" id="f-expiry" type="text" placeholder="MM/DD/YY" maxlength="8" autocomplete="off"
+          oninput="formatExpiryInput(this)"/>
       </div>
       <!-- Row 5: Open Premium full width -->
       <div class="form-group full">
@@ -1507,7 +1508,7 @@ function renderTable() {
         const _distPct = p.short > 0 ? ((_stock2 - p.short) / p.short * 100) : 0;
         const _absPct = Math.abs(_distPct).toFixed(1);
         const _dir = _stock2 > p.short ? 'ITM' : `${_absPct}% below`;
-        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:3px 10px">🔔 ${_dir}</span>`;
+        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ${_dir}</span>`;
       }
       else if (ccRoll === 'dte')    statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">📅 ROLL 21d</span>`;
       else if (ccRoll === 'profit') statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐ ROLL 50%</span>`;
@@ -4292,6 +4293,31 @@ function showAddModal() {
   document.getElementById('f-ticker').focus();
 }
 
+// Expiry date helpers — display as MM/DD/YY, store as YYYY-MM-DD
+function formatExpiryInput(input) {
+  // Strip non-digits
+  let v = input.value.replace(/\D/g, '');
+  if (v.length > 6) v = v.slice(0, 6);
+  // Auto-insert slashes: MM/DD/YY
+  if (v.length > 4) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
+  else if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+  input.value = v;
+}
+function expiryToISO(val) {
+  // Accepts MM/DD/YY or MM/DD/YYYY → YYYY-MM-DD
+  const parts = val.trim().split('/');
+  if (parts.length !== 3) return val;
+  let [mm, dd, yy] = parts;
+  if (yy.length === 2) yy = '20' + yy;
+  return `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+}
+function expiryFromISO(iso) {
+  // YYYY-MM-DD → MM/DD/YY
+  if (!iso || !iso.includes('-')) return iso;
+  const [yyyy, mm, dd] = iso.split('-');
+  return `${mm}/${dd}/${yyyy.slice(2)}`;
+}
+
 function showEditModal(idx) {
   editingIdx = idx;
   const p = POSITIONS[idx];
@@ -4308,7 +4334,7 @@ function showEditModal(idx) {
   document.getElementById('f-short').value    = p.short;
   document.getElementById('f-long').value     = p.long || '';
   document.getElementById('f-cts').value      = p.cts;
-  document.getElementById('f-expiry').value   = p.expiry;
+  document.getElementById('f-expiry').value   = expiryFromISO(p.expiry);
   document.getElementById('f-open').value     = Math.abs(p.open);
   const _cvEl = document.getElementById('f-conviction'); if(_cvEl) _cvEl.checked = !!(p.convictionHold);
   document.getElementById('posFormError').style.display = 'none';
@@ -4328,7 +4354,7 @@ function savePosition() {
   const short   = parseFloat(document.getElementById('f-short').value);
   const long    = parseFloat(document.getElementById('f-long').value) || 0;
   const cts     = parseInt(document.getElementById('f-cts').value);
-  const expiry  = document.getElementById('f-expiry').value;
+  const expiry  = expiryToISO(document.getElementById('f-expiry').value);
   const open    = parseFloat(document.getElementById('f-open').value);
   const err     = document.getElementById('posFormError');
   const isSingleLeg = postype === 'long_call' || postype === 'long_put';
@@ -4900,8 +4926,17 @@ function executeClose() {
   if (doRollAdd) {
     setTimeout(() => {
       showAddModal();
-      const tickerInput = document.getElementById('posTicker');
-      if (tickerInput) { tickerInput.value = rollTicker; tickerInput.dispatchEvent(new Event('input')); }
+      const tickerInput = document.getElementById('f-ticker');
+      if (tickerInput) {
+        tickerInput.value = rollTicker;
+        tickerInput.dispatchEvent(new Event('input'));
+        // If rolling a CC, pre-set the position type and focus next field
+        if (entry.typeLabel === 'CC') {
+          document.getElementById('f-postype').value = 'covered_call';
+          onPosTypeChange();
+        }
+        document.getElementById('f-short').focus();
+      }
     }, 150);
   }
 
