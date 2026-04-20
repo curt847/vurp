@@ -219,7 +219,7 @@
   .watch-card .wc-pos{font-size:9px;padding:2px 6px;border-radius:3px;display:inline-block}
   .watch-card .wc-pos.in{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
   .watch-card .wc-pos.out{background:#ffffff;color:#0a0c0f;border:1px solid rgba(255,255,255,.8);font-weight:700}
-  .watch-card .wc-remove{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
+  .watch-card .wc-remove{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:3px}
   .watch-card .wc-remove:hover{color:var(--red);background:var(--red-dim)}
   /* Hero row: ticker left (inline), price block right */
   .watch-card .wc-hero{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px}
@@ -6309,7 +6309,7 @@ function renderWatchList() {
       const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':'rgba(74,85,104,.15)';
       const biasBtn = `<button onclick="cycleBias('${ticker}')" style="margin-top:5px;background:${biasBg};border:1px solid ${biasColor};color:${biasColor};font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;cursor:pointer;width:100%;letter-spacing:.5px">${biasLabel}</button>`;
 
-      const removeBtn = isWatch
+      const removeBtn = isWatchOnly
         ? `<button class="wc-remove" onclick="removeWatchTicker('${ticker}')" title="Remove from watch list">✕</button>`
         : '';
 
@@ -6359,7 +6359,7 @@ function renderWatchList() {
       })() : '';
 
       const tickerLabel = earnImminentWatch
-        ? `<div><div class="wc-ticker" style="display:inline-block;border:2px solid rgba(192,132,252,0.7);border-radius:4px;padding:2px 8px;background:rgba(192,132,252,0.12);color:#c084fc;box-shadow:0 0 8px rgba(192,132,252,0.3)">${ticker}</div>${earnBadgeHtml}</div>`
+        ? `<div><div class="wc-ticker" style="display:inline-block;border:2px solid rgba(192,132,252,0.7);border-radius:4px;padding:2px 8px;background:rgba(192,132,252,0.12);color:#c084fc;box-shadow:0 0 8px rgba(192,132,252,0.3)">${ticker}</div></div>`
         : bias === 'bull'
           ? `<div><div class="wc-ticker" style="display:inline-block;border:1px solid rgba(0,232,138,0.5);border-radius:4px;padding:2px 8px;background:rgba(0,232,138,0.1);color:var(--green)">${ticker}</div></div>`
           : bias === 'bear'
@@ -6397,10 +6397,11 @@ function renderWatchList() {
       const sigSpacer = !sig ? `<span class="ai-signal" style="visibility:hidden">​</span>` : '';
 
       return `<div class="${cardClass}" style="position:relative">
-        ${removeBtn}
-        <div class="wc-top">
-          <div class="wc-top-left">
+        <div class="wc-top" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="min-height:16px">${earnBadgeHtml}</div>
+          <div style="display:flex;align-items:center;gap:6px">
             ${posBadge}
+            ${removeBtn}
           </div>
         </div>
         ${cornerIcon}
