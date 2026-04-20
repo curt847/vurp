@@ -1744,7 +1744,7 @@ function renderTable() {
       : _flowSig==='bull' ? 'display:inline-block;border:1px solid rgba(0,232,138,.35);border-radius:4px;padding:1px 5px;background:rgba(0,232,138,.04)'
       : _flowSig==='bear' ? 'display:inline-block;border:1px solid rgba(255,61,90,.35);border-radius:4px;padding:1px 5px;background:rgba(255,61,90,.04)'
       : hasNote ? 'display:inline-block;border:2px solid rgba(245,200,66,.6);border-radius:4px;padding:1px 5px;background:rgba(245,200,66,.08);box-shadow:0 0 6px rgba(245,200,66,.25)'
-      : 'display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 5px';
+      : 'display:inline-block;border:1px solid transparent;border-radius:4px;padding:1px 5px';
 
     const tickerNameInner = `<span class="ticker-name${ernImminent?' ern-imminent':''}" style="${_tBoxStyle}">${p.ticker}</span>`;
     const tickerNameHtml = '<span onclick="openNoteModal(\'' + p.ticker + '\')" title="' + noteTooltip + '" style="cursor:pointer">' + tickerNameInner + '</span>';
