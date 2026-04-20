@@ -1588,6 +1588,7 @@ function renderTable() {
     // ── Whale cell — near-term weighted (≤45 DTE gets 2× weight) ──
     const wArr = whaleData[p.ticker] || [];
     let whaleHtml = '<span style="color:var(--muted);font-size:10px">—</span>';
+    let wSent = 'mix', wConf = 'WEAK';
     if (wArr.length) {
       const today45 = new Date(); today45.setHours(0,0,0,0);
       const cutoff45 = today45.getTime() + 45*86400000;
@@ -1607,8 +1608,8 @@ function renderTable() {
         const ntBoost = exp <= cutoff45 ? 1.5 : 1;
         if (ws > 0) wBullScore += ws * ntBoost; else wBearScore += ws * ntBoost;
       });
-      const wSent = scoresToSentiment(wBullScore, wBearScore);
-      const wConf = sentimentConfidence(wBullScore, wBearScore);
+      wSent = scoresToSentiment(wBullScore, wBearScore);
+      wConf = sentimentConfidence(wBullScore, wBearScore);
 
       // Near-term trade count for tooltip context
       const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
