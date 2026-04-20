@@ -93,10 +93,10 @@
   .type-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
   /* Put Credit + Call Debit = BULLISH — light blue */
   .type-P-cr{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.4)}
-  .type-C-db{background:transparent;color:#63b3ed;border:1px solid rgba(99,179,237,.45);opacity:.85}
+  .type-C-db{background:rgba(99,179,237,.35);color:#0d1f2d;border:1px solid rgba(99,179,237,.7);font-weight:800}
   /* Call Credit + Put Debit = BEARISH — pink */
   .type-C-cr{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.4)}
-  .type-P-db{background:transparent;color:#ff64b4;border:1px solid rgba(255,100,180,.45);opacity:.85}
+  .type-P-db{background:rgba(255,100,180,.35);color:#1a0010;border:1px solid rgba(255,100,180,.7);font-weight:800}
   /* Covered call — muted gray */
   .type-cc{background:rgba(74,85,104,.2);color:var(--muted);border:1px solid var(--border)}
   /* Long call — green */
@@ -1242,7 +1242,16 @@ function getSpreadMid(p) {
   if (sBid != null && sAsk != null && lBid != null && lAsk != null) {
     const shortMid = (sBid + sAsk) / 2;
     const longMid  = (lBid + lAsk) / 2;
-    return { mid: Math.max(0, shortMid - longMid), isLive: true, isBs: false };
+    const isDebit  = p.postype === 'spread_debit';
+    const width    = Math.abs(p.short - p.long);
+    const S        = getLiveStock(p);
+    const bothITM  = S > 0 && p.long && (
+      isDebit ? (p.type === 'C' ? S > p.short : S < p.short)
+              : (p.type === 'C' ? S > p.long  : S < p.long)
+    );
+    let mid = Math.max(0, isDebit ? (longMid - shortMid) : (shortMid - longMid));
+    if (bothITM && width > 0) mid = Math.max(mid, width * 0.90);
+    return { mid: Math.min(mid, width), isLive: true, isBs: false };
   }
   if (sBid != null && sAsk != null) {
     const shortMid = (sBid + sAsk) / 2;
@@ -1671,9 +1680,11 @@ function renderTable() {
     // Collateral / cost basis display
     const collateralHtml = p.postype==='covered_call'
       ? '<span style="color:var(--muted)">stock</span>'
-      : isLong
-        ? `<span style="color:var(--yellow)">$${p.collateral.toLocaleString()}<span style="font-size:8px;color:var(--muted)"> paid</span></span>`
-        : '$' + p.collateral.toLocaleString();
+      : p.postype==='spread_debit'
+        ? '<span style="color:var(--muted)">—</span>'
+        : isLong
+          ? `<span style="color:var(--yellow)">$${p.collateral.toLocaleString()}<span style="font-size:8px;color:var(--muted)"> paid</span></span>`
+          : '$' + p.collateral.toLocaleString();
 
     // Delta column label — for long options, high delta is good
     const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--text);font-size:9px;font-weight:400;margin-top:1px">${src==='live' ? `●LIVE ${deltaRefreshTs||''}` : isStaleSession ? '~stale' : `~BS ${deltaRefreshTs||''}`}</div>`;
@@ -1964,6 +1975,7 @@ function updatePnlBar() {
   POSITIONS.forEach(p => {
     if (isLongOption(p)) return; // long options: skip from credit metrics
     if (p.postype === 'covered_call') return;
+    if (p.postype === 'spread_debit') return; // debit spreads: risk already paid as premium, no collateral held
     const openPrem = Math.abs(p.open);
     const { mid } = getSpreadMid(p);
     const cost = mid * 100 * p.cts;
@@ -2684,11 +2696,28 @@ async function fetchTicker(ticker) {
       if (bothRealNBBO && sBid != null && sAsk != null && lBid != null && lAsk != null) {
         const shortMid = (sBid + sAsk) / 2;
         const longMid  = (lBid + lAsk) / 2;
-        const rawMid   = shortMid - longMid;  // always positive after normLegs
+        // For debit spreads the long leg (bought) is more expensive than short (sold),
+        // so net cost = longMid - shortMid.  Credits remain shortMid - longMid.
+        const isDebit  = p.postype === 'spread_debit';
+        const rawMid   = isDebit ? (longMid - shortMid) : (shortMid - longMid);
         const width    = Math.abs(pShort - pLong);
 
-        if (rawMid > 0 && rawMid <= width * 0.995) {
-          liveData[ticker][liveKey]   = rawMid;
+        const S = (livePrices[ticker] && livePrices[ticker].price) || 0;
+        const bothITM = S > 0 && pLong && (
+          isDebit
+            ? (p.type === 'C' ? S > pShort : S < pShort)
+            : (p.type === 'C' ? S > pLong  : S < pLong)
+        );
+        // If both legs are ITM, quoted mid can be unreliable — floor at 90% of width
+        const sanitizedMid = bothITM ? Math.max(rawMid, width * 0.90) : rawMid;
+
+        if (sanitizedMid > 0 && sanitizedMid <= width * 0.995) {
+          liveData[ticker][liveKey]   = sanitizedMid;
+          liveData[ticker][liveKeyTs] = cycleId;
+          delete liveData[ticker][bsKey];
+        } else if (bothITM && sanitizedMid > width * 0.995) {
+          // Deep ITM floor may push above the width cap — store at 90% regardless
+          liveData[ticker][liveKey]   = width * 0.90;
           liveData[ticker][liveKeyTs] = cycleId;
           delete liveData[ticker][bsKey];
         }
@@ -2818,17 +2847,32 @@ async function fetchTicker(ticker) {
       const bsShort = bsTheoPrice(ticker, pShort, p.type, p.expiry);
       const bsLong  = pLong ? bsTheoPrice(ticker, pLong, p.type, p.expiry) : 0;
       const width   = Math.abs(pShort - (pLong || 0));
+      const isDebit = p.postype === 'spread_debit';
       let bsMid     = width > 0
-        ? Math.min(Math.max(0, bsShort - bsLong), width)
+        ? Math.min(Math.max(0, isDebit ? (bsLong - bsShort) : (bsShort - bsLong)), width)
         : Math.max(0, bsShort);
 
       // Deep ITM fallback: if BS spread mid rounds near zero but position is clearly ITM,
-      // use intrinsic value (how far ITM the short is, capped at spread width)
+      // use intrinsic value. For debit spreads ITM is measured from the long (bought) leg.
       if (bsMid < 0.01 && S > 0 && width > 0) {
-        const intrinsic = p.type === 'P'
-          ? Math.max(0, pShort - S)
-          : Math.max(0, S - pShort);
+        const intrinsic = isDebit
+          ? (p.type === 'C' ? Math.max(0, S - pLong)  : Math.max(0, pLong - S))
+          : (p.type === 'P' ? Math.max(0, pShort - S) : Math.max(0, S - pShort));
         bsMid = Math.min(intrinsic, width);
+      }
+
+      // Both-legs-ITM sanity floor: when stock has blown through both strikes, BS and
+      // stale NBBO quotes are unreliable. Floor at 90% of width — conservative enough
+      // to account for remaining time value / wide markets, but far better than near-zero.
+      // Credit spread: stock above both calls, or below both puts.
+      // Debit spread: same condition = near max profit, floor applies symmetrically.
+      if (S > 0 && width > 0 && pLong) {
+        const bothITM = isDebit
+          ? (p.type === 'C' ? S > pShort : S < pShort)   // debit: short leg is the further OTM one
+          : (p.type === 'C' ? S > pLong  : S < pLong);   // credit: long leg is the further OTM one
+        if (bothITM) {
+          bsMid = Math.max(bsMid, width * 0.90);
+        }
       }
 
       if (bsMid > 0) {
@@ -3473,6 +3517,7 @@ function showRollModal(idx) {
     <div class="modal-row"><span class="modal-label">Collateral</span><span class="modal-val">${
       p.postype === 'covered_call'
         ? (() => { const sh = (STOCKS.find(s=>s.ticker===p.ticker)||{}).shares || (p.cts*100); return `${sh.toLocaleString()} shares · ~$${Math.round(stock * sh).toLocaleString()}`; })()
+        : p.postype === 'spread_debit' ? '— (debit paid)'
         : '$' + p.collateral.toLocaleString()
     }</span></div>
 
