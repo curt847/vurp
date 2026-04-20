@@ -5899,17 +5899,41 @@ async function runAIAnalysis() {
     var sector  = getSector(ticker);
     var note    = (TICKER_NOTES && TICKER_NOTES[ticker]) ? TICKER_NOTES[ticker].text : null;
     var target  = (ENTRY_TARGETS && ENTRY_TARGETS[ticker]) ? '$' + ENTRY_TARGETS[ticker] : null;
-    var ivr     = watchIV[ticker] !== undefined ? watchIV[ticker] : (liveData[ticker] && liveData[ticker].ivr != null ? Math.round(liveData[ticker].ivr) : null);
+    var ld      = liveData[ticker] || {};
+    var fd      = flowData[ticker] || watchFlow[ticker] || null;
+    var ivr     = watchIV[ticker] !== undefined ? watchIV[ticker] : (ld.ivr != null ? Math.round(ld.ivr) : null);
     var ivrStr  = ivr !== null ? ivr + '/100' : 'unavailable';
-    var flow    = watchFlow[ticker] ? watchFlow[ticker].sentiment + '(' + watchFlow[ticker].confidence + ')' : null;
+    var ivPct   = ld.iv ? ld.iv.toFixed(1) + '%' : null;
 
+    // Flow — send sentiment + confidence + raw dollar split
+    var flowStr = null;
+    if (fd) {
+      flowStr = (fd.sentiment || '?') + '(' + (fd.confidence || '?') + ')';
+      if (fd.calls != null && fd.puts != null) {
+        var total = (fd.calls + fd.puts);
+        flowStr += ' $' + (total/1000).toFixed(0) + 'K total calls:$' + (fd.calls/1000).toFixed(0) + 'K puts:$' + (fd.puts/1000).toFixed(0) + 'K';
+      }
+    }
+
+    // Earnings
+    var earn = earningsMap[ticker] || null;
+
+    // Per-position details — include pct gain and stock-to-short-strike distance
     var posDetails = POSITIONS.filter(function(p){ return p.ticker === ticker; }).map(function(p) {
       var tl = p.postype === 'spread_credit' ? (p.type === 'P' ? 'P-CR' : 'C-CR')
              : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'P-DB' : 'C-DB')
              : p.postype === 'covered_call'  ? 'CC'
              : p.postype === 'long_call'     ? 'Call'
              : p.postype === 'long_put'      ? 'Put' : p.postype;
-      return tl + ' ' + p.short_strike + '/' + (p.long_strike || 'n/a') + ' exp:' + p.expiry + ' DTE:' + p.dte + ' cts:' + p.cts;
+      var { mid } = getSpreadMid(p);
+      var pctGain = p.open > 0 ? Math.round((1 - mid / Math.abs(p.open)) * 100) : null;
+      var stockNow = lp ? lp.price : null;
+      var distPct = (stockNow && p.short_strike) ? ((stockNow - p.short_strike) / stockNow * 100).toFixed(1) + '%' : null;
+      var distLabel = distPct ? (p.type === 'P' ? 'stock_above_short:' : 'stock_below_short:') + distPct : null;
+      return tl + ' ' + p.short_strike + '/' + (p.long_strike || 'n/a')
+        + ' exp:' + p.expiry + ' DTE:' + p.dte + ' cts:' + p.cts
+        + (pctGain !== null ? ' gain:' + pctGain + '%' : '')
+        + (distLabel ? ' ' + distLabel : '');
     }).join(' | ');
 
     return {
@@ -5922,20 +5946,28 @@ async function runAIAnalysis() {
       et:   target,
       n:    note,
       ivr:  ivrStr,
-      flow: flow
+      iv:   ivPct,
+      flow: flowStr,
+      earn: earn
     };
   });
 
   var today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  var prompt = 'Options trading assistant for experienced credit spread seller. Today: ' + today + ' '
-    + 'Fields: t=ticker, s=sector, p=price+chg, b=user_bias(bull/bear/neu), ip=inPosition, ps=positions, et=entryTarget, n=note, '
-    + 'ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium_selling), '
-    + 'flow=options_flow_sentiment. '
-    + 'IMPORTANT: ivr is the 1-year IV rank percentile 0-100. Use the actual number provided — do NOT assume low IV if ivr is unavailable, instead omit IV commentary. '
+  var prompt = 'Options trading assistant for experienced credit spread seller. Today: ' + today + '. '
+    + 'Field guide: t=ticker, s=sector, p=price+todayChg, b=user_bias(bull/bear/neu), ip=inPosition(1/0), '
+    + 'ps=positions(type strikes/exp/DTE/contracts/pctGainSoFar/stockDistanceFromShortStrike), '
+    + 'et=entryTarget, n=userNote, '
+    + 'ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
+    + 'iv=current_implied_volatility_percent, '
+    + 'flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
+    + 'earn=upcoming_earnings_date(avoid_new_positions_within_2_weeks). '
+    + 'CRITICAL: use the actual ivr number provided — never assume low IV if ivr=unavailable, just omit IV commentary. '
+    + 'For stock_above_short/stock_below_short: negative means stock has crossed the short strike (ITM threat). '
     + JSON.stringify(tickerData) + ' '
-    + 'For each: sentiment(bullish/bearish/neutral/mixed), read(1-2 sentences referencing actual ivr value if available), entry(good now or wait?), suggestion(specific trade idea), risk(key risk). '
-    + 'IN POSITION: note hold/roll/close. bull=sell puts/buy calls, bear=sell calls/buy puts. '
-    + 'Respond ONLY as raw JSON array no fences: [{"ticker":"X","sentiment":"bullish","read":"...","entry":"...","suggestion":"...","risk":"..."}] '
+    + 'For each ticker provide: sentiment(bullish/bearish/neutral/mixed), read(2 sentences max — cite ivr, flow direction, earnings if relevant), '
+    + 'entry(specific: good now / wait for X), suggestion(concrete trade with strikes if possible), risk(biggest specific threat). '
+    + 'IN POSITION: assess hold/roll/close based on gain%, DTE, and ITM distance. bull=sell puts/buy calls, bear=sell calls/buy puts. '
+    + 'Respond ONLY as raw JSON array, no markdown fences: [{"ticker":"X","sentiment":"...","read":"...","entry":"...","suggestion":"...","risk":"..."}] '
     + 'Include all ' + allTickers.length + ' tickers.';
 
   try {
