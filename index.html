@@ -5492,13 +5492,26 @@ async function askClaudeSingle(idx) {
     + 'Respond ONLY as raw JSON, no markdown fences: {"ticker":"X","sentiment":"...","read":"...","entry":"...","suggestion":"...","risk":"..."}';
 
   try {
-    const step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(JSON.stringify(tickerData)));
-    const resp  = await fetch(PROXY_URL + '?action=singleAnalysis');
+    const singlePrompt = 'Options trading assistant for experienced credit spread / covered call seller. Today: ' + today + '. '
+      + 'Field guide: t=ticker, s=sector, p=price+todayChg, b=user_bias(bull/bear/neu), '
+      + 'ps=existing_positions(type strikes/exp/DTE/contracts/pctGainSoFar), '
+      + 'n=userNote, ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
+      + 'iv=current_implied_volatility_percent, flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
+      + 'earn=upcoming_earnings(avoid_new_positions_within_2_weeks). '
+      + 'CRITICAL: use the actual ivr number provided. Respond ONLY as raw JSON, no markdown, no preamble: '
+      + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences max citing ivr/flow/price","entry":"good now OR wait for X","suggestion":"concrete trade with specific strikes and expiry","risk":"biggest specific threat"} '
+      + 'Data: ' + JSON.stringify(tickerData);
+
+    const step1 = await fetch(PROXY_URL + '?action=writeContext&content=' + encodeURIComponent(singlePrompt));
+    await step1.text();
+    const resp  = await fetch(PROXY_URL + '?action=claude&count=1');
     const raw   = await resp.text();
     const data  = JSON.parse(raw);
     const text  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const r     = JSON.parse(clean);
+    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    // Extract JSON object robustly in case model adds any preamble
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    const r = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
 
     function scColor(s) { return s==='bullish'?'var(--green)':s==='bearish'?'var(--red)':s==='mixed'?'var(--orange)':'var(--muted)'; }
     function scBg(s)    { return s==='bullish'?'var(--green-dim)':s==='bearish'?'var(--red-dim)':s==='mixed'?'var(--orange-dim)':'rgba(74,85,104,.15)'; }
