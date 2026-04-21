@@ -2176,10 +2176,10 @@ function renderOndsCard() {
           </div>
           <div style="color:var(--muted);font-size:13px;font-weight:600;margin-top:1px">${covPct}% covered · ${ccCts} CC</div>
         </div>
-        <div style="border:1px solid rgba(0,212,255,.25);border-radius:5px;padding:6px 12px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
-          <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(0,212,255,.15);padding-bottom:3px;margin-bottom:2px">CC Premium</div>
-          ${currentCCVal > 0 ? `<div style="display:flex;align-items:baseline;gap:8px"><span style="color:var(--muted);font-size:9px;width:46px">open</span><span style="color:var(--green);font-size:13px;font-weight:600">+$${Math.round(currentCCVal).toLocaleString()}</span></div>` : ''}
-          <div style="display:flex;align-items:baseline;gap:8px"><span style="color:var(--muted);font-size:9px;width:46px">all-time</span><span style="color:var(--teal);font-size:12px;font-weight:600" title="Net P&L on closed CCs + unrealized gain on open CCs">${(premBanked >= 0 ? '+' : '') + '$' + Math.round(premBanked).toLocaleString()}</span></div>
+        <div style="border:1px solid rgba(0,212,255,.25);border-radius:5px;padding:8px 14px;display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;text-align:center">
+          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(0,212,255,.15);padding-bottom:4px;margin-bottom:2px;width:100%;text-align:center">CC Premium</div>
+          ${currentCCVal > 0 ? `<div style="display:flex;align-items:baseline;gap:8px;justify-content:center"><span style="color:var(--muted);font-size:10px;width:50px;text-align:right">open</span><span style="color:var(--green);font-size:14px;font-weight:600">+$${Math.round(currentCCVal).toLocaleString()}</span></div>` : ''}
+          <div style="display:flex;align-items:baseline;gap:8px;justify-content:center"><span style="color:var(--muted);font-size:10px;width:50px;text-align:right">all-time</span><span style="color:var(--teal);font-size:13px;font-weight:600" title="Net P&L on closed CCs + unrealized gain on open CCs">${(premBanked >= 0 ? '+$' : '-$') + Math.abs(Math.round(premBanked)).toLocaleString()}</span></div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${triggerHtml}</div>
