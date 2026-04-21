@@ -6431,9 +6431,11 @@ async function runAIAnalysis() {
     // Store signals for watch card badges
     AI_SIGNALS = {};
     results.forEach(function(r) {
-      var good = !(r.entry.toLowerCase().indexOf('wait') >= 0 || r.entry.toLowerCase().indexOf('avoid') >= 0);
+      var entry_lc = r.entry.toLowerCase();
+      var good = !(entry_lc.indexOf('wait') >= 0 || entry_lc.indexOf('avoid') >= 0 || entry_lc.indexOf('no trade') >= 0 || entry_lc.indexOf('no_trade') >= 0);
       AI_SIGNALS[r.ticker] = {
         good:         good,
+        entry:        r.entry        || '',
         trade_type:   r.trade_type   || null,
         entry_detail: r.entry_detail || null,
         sentiment:    r.sentiment    || 'neutral'
@@ -6918,7 +6920,17 @@ function renderWatchList() {
       const sigHtml = (sig && sig.good)
         ? `<span class="ai-signal${sig.sentiment === 'bearish' ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
         : (sig && !sig.good)
-          ? `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">⏳ wait</span>`
+          ? (() => {
+              const el = sig.entry ? sig.entry.toLowerCase() : '';
+              const icon = el.includes('no trade') ? '🚫' : '⏳';
+              const label = el.includes('no trade') ? 'no trade'
+                          : el.includes('macd')     ? 'wait · MACD'
+                          : el.includes('rsi')      ? 'wait · RSI'
+                          : el.includes('bounce')   ? 'wait · bounce'
+                          : el.includes('pullback') ? 'wait · pullback'
+                          : 'wait';
+              return `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">${icon} ${label}</span>`;
+            })()
           : '';
 
       // Spacer so bias button aligns across all cards when no signal yet
