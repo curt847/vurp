@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RollWatch v2</title>
+<title>RollWatch v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -572,7 +572,7 @@
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-collected" style="color:var(--accent)">—</div>
-    <div class="pnl-stat-lbl">Premium Collected</div>
+    <div class="pnl-stat-lbl">Total Extrinsic</div>
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-toclose" style="color:var(--text)">—</div>
@@ -584,7 +584,7 @@
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-pct" style="color:var(--text)">—</div>
-    <div class="pnl-stat-lbl">% Max Profit Captured</div>
+    <div class="pnl-stat-lbl">% of Extrinsic</div>
     <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-bar-fill" style="width:0%;background:var(--green)"></div></div>
   </div>
   <div class="pnl-stat">
@@ -2006,7 +2006,7 @@ function renderMobileWatch() {
 // P&L SUMMARY BAR
 // ══════════════════════════════════════════
 function updatePnlBar() {
-  let totalCollected = 0, totalToClose = 0, totalCollateral = 0, toClose45d = 0, ext45d = 0;
+  let totalCollected = 0, totalToClose = 0, totalCollateral = 0, toClose45d = 0, ext45d = 0, totalExtrinsic = 0;
   POSITIONS.forEach(p => {
     if (isLongOption(p)) return; // long options: skip from credit metrics
     if (p.postype === 'covered_call') return;
@@ -2017,6 +2017,10 @@ function updatePnlBar() {
     totalCollected  += openPrem * 100 * p.cts;
     totalToClose    += cost;
     totalCollateral += p.collateral;
+    // Total Extrinsic: pure time value remaining across all positions
+    const stockAll = getLiveStock(p);
+    const intrAll  = p.type === 'P' ? Math.max(0, p.short - stockAll) : Math.max(0, stockAll - p.short);
+    totalExtrinsic += Math.max(0, mid - intrAll) * 100 * p.cts;
     if (getDTE(p) <= 45) {
       toClose45d += cost;
       // Extrinsic ≤45d: pure time value remaining (what's still working for you)
@@ -2027,7 +2031,7 @@ function updatePnlBar() {
     }
   });
   const netPnL    = totalCollected - totalToClose;
-  const pctCaptured = totalCollected > 0 ? (netPnL / totalCollected) * 100 : 0;
+  const pctCaptured = totalExtrinsic > 0 ? (netPnL / totalExtrinsic) * 100 : 0;
   const pctCapped = Math.max(0, Math.min(100, pctCaptured));
   const pnlColor  = netPnL >= 0 ? 'var(--green)' : 'var(--red)';
   const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 40 ? 'var(--yellow)' : 'var(--orange)';
@@ -2067,7 +2071,7 @@ function updatePnlBar() {
   document.getElementById('pnl-ext-pct').style.color   = '#f0a070';
   document.getElementById('pnl-ext-bar-fill').style.width = extPct45 + '%';
   document.getElementById('pnl-ext-bar-fill').style.background = extBarColor;
-  document.getElementById('pnl-collected').textContent = fmt(totalCollected);
+  document.getElementById('pnl-collected').textContent = fmt(totalExtrinsic);
   document.getElementById('pnl-toclose').textContent   = fmt(totalToClose);
   document.getElementById('pnl-toclose-45d').textContent = fmt(toClose45d);
   document.getElementById('pnl-netpnl').textContent    = (netPnL >= 0 ? '+' : '-') + fmt(netPnL);
