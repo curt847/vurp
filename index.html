@@ -546,7 +546,7 @@
   <div class="stat stat-accent"><div class="stat-val" id="s-total">59</div><div class="stat-lbl">Positions</div></div>
   <div class="stat"><div class="stat-val" id="s-itm" style="color:var(--red)">—</div><div class="stat-lbl">ITM</div></div>
   <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple)">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
-  <div class="stat"><div class="stat-val" id="s-profitable" style="color:var(--green)">—</div><div class="stat-lbl">✅ Profitable</div></div>
+  <div class="stat"><div class="stat-val" id="s-profitable" style="font-size:18px">—</div><div class="stat-lbl">P&amp;L Split</div></div>
   <div class="stat"><div class="stat-val" id="s-netdelta" style="color:var(--accent)">—</div><div class="stat-lbl">β-Wtd Δ / 1%</div></div>
   <div class="stat" style="cursor:pointer" title="Click to set baseline">
     <div style="display:flex;align-items:center;justify-content:center;gap:6px">
@@ -1876,15 +1876,20 @@ function renderTable() {
 
 function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
-  let col=0,itm=0,ern=0,profitable=0,netDelta=0;
+  let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0;
   POSITIONS.forEach(p=>{
     if (!isLongOption(p)) cnt[getAlertLevel(p)]++;
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
-    // Profitable count
+    // Dollar-weighted P&L split
     const g = calcLiveGain(p);
-    if (!isNaN(g) && g > 0) profitable++;
+    if (!isNaN(g)) {
+      const openPrem = Math.abs(p.open || 0);
+      const dollarPnl = (g / 100) * openPrem * (p.cts || 1) * 100;
+      if (dollarPnl >= 0) pnlWin += dollarPnl;
+      else pnlLoss += dollarPnl;
+    }
     // Beta-weighted delta — normalized to SPY, result = $ move per 1% SPY move
     const spyPrice = (livePrices['SPY'] && livePrices['SPY'].price) || 560; // fallback if SPY not loaded
     const beta = (livePrices[p.ticker] && livePrices[p.ticker].beta) || 1.0;
@@ -1911,7 +1916,15 @@ function updateStats() {
   const colEl=document.getElementById('s-collateral'); if(colEl) colEl.textContent='$'+(col/1000).toFixed(1)+'K';
   document.getElementById('s-earnings').textContent=ern||'—';
   const profEl = document.getElementById('s-profitable');
-  if (profEl) { profEl.textContent = POSITIONS.length ? `${profitable}/${POSITIONS.length}` : '—'; }
+  if (profEl) {
+    const fmt = v => v >= 1000 ? `$${(v/1000).toFixed(1)}K` : `$${Math.round(v)}`;
+    if (pnlWin === 0 && pnlLoss === 0) {
+      profEl.textContent = '—';
+      profEl.style.color = 'var(--muted)';
+    } else {
+      profEl.innerHTML = `<span style="color:var(--green)">${fmt(pnlWin)}</span><span style="color:var(--muted);font-size:14px"> / </span><span style="color:var(--red)">${fmt(Math.abs(pnlLoss))}</span>`;
+    }
+  }
   const ndEl = document.getElementById('s-netdelta');
   if (ndEl) {
     const spyPrice = (livePrices['SPY'] && livePrices['SPY'].price) || 560;
