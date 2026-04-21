@@ -4465,12 +4465,7 @@ function loadFromStorage() {
   } catch(e) {}
   // NOTE: intentionally NOT calling saveToStorage() here —
   // that would push stale hardcoded positions to Drive before driveLoad() runs.
-  // Check for expired positions on load
-  setTimeout(function() {
-    checkExpiredPositions();
-    const expired = POSITIONS.filter(p => getDTE(p) < 0);
-    if (expired.length) showExpiryQueue();
-  }, 800);
+
 }
 
 // Recalc collateral and back-calculate entryDelta for existing positions
@@ -7263,6 +7258,13 @@ driveLoad().then(function(loaded) {
   updatePortfolioStat();
   updatePnlBar();
   driveReady = true; // now safe to auto-push on user changes
+
+  // Check for expired positions after all data is loaded
+  checkExpiredPositions();
+  const _expired = POSITIONS.filter(p => getDTE(p) < 0);
+  if (_expired.length) {
+    setTimeout(showExpiryQueue, 400);
+  }
 });
 
 // Earnings populated on demand via EXTRAS button
