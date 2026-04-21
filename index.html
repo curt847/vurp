@@ -2267,7 +2267,7 @@ async function fetchYahooQuote(ticker) {
     const r = await fetch(`${PROXY_URL}?action=quote&ticker=${encodeURIComponent(ticker)}`, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return null;
     const j = await r.json();
-    if (j && j.price != null && j.pct != null) return { price: j.price, pct: j.pct };
+    if (j && j.price != null && j.pct != null) return { price: j.price, pct: j.pct, vol: j.vol ?? null, avgVol: j.avgVol ?? null };
     return null;
   } catch(e) { return null; }
 }
@@ -2284,6 +2284,69 @@ async function fetchYahooBulk(tickers) {
     }));
   }
   return results;
+}
+
+// Fetch 1Y daily OHLC from Yahoo and compute RSI(14), MACD(12/26/9), MA50, MA200, 52wk hi/lo
+async function fetchTechnicals(ticker) {
+  try {
+    const url = `${PROXY_URL}?action=ohlc&ticker=${encodeURIComponent(ticker)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const closes = j && j.closes;
+    if (!closes || closes.length < 30) return null;
+
+    // ── MA50 / MA200 ──────────────────────────────────────
+    const ma = (arr, n) => arr.length >= n
+      ? (arr.slice(-n).reduce((a,b) => a+b, 0) / n).toFixed(2)
+      : null;
+    const ma50  = ma(closes, 50);
+    const ma200 = ma(closes, 200);
+
+    // ── 52-week hi / lo ───────────────────────────────────
+    const year = closes.slice(-252);
+    const hi52 = Math.max(...year).toFixed(2);
+    const lo52 = Math.min(...year).toFixed(2);
+
+    // ── RSI(14) ───────────────────────────────────────────
+    let gains = 0, losses = 0;
+    for (let i = closes.length - 14; i < closes.length; i++) {
+      const d = closes[i] - closes[i-1];
+      if (d >= 0) gains += d; else losses -= d;
+    }
+    const avgG = gains / 14, avgL = losses / 14;
+    const rsi = avgL === 0 ? 100 : (100 - 100 / (1 + avgG / avgL));
+
+    // ── MACD(12,26,9) ─────────────────────────────────────
+    const ema = (arr, n) => {
+      const k = 2 / (n + 1);
+      let e = arr.slice(0, n).reduce((a,b) => a+b, 0) / n;
+      for (let i = n; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
+      return e;
+    };
+    const macdLine   = closes.length >= 26 ? ema(closes, 12) - ema(closes, 26) : null;
+    // signal = 9-period EMA of macd — approximate with last 9 daily macd values
+    let macdSignal = null, macdHist = null;
+    if (macdLine !== null && closes.length >= 35) {
+      const macdSeries = [];
+      for (let i = closes.length - 35; i <= closes.length - 1; i++) {
+        macdSeries.push(ema(closes.slice(0, i+1), 12) - ema(closes.slice(0, i+1), 26));
+      }
+      macdSignal = ema(macdSeries, 9);
+      macdHist   = macdLine - macdSignal;
+    }
+
+    return {
+      rsi:    Math.round(rsi),
+      macd:   macdLine   !== null ? macdLine.toFixed(2)   : null,
+      signal: macdSignal !== null ? macdSignal.toFixed(2) : null,
+      hist:   macdHist   !== null ? macdHist.toFixed(2)   : null,
+      ma50,
+      ma200,
+      hi52,
+      lo52
+    };
+  } catch(e) { return null; }
 }
 
 async function fetchHdrPrice(ticker) {
@@ -2489,6 +2552,8 @@ async function fetchAll() {
         livePrices[t].change = livePrices[t].price * yq.pct / 100;
         // Store Yahoo-derived prev close so day $ shares same reference as day %
         if (yq.pct !== 0) livePrices[t].prev = livePrices[t].price / (1 + yq.pct / 100);
+        if (yq.vol    != null) livePrices[t].vol    = yq.vol;
+        if (yq.avgVol != null) livePrices[t].avgVol = yq.avgVol;
       }
     }
     yahooReady = true; // pct values now corrected — safe to render colors
@@ -5681,6 +5746,10 @@ async function askClaudeSingle(idx) {
   const fd   = flowData[ticker]   || {};
   const bias = BIAS[ticker] || 'neu';
 
+  // Fetch technicals for this ticker
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals for ' + ticker + '\u2026</div></div>';
+  const tc = await fetchTechnicals(ticker);
+
   const ivr    = ld.ivr != null ? ld.ivr : null;
   const ivrStr = ivr !== null ? ivr + '/100' : 'unavailable';
   const ivPct  = ld.iv ? ld.iv.toFixed(1) + '%' : null;
@@ -5720,7 +5789,23 @@ async function askClaudeSingle(idx) {
     ivr:  ivrStr,
     iv:   ivPct,
     flow: flowStr,
-    earn: earn
+    earn: earn,
+    vol: (function() {
+      var v = lp.vol, a = lp.avgVol;
+      if (!v || !a || a === 0) return null;
+      var ratio = (v / a).toFixed(2);
+      var label = ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low';
+      return label + '(' + ratio + 'x avg)';
+    })(),
+    tech: tc ? (function() {
+      var parts = [];
+      if (tc.rsi   != null) parts.push('RSI:' + tc.rsi);
+      if (tc.macd  != null) parts.push('MACD:' + tc.macd + ' sig:' + tc.signal + ' hist:' + tc.hist);
+      if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
+      if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
+      if (tc.hi52  != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
+      return parts.join(' ') || null;
+    })() : null
   };
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
@@ -5736,7 +5821,11 @@ async function askClaudeSingle(idx) {
       + 'ps=existing_positions(type strikes/expiry/DTE/contracts/pctGainSoFar), '
       + 'n=userNote, ivr=IV_rank_0to100(50+=elevated good for premium selling; <30=low avoid selling premium), '
       + 'iv=current_implied_volatility_pct, flow=optionsFlowSentiment(confidence) total$ calls$ puts$, '
-      + 'earn=upcoming_earnings_date. '
+      + 'vol=today_volume_vs_20day_avg(high=2x+ strong conviction, above-avg=1.2-2x, normal=0.8-1.2x, low=below 0.8x weak conviction), '
+      + 'earn=upcoming_earnings_date, '
+      + 'tech=RSI(14) MACD(line/signal/histogram) MA50 MA200 52wkHigh 52wkLow. '
+      + 'Use tech: RSI>70=overbought(wait for cooldown), RSI<30=oversold(bearish). MACD hist rising=bullish momentum, falling=bearish. Price near 52wkHigh=bullish trend, near 52wkLow=bearish/avoid. '
+      + 'High volume confirms signals, low volume = skepticism. '
       + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
       + 'DATA: ' + JSON.stringify(tickerData) + ' '
       + (isNearMax
@@ -6193,6 +6282,14 @@ async function runAIAnalysis() {
     } catch(e) {}
   }));
 
+  // Fetch technicals (RSI, MACD, MAs, 52wk) for all tickers
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals\u2026</div></div>';
+  var techData = {};
+  await Promise.all(allTickers.map(async function(t) {
+    var tech = await fetchTechnicals(t);
+    if (tech) techData[t] = tech;
+  }));
+
   var tickerData = allTickers.map(function(ticker) {
     var lp      = livePrices[ticker];
     var bias    = BIAS[ticker] || 'neu';
@@ -6249,7 +6346,23 @@ async function runAIAnalysis() {
       ivr:  ivrStr,
       iv:   ivPct,
       flow: flowStr,
-      earn: earn
+      earn: earn,
+      tech: techData[ticker] ? (function(tc) {
+        var parts = [];
+        if (tc.rsi   != null) parts.push('RSI:' + tc.rsi);
+        if (tc.macd  != null) parts.push('MACD:' + tc.macd + ' sig:' + tc.signal + ' hist:' + tc.hist);
+        if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
+        if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
+        if (tc.hi52  != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
+        return parts.join(' ') || null;
+      })(techData[ticker]) : null,
+      vol: (function() {
+        var v = lp && lp.vol, a = lp && lp.avgVol;
+        if (!v || !a || a === 0) return null;
+        var ratio = (v / a).toFixed(2);
+        var label = ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low';
+        return label + '(' + ratio + 'x avg)';
+      })()
     };
   });
 
@@ -6261,7 +6374,13 @@ async function runAIAnalysis() {
     + 'ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
     + 'iv=current_implied_volatility_percent, '
     + 'flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
-    + 'earn=upcoming_earnings_date(avoid_new_positions_within_2_weeks). '
+    + 'earn=upcoming_earnings_date(avoid_new_positions_within_2_weeks), '
+    + 'tech=RSI(14) MACD(12/26/9 line/signal/histogram) MA50 MA200 52wkHigh 52wkLow, '
+    + 'vol=today_volume_vs_avg(high=2x+_strong_conviction above-avg=1.2-2x normal=0.8-1.2x low=below_0.8x_weak_conviction). '
+    + 'High volume confirms flow signals and price moves. Low volume = treat directional signals with skepticism. '
+    + 'Use tech to sharpen entries: RSI>70=overbought(caution for bulls) RSI<30=oversold(caution for bears). '
+    + 'MACD hist positive+rising=bullish momentum negative+falling=bearish. '
+    + 'Price vs MA50/MA200=trend context. 52wk range=where price sits in its annual range. '
     + 'CRITICAL: use the actual ivr number provided — never assume low IV if ivr=unavailable, just omit IV commentary. '
     + 'For stock_above_short/stock_below_short: negative means stock has crossed the short strike (ITM threat). '
     + JSON.stringify(tickerData) + ' '
@@ -6441,6 +6560,33 @@ async function runAISuggest() {
       var out = {};
       posTickerList.concat(watchOnly).forEach(function(t) {
         if (earningsMap[t]) out[t] = earningsMap[t];
+      });
+      return out;
+    })(),
+    volByTicker: (function() {
+      var out = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        var lp = livePrices[t];
+        if (lp && lp.vol && lp.avgVol && lp.avgVol > 0) {
+          var ratio = (lp.vol / lp.avgVol).toFixed(2);
+          var label = ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low';
+          out[t] = label + '(' + ratio + 'x)';
+        }
+      });
+      return out;
+    })(),
+    techByTicker: (function() {
+      var out = {};
+      posTickerList.concat(watchOnly).forEach(function(t) {
+        var tc = typeof techData !== 'undefined' && techData[t];
+        if (!tc) return;
+        var parts = [];
+        if (tc.rsi   != null) parts.push('RSI:' + tc.rsi);
+        if (tc.hist  != null) parts.push('MACDhist:' + tc.hist);
+        if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
+        if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
+        if (tc.hi52  != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
+        if (parts.length) out[t] = parts.join(' ');
       });
       return out;
     })()
