@@ -6668,10 +6668,95 @@ async function runAIDiscover() {
   btn.textContent = 'SCOUTING...';
   content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Scanning universe for new opportunities\u2026</div></div>';
 
-  // Build profile (same shape as suggest, but no live prices needed — backend does the work)
+  // Build profile with live data for candidate universe tickers
   var posTickers    = new Set(POSITIONS.map(function(p){ return p.ticker; }));
   var watchOnly     = WATCHLIST.filter(function(t){ return !posTickers.has(t); });
   var posTickerList = Array.from(posTickers);
+  var alreadyHave   = new Set(posTickerList.concat(WATCHLIST));
+
+  // DISCOVER_UNIVERSE defined in AppScript — mirror it here for live data fetching
+  var DISC_UNIVERSE = [
+    'AAPL','MSFT','NVDA','AMD','AVGO','ORCL','CRM','NOW','SNOW','PANW','CRWD','NET','MRVL','AMAT','KLAC',
+    'AMZN','META','GOOG','TSLA','NFLX','JPM','GS','MS','BAC','V','MA','AXP','BLK','SCHW',
+    'UNH','LLY','JNJ','ABBV','MRK','TMO','ISRG','DHR','DXCM',
+    'XOM','CVX','SLB','OXY','MPC','VLO','CAT','DE','HON','GE','RTX','LMT','UPS','FDX',
+    'COST','WMT','TGT','MCD','SBUX','NKE','DIS','AMT','PLD','O','NEE','DUK',
+    'SPY','QQQ','IWM','GLD','TLT','XLE','XLF','XLK','ARKK',
+    'PLTR','COIN','HOOD','RBLX','UBER','LYFT','RIVN','SOFI'
+  ];
+  var candidates = DISC_UNIVERSE.filter(function(t){ return !alreadyHave.has(t); });
+
+  // Fetch live quotes + technicals for candidates we don't already have cached
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">●</span><span class="aip-dot">●</span><span class="aip-dot">●</span><div style="margin-top:8px">Fetching live data for ' + candidates.length + ' candidate tickers…</div></div>';
+
+  // Fetch in batches of 8 to avoid overwhelming the proxy
+  async function fetchCandidateData(tickers) {
+    var BATCH = 8;
+    for (var i = 0; i < tickers.length; i += BATCH) {
+      var batch = tickers.slice(i, i + BATCH);
+      await Promise.all(batch.map(async function(t) {
+        // Quote (price + vol) if not cached
+        if (!livePrices[t]) {
+          try {
+            var r = await fetch(PROXY_URL + '?action=quote&ticker=' + t);
+            var d = await r.json();
+            if (d.price) livePrices[t] = { price: d.price, pct: d.pct || 0, vol: d.vol, avgVol: d.avgVol };
+          } catch(e) {}
+        }
+        // Technicals if not cached
+        if (typeof techData === 'undefined' || !techData[t]) {
+          try { await fetchTechnicals(t); } catch(e) {}
+        }
+        // IV rank if not cached
+        if (!(liveData[t] && liveData[t].ivr != null)) {
+          try {
+            var ir = await uw('/api/stock/' + t + '/iv-rank');
+            var arr = Array.isArray(ir && ir.data) ? ir.data : [];
+            if (arr.length) {
+              var val = parseFloat(arr[0].iv_rank_1y || arr[0].iv_rank || arr[0].rank);
+              if (!isNaN(val)) { if (!liveData[t]) liveData[t] = {}; liveData[t].ivr = Math.round(val); }
+            }
+          } catch(e) {}
+        }
+        // Flow if not cached
+        if (!flowData[t]) {
+          try {
+            var fr = await uw('/api/stock/' + t + '/flow-alerts').catch(function(){ return null; });
+            if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + t + '/flow-recent').catch(function(){ return null; });
+            if (fr && fr.data && fr.data.length) {
+              var bullScore = 0, bearScore = 0, calls = 0, puts = 0;
+              fr.data.forEach(function(x) {
+                var f = extractFlowFields(x);
+                if (!f.type || f.premium <= 0) return;
+                if (f.type === 'C') calls += f.premium; else puts += f.premium;
+                var w = scoreFlowTrade(f) * Math.sqrt(f.premium / 100000);
+                if (w > 0) bullScore += w; else bearScore += Math.abs(w);
+              });
+              var total = calls + puts;
+              if (total >= 50000) {
+                flowData[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), calls, puts };
+              }
+            }
+          } catch(e) {}
+        }
+        // Earnings if not cached
+        if (!earningsMap[t]) {
+          try {
+            var er = await uw('/api/stock/' + t + '/earnings');
+            var earr = Array.isArray(er && er.data) ? er.data : [];
+            if (earr.length) {
+              var next = earr.find(function(e){ return e.date > new Date().toISOString().slice(0,10); });
+              if (next) earningsMap[t] = next.date || next.earnings_date || next.report_date;
+            }
+          } catch(e) {}
+        }
+      }));
+      // Small pause between batches
+      if (i + BATCH < tickers.length) await new Promise(function(r){ setTimeout(r, 300); });
+    }
+  }
+
+  await fetchCandidateData(candidates);
 
   var sectorCount = {};
   posTickerList.concat(WATCHLIST).forEach(function(t) {
@@ -6689,14 +6774,47 @@ async function runAIDiscover() {
     stratCount[k] = (stratCount[k] || 0) + 1;
   });
 
+  // Build live data for candidates
+  var candidateLiveData = {};
+  candidates.forEach(function(t) {
+    var lp = livePrices[t];
+    var ld = liveData[t] || {};
+    var fd = flowData[t];
+    var tc = typeof techData !== 'undefined' && techData[t];
+    var entry = {};
+    if (lp) entry.price = '$' + lp.price.toFixed(2) + ' (' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct).toFixed(1) + '%)';
+    if (ld.ivr != null) entry.ivr = Math.round(ld.ivr) + '/100';
+    if (fd && fd.sentiment) {
+      entry.flow = fd.sentiment + '(' + (fd.confidence || '?') + ')';
+      if (fd.calls != null) entry.flow += ' $' + ((fd.calls + fd.puts)/1000).toFixed(0) + 'K';
+    }
+    if (lp && lp.vol && lp.avgVol) {
+      var ratio = (lp.vol / lp.avgVol).toFixed(2);
+      entry.vol = (ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low') + '(' + ratio + 'x)';
+    }
+    if (tc) {
+      var parts = [];
+      if (tc.rsi  != null) parts.push('RSI:' + tc.rsi);
+      if (tc.hist != null) parts.push('MACDhist:' + tc.hist);
+      if (tc.ma50 != null) parts.push('MA50:' + tc.ma50);
+      if (tc.hi52 != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
+      if (parts.length) entry.tech = parts.join(' ');
+    }
+    if (earningsMap[t]) entry.earnings = earningsMap[t];
+    if (Object.keys(entry).length) candidateLiveData[t] = entry;
+  });
+
   var profile = {
-    positionTickers:  posTickerList,
-    watchlistTickers: watchOnly,
-    sectorExposure:   sectorCount,
-    strategyMix:      stratCount,
-    totalPositions:   POSITIONS.length,
-    totalCollateral:  POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0)
+    positionTickers:   posTickerList,
+    watchlistTickers:  watchOnly,
+    sectorExposure:    sectorCount,
+    strategyMix:       stratCount,
+    totalPositions:    POSITIONS.length,
+    totalCollateral:   POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0),
+    candidateLiveData: candidateLiveData
   };
+
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">●</span><span class="aip-dot">●</span><span class="aip-dot">●</span><div style="margin-top:8px">Asking Claude to score candidates…</div></div>';
 
   await fetch(PROXY_URL + '?action=writeContext', {
     method: 'POST',
