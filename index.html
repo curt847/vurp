@@ -2031,7 +2031,7 @@ function updatePnlBar() {
     }
   });
   const netPnL    = totalCollected - totalToClose;
-  const pctCaptured = totalExtrinsic > 0 ? (netPnL / totalExtrinsic) * 100 : 0;
+  const pctCaptured = totalToClose > 0 ? (totalExtrinsic / totalToClose) * 100 : 0;
   const pctCapped = Math.max(0, Math.min(100, pctCaptured));
   const pnlColor  = netPnL >= 0 ? 'var(--green)' : 'var(--red)';
   const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 40 ? 'var(--yellow)' : 'var(--orange)';
