@@ -695,6 +695,7 @@
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="runAISuggest()" id="suggestBtn">&#x1F4A1; SUGGEST</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
     </div>
   </div>
   <div id="watchGrid"></div>
@@ -6002,7 +6003,7 @@ let AI_SIGNALS = {}; // ticker -> { good: bool, trade_type, entry_detail, sentim
 
 // ── SECTOR MAP ──
 // Hardcoded defaults; user overrides stored in TICKER_SECTORS
-const SECTORS = ['Tech', 'Software', 'Semiconductor', 'Data Center', 'Finance', 'Industrial', 'Space / Defense', 'Consumer', 'Healthcare', 'Crypto / Quantum', 'Other'];
+const SECTORS = ['Tech', 'Software', 'Semiconductor', 'Data Center', 'Finance', 'Industrial', 'Space / Defense', 'Consumer', 'Healthcare', 'Crypto / Quantum', 'Mega-Cap Growth', 'Energy', 'Real Estate / Utilities', 'ETFs', 'High-Beta / Momentum', 'Other'];
 const DEFAULT_SECTORS = {
   // Tech
   AAPL:'Tech', MSFT:'Tech', LASR:'Tech', GLW:'Tech', WDC:'Tech',
@@ -6011,24 +6012,46 @@ const DEFAULT_SECTORS = {
   RDDT:'Software', DUOL:'Software',
   // Semiconductor
   NVDA:'Semiconductor', AMD:'Semiconductor', INTC:'Semiconductor', AVGO:'Semiconductor',
-  AMAT:'Semiconductor', NBIS:'Semiconductor',
+  AMAT:'Semiconductor', NBIS:'Semiconductor', KLAC:'Semiconductor', MRVL:'Semiconductor',
   // Data Center
   APLD:'Data Center', IREN:'Data Center', HUT:'Data Center', VRT:'Data Center',
   // Finance
   JPM:'Finance', MS:'Finance', HOOD:'Finance', SOFI:'Finance',
+  GS:'Finance', BAC:'Finance', V:'Finance', MA:'Finance', AXP:'Finance',
+  BLK:'Finance', SCHW:'Finance',
   // Industrial
   BA:'Industrial', IBM:'Industrial', GE:'Industrial',
+  CAT:'Industrial', DE:'Industrial', HON:'Industrial', RTX:'Industrial',
+  LMT:'Industrial', UPS:'Industrial', FDX:'Industrial',
   // Space / Defense
   ASTS:'Space / Defense', RKLB:'Space / Defense',
   // Consumer
-  AMZN:'Consumer', META:'Consumer', GOOG:'Consumer', APP:'Consumer',
-  FLUT:'Consumer', HIMS:'Consumer',
+  APP:'Consumer', FLUT:'Consumer', HIMS:'Consumer',
+  COST:'Consumer', WMT:'Consumer', TGT:'Consumer',
+  MCD:'Consumer', SBUX:'Consumer', NKE:'Consumer',
   // Healthcare
   LLY:'Healthcare', MRK:'Healthcare', BSX:'Healthcare',
+  UNH:'Healthcare', JNJ:'Healthcare', ABBV:'Healthcare',
+  TMO:'Healthcare', ISRG:'Healthcare', DHR:'Healthcare', DXCM:'Healthcare',
   // Crypto / Quantum
   MSTR:'Crypto / Quantum', BTC:'Crypto / Quantum', IONQ:'Crypto / Quantum',
-  // Other
-  TSLA:'Other', USO:'Other',
+  COIN:'Crypto / Quantum',
+  // Mega-Cap Growth
+  AMZN:'Mega-Cap Growth', META:'Mega-Cap Growth', GOOG:'Mega-Cap Growth',
+  TSLA:'Mega-Cap Growth', NFLX:'Mega-Cap Growth', DIS:'Mega-Cap Growth',
+  // Energy
+  XOM:'Energy', CVX:'Energy', SLB:'Energy', OXY:'Energy',
+  MPC:'Energy', VLO:'Energy', USO:'Energy',
+  // Real Estate / Utilities
+  AMT:'Real Estate / Utilities', PLD:'Real Estate / Utilities', O:'Real Estate / Utilities',
+  NEE:'Real Estate / Utilities', DUK:'Real Estate / Utilities',
+  // ETFs
+  SPY:'ETFs', QQQ:'ETFs', IWM:'ETFs', GLD:'ETFs', TLT:'ETFs',
+  XLE:'ETFs', XLF:'ETFs', XLK:'ETFs', ARKK:'ETFs',
+  // High-Beta / Momentum
+  RBLX:'High-Beta / Momentum', UBER:'High-Beta / Momentum', LYFT:'High-Beta / Momentum',
+  RIVN:'High-Beta / Momentum', LCID:'High-Beta / Momentum',
+  HOOD:'High-Beta / Momentum',
 };
 let TICKER_SECTORS = {}; // user overrides: ticker -> sector name
 
@@ -6470,6 +6493,91 @@ async function runAISuggest() {
 
   btn.disabled = false;
   btn.textContent = '\ud83d\udca1 SUGGEST';
+}
+
+// ══════════════════════════════════════════
+// AI TICKER DISCOVERY — finds new names outside your list
+// ══════════════════════════════════════════
+async function runAIDiscover() {
+  var panel   = document.getElementById('suggestPanel');
+  var content = document.getElementById('suggestContent');
+  var btn     = document.getElementById('discoverBtn');
+
+  panel.classList.add('open');
+  btn.disabled = true;
+  btn.textContent = 'SCOUTING...';
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Scanning universe for new opportunities\u2026</div></div>';
+
+  // Build profile (same shape as suggest, but no live prices needed — backend does the work)
+  var posTickers    = new Set(POSITIONS.map(function(p){ return p.ticker; }));
+  var watchOnly     = WATCHLIST.filter(function(t){ return !posTickers.has(t); });
+  var posTickerList = Array.from(posTickers);
+
+  var sectorCount = {};
+  posTickerList.concat(WATCHLIST).forEach(function(t) {
+    var s = getSector(t);
+    sectorCount[s] = (sectorCount[s] || 0) + 1;
+  });
+
+  var stratCount = {};
+  POSITIONS.forEach(function(p) {
+    var k = p.postype === 'spread_credit' ? (p.type === 'P' ? 'Put CR' : 'Call CR')
+          : p.postype === 'covered_call'  ? 'CC'
+          : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'Put DB' : 'Call DB')
+          : p.postype === 'long_call'     ? 'Long Call'
+          : p.postype === 'long_put'      ? 'Long Put' : p.postype;
+    stratCount[k] = (stratCount[k] || 0) + 1;
+  });
+
+  var profile = {
+    positionTickers:  posTickerList,
+    watchlistTickers: watchOnly,
+    sectorExposure:   sectorCount,
+    strategyMix:      stratCount,
+    totalPositions:   POSITIONS.length,
+    totalCollateral:  POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0)
+  };
+
+  await fetch(PROXY_URL + '?action=writeContext', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'content=' + encodeURIComponent(JSON.stringify(profile))
+  });
+
+  try {
+    var response = await fetch(PROXY_URL + '?action=discover', { method: 'GET' });
+    var rawResp  = await response.text();
+    var data     = JSON.parse(rawResp);
+    var rawText  = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
+    var clean    = rawText.replace(/```json|```/g, '').trim();
+    var result   = JSON.parse(clean);
+
+    var picks = result.picks || [];
+    var ts    = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+
+    var html = '<div class="sug-section">'
+      + '<div class="sug-section-label">\ud83d\udd2d Discover \u2014 New Tickers for Your Book</div>'
+      + (picks.length ? picks.map(function(r) {
+          return '<div class="sug-card">'
+            + '<div class="sug-ticker" style="color:var(--purple)">' + r.ticker
+            + ' <span style="font-size:9px;color:var(--muted);font-weight:400">' + (r.sector || '') + '</span></div>'
+            + '<div class="sug-body"><strong>' + (r.reason || '') + '</strong> \u2014 ' + (r.detail || '')
+            + (r.trade ? '<br><span style="color:var(--accent);font-size:10px">\ud83d\udca1 ' + r.trade + '</span>' : '')
+            + (r.risk  ? '<br><span style="color:var(--orange);font-size:10px">\u26a0 ' + r.risk  + '</span>' : '')
+            + '</div></div>';
+        }).join('') : '<div style="color:var(--muted);font-size:11px">No picks returned.</div>')
+      + '</div>'
+      + '<div class="aip-ts">Generated ' + ts + ' \u00b7 Not financial advice \u00b7 Universe: 80 liquid tickers</div>';
+
+    content.innerHTML = html;
+
+  } catch(err) {
+    content.innerHTML = '<div class="aip-err">Discover failed: ' + err.message + '</div>';
+    console.error('[RollWatch DISCOVER]', err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\ud83d\udd2d DISCOVER';
 }
 
 
