@@ -5825,6 +5825,7 @@ async function askClaudeSingle(idx) {
       + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
       + 'Earnings beyond the 30-45 DTE window are not a concern — only flag earnings if they fall WITHIN the target expiry window. '
       + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
+      + 'DELTA GUIDANCE: Target short strike delta of 0.30-0.35 as the default. 0.35-0.40 is acceptable when multiple signals align strongly (IVR 50+, clear trend, confirming flow). Avoid deltas below 0.28 — premium is too thin to be worthwhile. Always note the approximate delta of the suggested short strike. '
       + 'RSI GUIDANCE: RSI>70 = wait for pullback to 60-70 before entering. RSI 40-65 = healthy, supports entry. '
       + 'MACD GUIDANCE: fresh bullish crossover after pullback = ideal entry signal. '
       + '52-WEEK BIAS: near 52wk high = bullish but wait for RSI cooldown. Within 10% of 52wk low = avoid put spreads. '
