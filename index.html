@@ -5828,6 +5828,7 @@ async function askClaudeSingle(idx) {
       + 'RSI GUIDANCE: RSI>70 = wait for pullback to 60-70 before entering. RSI 40-65 = healthy, supports entry. '
       + 'MACD GUIDANCE: fresh bullish crossover after pullback = ideal entry signal. '
       + '52-WEEK BIAS: near 52wk high = bullish but wait for RSI cooldown. Within 10% of 52wk low = avoid put spreads. '
+      + 'ENTRY TIMING: For put spreads, prefer selling into a 1-3% pullback or down day rather than chasing strength. For call spreads, prefer selling into a 1-2 day bounce after weakness rather than selling into a freefall. If entry timing is not ideal, set entry to "wait for pullback" or "wait for bounce". Exception: if multiple signals align strongly (IVR 50+, confirming flow, healthy RSI, MACD momentum) entry on a strong day is acceptable — note this explicitly in the read. '
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences — cite ivr, flow+volume, key tech signal","entry":"good now|wait for X","suggestion":"concrete trade with specific strikes and expiry targeting 30-45 DTE, or empty string if waiting","risk":"single biggest specific threat"}';
 
