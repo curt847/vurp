@@ -6049,7 +6049,6 @@ const DEFAULT_SECTORS = {
   // High-Beta / Momentum
   RBLX:'High-Beta / Momentum', UBER:'High-Beta / Momentum', LYFT:'High-Beta / Momentum',
   RIVN:'High-Beta / Momentum', LCID:'High-Beta / Momentum',
-  HOOD:'High-Beta / Momentum',
 };
 let TICKER_SECTORS = {}; // user overrides: ticker -> sector name
 
@@ -6765,12 +6764,12 @@ function renderWatchList() {
       return `<div class="${cardClass}" style="position:relative">
         <div class="wc-top" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="min-height:16px">${earnBadgeHtml}</div>
+          <div style="font-size:16px;line-height:1;opacity:${entryTriggered?'0.95':'0.4'}" title="${entryTriggered?(bullAlert?'Entry hit — price at or below target':'Entry hit — price at or above target'):(entryTarget?'Watching for entry at $'+entryTarget:'')}">${entryTriggered?'⚡':(entryTarget?'🎯':'')}</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${posBadge}
             ${removeBtn}
           </div>
         </div>
-        ${cornerIcon}
         <div class="wc-hero">
           ${tickerLabel}
           <div class="wc-price-block">${priceHtml}</div>
@@ -6780,6 +6779,7 @@ function renderWatchList() {
         ${noteBtn}
         ${sigHtml}${sigSpacer}
         ${biasBtn}
+        ${sectorSelect}
       </div>`;
     }).join('');
 
