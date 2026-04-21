@@ -1391,13 +1391,14 @@ function getFiltered() {
         if (!hasFlowSignal(p) || !_fd) return false;
         const _s = _fd.sentiment;
         const _cc = p.postype==='covered_call';
-        return (_s==='bear' && p.type==='P' && !isLongOption(p) && !_cc)
-            || (_s==='bull' && p.type==='C' && !isLongOption(p) && !_cc)
+        const _isDb = p.postype==='spread_debit';
+        return (_s==='bear' && p.type==='P' && !isLongOption(p) && !_cc && !_isDb)
+            || (_s==='bull' && p.type==='C' && !isLongOption(p) && !_cc && !_isDb)
             || (_s==='bull' && _cc)
             || (_s==='bear' && p.postype==='long_call')
             || (_s==='bull' && p.postype==='long_put')
-            || (_s==='bear' && p.postype==='spread_debit' && p.type==='C')
-            || (_s==='bull' && p.postype==='spread_debit' && p.type==='P');
+            || (_s==='bear' && _isDb && p.type==='C')
+            || (_s==='bull' && _isDb && p.type==='P');
       }
       default:         return true;
     }
@@ -1619,12 +1620,12 @@ function renderTable() {
       // Per-position contra: is this specific position working against the flow?
       const _sent = flow.sentiment;
       const _isCC = p.postype === 'covered_call';
-      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
-      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
-      const _isLongCall  = p.postype==='long_call';
-      const _isLongPut   = p.postype==='long_put';
       const _isDebitCall = p.postype==='spread_debit' && p.type==='C'; // bullish debit
       const _isDebitPut  = p.postype==='spread_debit' && p.type==='P'; // bearish debit
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC && !_isDebitPut;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC && !_isDebitCall;
+      const _isLongCall  = p.postype==='long_call';
+      const _isLongPut   = p.postype==='long_put';
       const isContra = (_isShortPut  && _sent==='bear')
                     || (_isShortCall && _sent==='bull')
                     || (_isLongCall  && _sent==='bear')
@@ -1674,12 +1675,12 @@ function renderTable() {
       // Near-term trade count for tooltip context
       const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
       const _isCC4       = p.postype === 'covered_call';
-      const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4;
-      const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4;
-      const _isLongC4    = p.postype==='long_call';
-      const _isLongP4    = p.postype==='long_put';
       const _isDebitC4   = p.postype==='spread_debit' && p.type==='C'; // bullish debit
       const _isDebitP4   = p.postype==='spread_debit' && p.type==='P'; // bearish debit
+      const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4 && !_isDebitP4;
+      const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4 && !_isDebitC4;
+      const _isLongC4    = p.postype==='long_call';
+      const _isLongP4    = p.postype==='long_put';
       const wContra = (_isShortPut4 && wSent==='bear')
                    || (_isShortCal4 && wSent==='bull')
                    || (_isLongC4    && wSent==='bear')
@@ -1872,12 +1873,13 @@ function updateStats() {
     if(hasEarningsRisk(p)) ern++;
     if(hasFlowSignal(p)&&flowData[p.ticker]) {
       const _fd4=flowData[p.ticker], _s4=_fd4.sentiment, _cc4=p.postype==='covered_call';
-      if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4)
-       ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4)
+      const _isDb4=p.postype==='spread_debit';
+      if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4&&!_isDb4)
+       ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4&&!_isDb4)
        ||(_s4==='bear'&&p.postype==='long_call')
        ||(_s4==='bull'&&p.postype==='long_put')
-       ||(_s4==='bear'&&p.postype==='spread_debit'&&p.type==='C')
-       ||(_s4==='bull'&&p.postype==='spread_debit'&&p.type==='P')) fl++;
+       ||(_s4==='bear'&&_isDb4&&p.type==='C')
+       ||(_s4==='bull'&&_isDb4&&p.type==='P')) fl++;
     }
   });
   document.getElementById('s-red').textContent=cnt.red;
@@ -3780,8 +3782,10 @@ function showRollModal(idx) {
 
     ${(()=>{
       const _isCC = p.postype === 'covered_call';
-      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
-      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
+      const _isDebitCallR = p.postype==='spread_debit' && p.type==='C';
+      const _isDebitPutR  = p.postype==='spread_debit' && p.type==='P';
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC && !_isDebitPutR;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC && !_isDebitCallR;
       const _isLongCall  = p.postype==='long_call';
       const _isLongPut   = p.postype==='long_put';
       let rows = '';
