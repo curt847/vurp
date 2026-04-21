@@ -5870,6 +5870,33 @@ async function askClaudeSingle(idx) {
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
+  // Pre-calculate the next 6 monthly option expiry Fridays (3rd Friday of each month)
+  const _validExpiries = (function() {
+    const results = [];
+    const now = new Date();
+    let yr = now.getFullYear(), mo = now.getMonth();
+    while (results.length < 6) {
+      // Find 3rd Friday of this month
+      let friCount = 0, day = 1;
+      while (friCount < 3) {
+        const d = new Date(yr, mo, day);
+        if (d.getDay() === 5) friCount++;
+        if (friCount < 3) day++;
+      }
+      const expDate = new Date(yr, mo, day);
+      // Only include future expiries (at least 7 days out)
+      const daysOut = Math.round((expDate - now) / 86400000);
+      if (daysOut >= 7) {
+        const label = expDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        results.push(label + ' (' + daysOut + 'd)');
+      }
+      mo++;
+      if (mo > 11) { mo = 0; yr++; }
+    }
+    return results;
+  })();
+  const _expiriesStr = _validExpiries.join(', ');
+
   try {
     const singlePrompt = 'You are an options trading assistant for an experienced credit spread seller. Today: ' + today + '. '
       + 'Treat this ticker exactly like a watchlist entry — ignore any existing position details and focus purely on current conditions. '
@@ -5883,7 +5910,8 @@ async function askClaudeSingle(idx) {
       + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
       + 'DATA: ' + JSON.stringify(tickerData) + ' '
       + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
-      + 'IMPORTANT: Options expire on Fridays. Always ensure suggested expiry dates land on a Friday. '
+      + 'VALID EXPIRY DATES — use ONLY these exact dates for suggestions (these are the actual 3rd-Friday monthly expiries): ' + _expiriesStr + '. '
+      + 'Never suggest a date not on this list. Target 30-45 DTE when possible. '
       + 'Only flag earnings if they fall WITHIN the target expiry window. '
       + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
       + 'DELTA GUIDANCE: Target short strike delta 0.30-0.35 default. 0.35-0.40 acceptable when IVR 50+, clear trend, confirming flow. Avoid below 0.28. '
