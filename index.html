@@ -1395,7 +1395,9 @@ function getFiltered() {
             || (_s==='bull' && p.type==='C' && !isLongOption(p) && !_cc)
             || (_s==='bull' && _cc)
             || (_s==='bear' && p.postype==='long_call')
-            || (_s==='bull' && p.postype==='long_put');
+            || (_s==='bull' && p.postype==='long_put')
+            || (_s==='bear' && p.postype==='spread_debit' && p.type==='C')
+            || (_s==='bull' && p.postype==='spread_debit' && p.type==='P');
       }
       default:         return true;
     }
@@ -1622,10 +1624,14 @@ function renderTable() {
       const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
       const _isLongCall  = p.postype==='long_call';
       const _isLongPut   = p.postype==='long_put';
+      const _isDebitCall = p.postype==='spread_debit' && p.type==='C'; // bullish debit
+      const _isDebitPut  = p.postype==='spread_debit' && p.type==='P'; // bearish debit
       const isContra = (_isShortPut  && _sent==='bear')
                     || (_isShortCall && _sent==='bull')
                     || (_isLongCall  && _sent==='bear')
-                    || (_isLongPut   && _sent==='bull');
+                    || (_isLongPut   && _sent==='bull')
+                    || (_isDebitCall && _sent==='bear')   // call debit = bullish, bear flow = contra
+                    || (_isDebitPut  && _sent==='bull');  // put debit = bearish, bull flow = contra
 
       // Only show badge for bull/bear — neutral is noise, just show dash
       if (_sent === 'bull' || _sent === 'bear' || isContra) {
@@ -1673,10 +1679,14 @@ function renderTable() {
       const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4;
       const _isLongC4    = p.postype==='long_call';
       const _isLongP4    = p.postype==='long_put';
+      const _isDebitC4   = p.postype==='spread_debit' && p.type==='C'; // bullish debit
+      const _isDebitP4   = p.postype==='spread_debit' && p.type==='P'; // bearish debit
       const wContra = (_isShortPut4 && wSent==='bear')
                    || (_isShortCal4 && wSent==='bull')
                    || (_isLongC4    && wSent==='bear')
-                   || (_isLongP4    && wSent==='bull');
+                   || (_isLongP4    && wSent==='bull')
+                   || (_isDebitC4   && wSent==='bear')   // call debit = bullish, bear flow = contra
+                   || (_isDebitP4   && wSent==='bull');  // put debit = bearish, bull flow = contra
 
       // Only show whale badge for bull/bear/contra — mix is noise
       if (wSent === 'bull' || wSent === 'bear' || wContra) {
@@ -1866,7 +1876,9 @@ function updateStats() {
       if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4)
        ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4)
        ||(_s4==='bear'&&p.postype==='long_call')
-       ||(_s4==='bull'&&p.postype==='long_put')) fl++;
+       ||(_s4==='bull'&&p.postype==='long_put')
+       ||(_s4==='bear'&&p.postype==='spread_debit'&&p.type==='C')
+       ||(_s4==='bull'&&p.postype==='spread_debit'&&p.type==='P')) fl++;
     }
   });
   document.getElementById('s-red').textContent=cnt.red;
@@ -3778,10 +3790,14 @@ function showRollModal(idx) {
       // Flow sentiment row
       if (flow) {
         const _sent = flow.sentiment;
+        const _isDebitCallR = p.postype==='spread_debit' && p.type==='C';
+        const _isDebitPutR  = p.postype==='spread_debit' && p.type==='P';
         const isContra = (_isShortPut  && _sent==='bear')
                       || (_isShortCall && _sent==='bull')
                       || (_isLongCall  && _sent==='bear')
-                      || (_isLongPut   && _sent==='bull');
+                      || (_isLongPut   && _sent==='bull')
+                      || (_isDebitCallR && _sent==='bear')
+                      || (_isDebitPutR  && _sent==='bull');
         const flowColor = isContra ? 'var(--yellow)' : _sent==='bull'?'var(--green)':_sent==='bear'?'var(--red)':'var(--muted)';
         const contraTag = isContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,.35);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
         rows += `<div class="modal-row"><span class="modal-label">Flow Sentiment</span><span class="modal-val" style="color:${flowColor}">${_sent.toUpperCase()}${contraTag}</span></div>`;
@@ -3795,7 +3811,9 @@ function showRollModal(idx) {
         const wIsContra = (_isShortPut  && wSent==='bear')
                        || (_isShortCall && wSent==='bull')
                        || (_isLongCall  && wSent==='bear')
-                       || (_isLongPut   && wSent==='bull');
+                       || (_isLongPut   && wSent==='bull')
+                       || (_isDebitCallR && wSent==='bear')
+                       || (_isDebitPutR  && wSent==='bull');
         const wColor = wIsContra ? 'var(--yellow)' : wSent==='bull'?'var(--green)':wSent==='bear'?'var(--red)':'#ffffff';
         const wLabel = wSent==='bull'?'🐋 BULL':wSent==='bear'?'🐋 BEAR':'🐋 MIXED';
         const wContraTag = wIsContra ? ' <span style="font-size:11px;font-weight:700;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,.35);border-radius:3px;padding:1px 5px">⚠ CONTRA</span>' : ' <span style="color:var(--muted);font-size:12px">— aligned</span>';
