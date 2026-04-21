@@ -596,9 +596,9 @@
     <div class="pnl-stat-lbl">% of Extrinsic</div>
     <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-bar-fill" style="width:0%;background:var(--green)"></div></div>
   </div>
-  <div class="pnl-stat" title="Credit spreads only — excludes long options, covered calls &amp; debit spreads">
-    <div class="pnl-stat-val" id="pnl-netpnl">—</div>
-    <div class="pnl-stat-lbl">Net P&amp;L (Credits)</div>
+  <div class="pnl-stat" title="Average days to expiration across all positions">
+    <div class="pnl-stat-val" id="pnl-avgdte" style="color:var(--accent)">—</div>
+    <div class="pnl-stat-lbl">Avg DTE</div>
   </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-collateral" style="color:var(--muted)">—</div>
@@ -2120,10 +2120,8 @@ function updatePnlBar() {
       ext45d += Math.max(0, mid45 - intr45) * 100 * p.cts;
     }
   });
-  const netPnL    = totalCollected - totalToClose;
   const pctCaptured = totalToClose > 0 ? (totalExtrinsic / totalToClose) * 100 : 0;
   const pctCapped = Math.max(0, Math.min(100, pctCaptured));
-  const pnlColor  = netPnL >= 0 ? 'var(--green)' : 'var(--red)';
   const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 40 ? 'var(--yellow)' : 'var(--orange)';
 
   // Est. daily theta — sqrt-of-time decay model, includes credit spreads + covered calls
@@ -2164,14 +2162,19 @@ function updatePnlBar() {
   document.getElementById('pnl-collected').textContent = fmt(totalExtrinsic);
   document.getElementById('pnl-toclose').textContent   = fmt(totalToClose);
   document.getElementById('pnl-toclose-45d').textContent = fmt(toClose45d);
-  document.getElementById('pnl-netpnl').textContent    = (netPnL >= 0 ? '+' : '-') + fmt(netPnL);
-  document.getElementById('pnl-netpnl').style.color    = pnlColor;
   document.getElementById('pnl-pct').textContent       = pctCaptured.toFixed(1) + '%';
   document.getElementById('pnl-pct').style.color       = barColor;
   document.getElementById('pnl-bar-fill').style.width  = pctCapped + '%';
   document.getElementById('pnl-bar-fill').style.background = barColor;
   document.getElementById('pnl-collateral').textContent = fmt(totalCollateral);
   document.getElementById('pnl-theta').textContent = '+' + fmt(totalTheta);
+  // Avg DTE
+  const avgDteEl = document.getElementById('pnl-avgdte');
+  if (avgDteEl && POSITIONS.length) {
+    const avgDte = Math.round(POSITIONS.reduce((s,p) => s + getDTE(p), 0) / POSITIONS.length);
+    avgDteEl.textContent = avgDte + 'd';
+    avgDteEl.style.color = avgDte <= 14 ? 'var(--red)' : avgDte <= 21 ? 'var(--orange)' : avgDte <= 35 ? 'var(--yellow)' : 'var(--accent)';
+  }
 }
 
 // ══════════════════════════════════════════
