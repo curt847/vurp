@@ -1418,7 +1418,7 @@ function getFiltered() {
         return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
       }
       case 'expiry':     { const expDiff=a.expiry.localeCompare(b.expiry); return expDiff!==0?expDiff:a.ticker.localeCompare(b.ticker); }
-      case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); if(dteDiff!==0) return dteDiff; const aShort=parseFloat(a.short)||0; const bShort=parseFloat(b.short)||0; return bShort-aShort; }
+      case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); if(dteDiff!==0) return dteDiff; const tickDiff=a.ticker.localeCompare(b.ticker); if(tickDiff!==0) return tickDiff; return (parseFloat(b.short)||0)-(parseFloat(a.short)||0); }
       case 'collateral': return b.collateral-a.collateral;
       case 'remain':     return b.remain-a.remain;
       case 'delta':      return getEffectiveDelta(b)-getEffectiveDelta(a);
