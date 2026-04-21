@@ -37,7 +37,7 @@
   .btn-auto.on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
 
   /* STATS BAR */
-  .stats-bar{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .stats-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
   .stat{background:var(--surface);padding:10px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .stat-val{font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
   .stat-lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
@@ -546,7 +546,8 @@
   <div class="stat stat-accent"><div class="stat-val" id="s-total">59</div><div class="stat-lbl">Positions</div></div>
   <div class="stat"><div class="stat-val" id="s-itm" style="color:var(--red)">—</div><div class="stat-lbl">ITM</div></div>
   <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple)">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
-  <div class="stat"><div class="stat-val" id="s-flow" style="color:var(--red)">—</div><div class="stat-lbl">⚠ Contra Flow</div></div>
+  <div class="stat"><div class="stat-val" id="s-profitable" style="color:var(--green)">—</div><div class="stat-lbl">✅ Profitable</div></div>
+  <div class="stat"><div class="stat-val" id="s-netdelta" style="color:var(--accent)">—</div><div class="stat-lbl">Net Δ</div></div>
   <div class="stat" style="cursor:pointer" title="Click to set baseline">
     <div style="display:flex;align-items:center;justify-content:center;gap:6px">
       <div class="stat-val" id="s-portval" style="color:var(--text);font-size:24px;font-weight:800" onclick="showBaselineModal()">—</div>
@@ -1875,21 +1876,27 @@ function renderTable() {
 
 function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
-  let col=0,itm=0,ern=0,fl=0;
+  let col=0,itm=0,ern=0,profitable=0,netDelta=0;
   POSITIONS.forEach(p=>{
     if (!isLongOption(p)) cnt[getAlertLevel(p)]++;
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
-    if(hasFlowSignal(p)&&flowData[p.ticker]) {
-      const _fd4=flowData[p.ticker], _s4=_fd4.sentiment, _cc4=p.postype==='covered_call';
-      if((_s4==='bear'&&p.type==='P'&&!isLongOption(p)&&!_cc4)
-       ||(_s4==='bull'&&p.type==='C'&&!isLongOption(p)&&!_cc4)
-       ||(_s4==='bear'&&p.postype==='long_call')
-       ||(_s4==='bull'&&p.postype==='long_put')
-       ||(_s4==='bear'&&p.postype==='spread_debit'&&p.type==='C')
-       ||(_s4==='bull'&&p.postype==='spread_debit'&&p.type==='P')) fl++;
-    }
+    // Profitable count
+    const g = calcLiveGain(p);
+    if (!isNaN(g) && g > 0) profitable++;
+    // Net portfolio delta — signed, scaled by contracts × 100
+    const d = getEffectiveDelta(p);
+    const cts = (p.cts || 1) * 100;
+    let signedD = 0;
+    if (p.postype === 'covered_call')   signedD =  d * cts; // long stock + short call ≈ positive
+    else if (p.postype === 'long_call') signedD =  d * cts;
+    else if (p.postype === 'long_put')  signedD = -d * cts;
+    else if (p.postype === 'spread_debit' && p.type === 'C') signedD =  d * cts;
+    else if (p.postype === 'spread_debit' && p.type === 'P') signedD = -d * cts;
+    else if (p.type === 'P') signedD =  d * cts; // short put = positive delta
+    else if (p.type === 'C') signedD = -d * cts; // short call = negative delta
+    netDelta += signedD;
   });
   document.getElementById('s-red').textContent=cnt.red;
   document.getElementById('s-orange').textContent=cnt.orange;
@@ -1899,7 +1906,14 @@ function updateStats() {
   document.getElementById('s-itm').textContent=itm||'—';
   const colEl=document.getElementById('s-collateral'); if(colEl) colEl.textContent='$'+(col/1000).toFixed(1)+'K';
   document.getElementById('s-earnings').textContent=ern||'—';
-  document.getElementById('s-flow').textContent=fl||'—';
+  const profEl = document.getElementById('s-profitable');
+  if (profEl) { profEl.textContent = POSITIONS.length ? `${profitable}/${POSITIONS.length}` : '—'; }
+  const ndEl = document.getElementById('s-netdelta');
+  if (ndEl) {
+    const nd = Math.round(netDelta);
+    ndEl.textContent = nd === 0 ? '0' : (nd > 0 ? '+' : '') + nd;
+    ndEl.style.color = nd > 50 ? 'var(--green)' : nd < -50 ? 'var(--red)' : 'var(--accent)';
+  }
   renderMobile();
 }
 
