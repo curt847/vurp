@@ -682,6 +682,7 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
+      <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
       <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="if(confirm('Reset all sector assignments to defaults?'))resetSectors()" title="Reset all sector assignments to defaults">↺ SECTORS</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -6765,7 +6766,7 @@ function renderWatchList() {
       return `<div class="${cardClass}" style="position:relative">
         <div class="wc-top" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="min-height:16px">${earnBadgeHtml}</div>
-          <div style="font-size:16px;line-height:1;opacity:${entryTriggered?'0.95':'0.4'}" title="${entryTriggered?(bullAlert?'Entry hit — price at or below target':'Entry hit — price at or above target'):(entryTarget?'Watching for entry at $'+entryTarget:'')}">${entryTriggered?'⚡':(entryTarget?'🎯':'')}</div>
+          <div style="font-size:16px;line-height:1;opacity:${entryTriggered?'0.95':'0.8'}" title="${entryTriggered?(bullAlert?'Entry hit — price at or below target':'Entry hit — price at or above target'):(entryTarget?'Watching for entry at $'+entryTarget:'')}">${entryTriggered?'⚡':(entryTarget?'🎯':'')}</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${posBadge}
             ${removeBtn}
