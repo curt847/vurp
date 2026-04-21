@@ -1422,7 +1422,6 @@ function getFiltered() {
 }
 
 function renderTable() {
-  checkExpiredPositions();
   const positions=getFiltered();
   const body=document.getElementById('tableBody');
   body.innerHTML='';
@@ -7563,6 +7562,8 @@ async function showDebugModal() {
 // ══════════════════════════════════════════
 
 function checkExpiredPositions() {
+  // Don't fire until Drive has loaded — localStorage data may be stale
+  if (typeof driveReady !== 'undefined' && !driveReady) return;
   const expired = POSITIONS.filter(p => getDTE(p) < 0);
   const banner  = document.getElementById('expiryBanner');
   const bannerText = document.getElementById('expiryBannerText');
@@ -7601,58 +7602,57 @@ function showExpiryQueue() {
     const cards = remaining.map(p => {
       const idx = POSITIONS.indexOf(p);
       const otm = !isITM(p);
-      const width = Math.abs(p.short - (p.long || 0));
       const openPrem = Math.abs(p.open);
       const fullCredit = (openPrem * 100 * p.cts).toFixed(0);
       const strikesLabel = p.long ? '$' + p.short + '/$' + p.long : '$' + p.short;
       const daysOver = Math.abs(getDTE(p));
+      const borderColor = otm ? 'rgba(0,232,138,.3)' : 'rgba(255,61,90,.3)';
       const statusColor = otm ? 'var(--green)' : 'var(--red)';
-      const statusIcon  = otm ? '✅' : '⚠️';
-      const statusLabel = otm ? 'Expired OTM — worthless' : 'Expired ITM — check broker';
+      const statusIcon  = otm ? '\u2705' : '\u26a0\ufe0f';
+      const statusLabel = otm ? 'Expired OTM \u2014 worthless' : 'Expired ITM \u2014 check broker';
 
-      return \`<div style="background:var(--surface2);border:1px solid \${otm ? 'rgba(0,232,138,.3)' : 'rgba(255,61,90,.3)'};border-radius:6px;padding:14px 16px;margin-bottom:10px">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
-          <div>
-            <span style="font-family:'DM Sans',sans-serif;font-weight:800;font-size:18px">\${p.ticker}</span>
-            <span style="color:var(--muted);font-size:11px;margin-left:8px">\${strikesLabel} · \${p.expiry} · \${p.cts}ct</span>
-          </div>
-          <span style="color:\${statusColor};font-size:12px;font-weight:700">\${statusIcon} \${statusLabel}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;margin-bottom:12px">
-          <div><span style="color:var(--muted)">Entry premium</span><br><span style="font-weight:700">\$\${openPrem.toFixed(2)}</span></div>
-          <div><span style="color:var(--muted)">Full credit</span><br><span style="font-weight:700;color:var(--green)">\$\${fullCredit}</span></div>
-          <div><span style="color:var(--muted)">Expired</span><br><span style="font-weight:700">\${daysOver}d ago</span></div>
-        </div>
-        \${otm ? \`
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="expireWorthless(\${idx})" style="flex:1;background:var(--green);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:8px;border-radius:4px;cursor:pointer">✅ Expired Worthless (100% profit)</button>
-          <button onclick="expireWithEdit(\${idx})" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:8px 12px;border-radius:4px;cursor:pointer">✎ Edit close price</button>
-        </div>\` : \`
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="expireWithEdit(\${idx})" style="flex:1;background:var(--orange);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:8px;border-radius:4px;cursor:pointer">⚠️ Enter close/settlement price</button>
-          <button onclick="expireWorthless(\${idx})" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:8px 12px;border-radius:4px;cursor:pointer">Expired worthless anyway</button>
-        </div>\`}
-      </div>\`;
+      const actionBtns = otm
+        ? '<div style="display:flex;gap:8px;align-items:center">'
+          + '<button onclick="expireWorthless(' + idx + ')" style="flex:1;background:var(--green);color:#000;border:none;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;padding:8px;border-radius:4px;cursor:pointer">\u2705 Expired Worthless (100% profit)</button>'
+          + '<button onclick="expireWithEdit(' + idx + ')" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:8px 12px;border-radius:4px;cursor:pointer">\u270e Edit close price</button>'
+          + '</div>'
+        : '<div style="display:flex;gap:8px;align-items:center">'
+          + '<button onclick="expireWithEdit(' + idx + ')" style="flex:1;background:var(--orange);color:#000;border:none;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;padding:8px;border-radius:4px;cursor:pointer">\u26a0\ufe0f Enter close/settlement price</button>'
+          + '<button onclick="expireWorthless(' + idx + ')" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:8px 12px;border-radius:4px;cursor:pointer">Expired worthless anyway</button>'
+          + '</div>';
+
+      return '<div style="background:var(--surface2);border:1px solid ' + borderColor + ';border-radius:6px;padding:14px 16px;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+        + '<div>'
+        + '<span style="font-family:\'DM Sans\',sans-serif;font-weight:800;font-size:18px">' + p.ticker + '</span>'
+        + '<span style="color:var(--muted);font-size:11px;margin-left:8px">' + strikesLabel + ' \u00b7 ' + p.expiry + ' \u00b7 ' + p.cts + 'ct</span>'
+        + '</div>'
+        + '<span style="color:' + statusColor + ';font-size:12px;font-weight:700">' + statusIcon + ' ' + statusLabel + '</span>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;margin-bottom:12px">'
+        + '<div><span style="color:var(--muted)">Entry premium</span><br><span style="font-weight:700">$' + openPrem.toFixed(2) + '</span></div>'
+        + '<div><span style="color:var(--muted)">Full credit</span><br><span style="font-weight:700;color:var(--green)">$' + fullCredit + '</span></div>'
+        + '<div><span style="color:var(--muted)">Expired</span><br><span style="font-weight:700">' + daysOver + 'd ago</span></div>'
+        + '</div>'
+        + actionBtns
+        + '</div>';
     }).join('');
 
-    overlay.innerHTML = \`
-      <div style="background:var(--surface);border:1px solid var(--yellow);border-radius:8px;padding:24px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;font-family:'JetBrains Mono',monospace">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div>
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--yellow)">📅 Resolve Expired Positions</div>
-            <div style="color:var(--muted);font-size:11px;margin-top:3px">\${remaining.length} position\${remaining.length > 1 ? 's' : ''} past expiry · resolve each to log P&L</div>
-          </div>
-          <button onclick="document.getElementById('expiryModal').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer">✕ LATER</button>
-        </div>
-        \${cards}
-      </div>\`;
+    overlay.innerHTML = '<div style="background:var(--surface);border:1px solid var(--yellow);border-radius:8px;padding:24px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;font-family:\'JetBrains Mono\',monospace">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      + '<div>'
+      + '<div style="font-family:\'Syne\',sans-serif;font-size:18px;font-weight:800;color:var(--yellow)">\ud83d\udcc5 Resolve Expired Positions</div>'
+      + '<div style="color:var(--muted);font-size:11px;margin-top:3px">' + remaining.length + ' position' + (remaining.length > 1 ? 's' : '') + ' past expiry \u00b7 resolve each to log P&L</div>'
+      + '</div>'
+      + '<button onclick="document.getElementById(\'expiryModal\').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer">\u2715 LATER</button>'
+      + '</div>'
+      + cards
+      + '</div>';
   }
 
   buildQueue();
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-
-  // Expose rebuild so child functions can refresh the queue
   window._rebuildExpiryQueue = buildQueue;
 }
 
@@ -7713,64 +7713,58 @@ function expireWithEdit(idx) {
   const p = POSITIONS[idx];
   if (!p) return;
 
-  // Close the expiry modal temporarily and open the standard close modal
-  // but pre-set reason to 'expired' and close price to 0
   const expiryModal = document.getElementById('expiryModal');
   if (expiryModal) expiryModal.style.display = 'none';
 
   closingIdx = idx;
-  const { mid, isLive } = getSpreadMid(p);
+  const { mid } = getSpreadMid(p);
   const openPrem = Math.abs(p.open);
   const isLongOpt = p.postype === 'long_call' || p.postype === 'long_put';
-
-  // Default close price: 0 for credit spreads (worthless), mid for debit/longs
   const defaultClose = isLongOpt ? mid : 0;
   const pctCapture = openPrem > 0
     ? (isLongOpt ? Math.round(((defaultClose - openPrem)/openPrem)*100) : Math.round(((openPrem - defaultClose)/openPrem)*100))
     : 0;
-
   const strikesLabel = p.long ? '$' + p.short + '/$' + p.long : '$' + p.short;
   const captureColor = pctCapture >= 75 ? 'var(--green)' : pctCapture >= 50 ? 'var(--teal)' : pctCapture >= 25 ? 'var(--yellow)' : 'var(--red)';
+  const daysOver = Math.abs(getDTE(p));
+
+  // Build oninput handler as a string with actual values baked in
+  const onInputFn = '(function(){'
+    + 'var cp=parseFloat(this.value)||0;'
+    + 'var op=' + openPrem + ';'
+    + 'var isLong=' + (isLongOpt ? 'true' : 'false') + ';'
+    + 'var pct=op>0?(isLong?Math.round(((cp-op)/op)*100):Math.round(((op-cp)/op)*100)):0;'
+    + 'var col=pct>=75?"var(--green)":pct>=50?"var(--teal)":pct>=25?"var(--yellow)":"var(--red)";'
+    + 'document.getElementById("expEditPct").textContent=pct+"%";'
+    + 'document.getElementById("expEditPct").style.color=col;'
+    + '}).call(this)';
 
   const overlay2 = document.createElement('div');
   overlay2.id = 'expireEditModal';
   overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;display:flex;align-items:center;justify-content:center';
-  overlay2.innerHTML = \`
-    <div style="background:var(--surface);border:1px solid var(--yellow);border-radius:8px;padding:24px;width:440px;max-width:95vw;font-family:'JetBrains Mono',monospace">
-      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--yellow);margin-bottom:4px">📅 Edit Expiry Close</div>
-      <div style="color:var(--muted);font-size:11px;margin-bottom:16px">\${p.ticker} · \${strikesLabel} · \${p.expiry} · \${p.cts}ct</div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;font-size:11px">
-        <div><span style="color:var(--muted)">Entry Premium</span><br><span style="font-size:15px;font-weight:700">\$\${openPrem.toFixed(2)}</span></div>
-        <div><span style="color:var(--muted)">Last Mid</span><br><span style="font-size:15px;font-weight:700">\$\${mid.toFixed(2)}</span></div>
-        <div><span style="color:var(--muted)">% Captured</span><br><span id="expEditPct" style="font-size:15px;font-weight:700;color:\${captureColor}">\${pctCapture}%</span></div>
-        <div><span style="color:var(--muted)">Days over expiry</span><br><span style="font-size:15px;font-weight:700">\${Math.abs(getDTE(p))}d</span></div>
-      </div>
-
-      <div style="margin-bottom:14px">
-        <label style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Close / Settlement Price (per share)</label>
-        <input id="expEditPrice" type="number" step="0.01" min="0" value="\${defaultClose.toFixed(2)}"
-          oninput="(function(){
-            var cp=parseFloat(this.value)||0;
-            var pct=\${openPrem}>0?(isNaN(cp)?0:\${isLongOpt}?Math.round(((cp-\${openPrem})/\${openPrem})*100):Math.round(((\${openPrem}-cp)/\${openPrem})*100)):0;
-            var col=pct>=75?'var(--green)':pct>=50?'var(--teal)':pct>=25?'var(--yellow)':'var(--red)';
-            document.getElementById('expEditPct').textContent=pct+'%';
-            document.getElementById('expEditPct').style.color=col;
-          }).call(this)"
-          style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">Enter 0 if expired worthless. Enter actual close/assignment cost if closed early or ITM.</div>
-      </div>
-
-      <div style="margin-bottom:16px">
-        <label style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Notes (optional)</label>
-        <input id="expEditNotes" type="text" placeholder="e.g. Closed with broker at 0.05, or assigned" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 10px;border-radius:4px;outline:none;width:100%">
-      </div>
-
-      <div style="display:flex;gap:8px">
-        <button onclick="executeExpireEdit(\${idx})" style="flex:1;background:var(--yellow);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:9px;border-radius:4px;cursor:pointer">✓ LOG & REMOVE</button>
-        <button onclick="document.getElementById('expireEditModal').remove();document.getElementById('expiryModal').style.display='flex'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:9px 14px;border-radius:4px;cursor:pointer">← BACK</button>
-      </div>
-    </div>\`;
+  overlay2.innerHTML = '<div style="background:var(--surface);border:1px solid var(--yellow);border-radius:8px;padding:24px;width:440px;max-width:95vw;font-family:\'JetBrains Mono\',monospace">'
+    + '<div style="font-family:\'Syne\',sans-serif;font-size:18px;font-weight:800;color:var(--yellow);margin-bottom:4px">\ud83d\udcc5 Edit Expiry Close</div>'
+    + '<div style="color:var(--muted);font-size:11px;margin-bottom:16px">' + p.ticker + ' \u00b7 ' + strikesLabel + ' \u00b7 ' + p.expiry + ' \u00b7 ' + p.cts + 'ct</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;font-size:11px">'
+    + '<div><span style="color:var(--muted)">Entry Premium</span><br><span style="font-size:15px;font-weight:700">$' + openPrem.toFixed(2) + '</span></div>'
+    + '<div><span style="color:var(--muted)">Last Mid</span><br><span style="font-size:15px;font-weight:700">$' + mid.toFixed(2) + '</span></div>'
+    + '<div><span style="color:var(--muted)">% Captured</span><br><span id="expEditPct" style="font-size:15px;font-weight:700;color:' + captureColor + '">' + pctCapture + '%</span></div>'
+    + '<div><span style="color:var(--muted)">Days over expiry</span><br><span style="font-size:15px;font-weight:700">' + daysOver + 'd</span></div>'
+    + '</div>'
+    + '<div style="margin-bottom:14px">'
+    + '<label style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Close / Settlement Price (per share)</label>'
+    + '<input id="expEditPrice" type="number" step="0.01" min="0" value="' + defaultClose.toFixed(2) + '" oninput="' + onInputFn.replace(/"/g, '&quot;') + '" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:14px;padding:8px 10px;border-radius:4px;outline:none;width:100%">'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:4px">Enter 0 if expired worthless. Enter actual close/assignment cost if closed early or ITM.</div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px">'
+    + '<label style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Notes (optional)</label>'
+    + '<input id="expEditNotes" type="text" placeholder="e.g. Closed with broker at 0.05, or assigned" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:11px;padding:7px 10px;border-radius:4px;outline:none;width:100%">'
+    + '</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="executeExpireEdit(' + idx + ')" style="flex:1;background:var(--yellow);color:#000;border:none;font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;padding:9px;border-radius:4px;cursor:pointer">\u2713 LOG & REMOVE</button>'
+    + '<button onclick="document.getElementById(\'expireEditModal\').remove();document.getElementById(\'expiryModal\').style.display=\'flex\'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:10px;padding:9px 14px;border-radius:4px;cursor:pointer">\u2190 BACK</button>'
+    + '</div>'
+    + '</div>';
 
   document.body.appendChild(overlay2);
 }
