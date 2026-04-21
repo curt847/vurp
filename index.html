@@ -5320,9 +5320,21 @@ function showTradeLog() {
       </div>
 
       <!-- FULL LOG TABLE -->
-      <div style="color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Full Trade History (newest first)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px">
+        <div style="color:var(--accent);font-size:9px;text-transform:uppercase;letter-spacing:1px">Full Trade History (newest first)</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="logTickerSearch" type="text" placeholder="Search ticker…" oninput="filterLogTable(this.value)"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;border-radius:4px;outline:none;width:160px;transition:border-color .15s"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          <button onclick="filterLogTable('');document.getElementById('logTickerSearch').value=''"
+            style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 9px;border-radius:4px;cursor:pointer;transition:all .15s"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✕ CLEAR</button>
+          <span id="logFilterCount" style="color:var(--muted);font-size:10px"></span>
+        </div>
+      </div>
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">
+        <table id="logTable" style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">
           <thead><tr style="border-bottom:2px solid var(--border);background:var(--surface2)">
             <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px;white-space:nowrap">Date</th>
             <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Ticker</th>
@@ -5339,13 +5351,33 @@ function showTradeLog() {
             <th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:9px">Notes</th>
             <th style="padding:6px 8px;width:32px"></th>
           </tr></thead>
-          <tbody>${logRows}</tbody>
+          <tbody id="logTableBody">${logRows}</tbody>
         </table>
       </div>
     </div>`;
 
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function filterLogTable(query) {
+  const q = query.trim().toUpperCase();
+  const tbody = document.getElementById('logTableBody');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr');
+  let visible = 0;
+  rows.forEach(row => {
+    // Ticker is the 2nd cell (index 1)
+    const tickerCell = row.cells[1];
+    const ticker = tickerCell ? tickerCell.textContent.trim().toUpperCase() : '';
+    const show = !q || ticker.includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const countEl = document.getElementById('logFilterCount');
+  if (countEl) {
+    countEl.textContent = q ? `${visible} of ${rows.length} shown` : '';
+  }
 }
 
 let _leCurrentId = null;
