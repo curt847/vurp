@@ -33,7 +33,7 @@
   .btn:disabled{opacity:.4;cursor:not-allowed}
   .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent);opacity:1}
-  .btn-auto{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:10px}
+  .btn-auto{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:9px;padding:5px 8px}
   .btn-auto.on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
 
   /* STATS BAR */
@@ -519,12 +519,12 @@
     <span class="storage-badge" id="driveBadge" style="background:rgba(66,133,244,.1);border-color:rgba(66,133,244,.3);color:#4285f4;cursor:pointer" onclick="driveSync()">☁ DRIVE</span>
     <button class="btn btn-secondary" onclick="exportPositions()" style="font-size:10px;padding:5px 10px">⬇ EXPORT</button>
     <button class="btn" onclick="showAddModal()" style="background:var(--green);font-size:11px">+ ADD</button>
-    <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()">⏱ AUTO: OFF</button>
     <button class="btn btn-ghost" id="ernBtn" onclick="fetchEarningsOnly()" style="font-size:10px;padding:5px 10px">⟳ EARN</button>
     <button class="btn btn-ghost" id="ivBtn" onclick="fetchIV()" style="font-size:10px;padding:5px 10px">⟳ IV</button>
     <button class="btn btn-ghost" id="flowBtn" onclick="fetchFlow()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,212,255,.3);color:var(--accent)">🌊 FLOW</button>
     <button class="btn btn-ghost" id="whaleBtn" onclick="fetchWhales()" style="font-size:10px;padding:5px 10px;border-color:rgba(0,232,138,.3);color:var(--green)">🐋 WHALES</button>
     <button class="btn btn-ghost" onclick="showTradeLog()" style="border-color:rgba(0,212,255,.3);color:var(--accent);font-size:10px;padding:5px 10px">📋 LOG</button>
+    <button class="btn btn-auto" id="autoBtn" onclick="toggleAuto()" style="font-size:9px;padding:5px 8px">⏱ AUTO: OFF</button>
     <button class="btn" id="refreshBtn" onclick="fetchAll()">⟳ REFRESH LIVE</button>
   </div>
 </div>
@@ -1627,8 +1627,9 @@ function renderTable() {
       // Per-position contra: is this specific position working against the flow?
       const _sent = flow.sentiment;
       const _isCC = p.postype === 'covered_call';
-      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
-      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
+      const _isDebit     = p.postype === 'spread_debit';
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC && !_isDebit;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC && !_isDebit;
       const _isLongCall  = p.postype==='long_call';
       const _isLongPut   = p.postype==='long_put';
       const _isDebitCall = p.postype==='spread_debit' && p.type==='C'; // bullish debit
@@ -1646,7 +1647,8 @@ function renderTable() {
           ? 'fb-contra'
           : _sent==='bull' ? 'fb-bull' : 'fb-bear';
         const fi = _sent==='bull' ? '↑ BULL' : _sent==='bear' ? '↓ BEAR' : '→ MIX';
-        const prem = flow.premium>=1e6?`$${(flow.premium/1e6).toFixed(1)}M`:`$${(flow.premium/1e3).toFixed(0)}K`;
+        const _prem = flow.premium || (flow.calls || 0) + (flow.puts || 0);
+        const prem = _prem>=1e6?`$${(_prem/1e6).toFixed(1)}M`:_prem>0?`$${(_prem/1e3).toFixed(0)}K`:'';
         const confTag = flow.confidence ? `<span style="font-size:8px;color:${flow.confidence==='STRONG'?'var(--green)':flow.confidence==='MOD'?'#cbd5e1':'var(--muted)'};margin-left:3px;font-weight:700">${flow.confidence}</span>` : '';
         const contraTag = isContra?`<div style="color:var(--yellow);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.3px">⚠ CONTRA</div>`:'';
         flowHtml=`<span class="flow-badge ${fc}">${fi} ${prem}</span>${confTag}${contraTag}`;
@@ -1682,8 +1684,9 @@ function renderTable() {
       // Near-term trade count for tooltip context
       const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
       const _isCC4       = p.postype === 'covered_call';
-      const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4;
-      const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4;
+      const _isDebit4    = p.postype === 'spread_debit';
+      const _isShortPut4 = p.type==='P' && !isLongOption(p) && !_isCC4 && !_isDebit4;
+      const _isShortCal4 = p.type==='C' && !isLongOption(p) && !_isCC4 && !_isDebit4;
       const _isLongC4    = p.postype==='long_call';
       const _isLongP4    = p.postype==='long_put';
       const _isDebitC4   = p.postype==='spread_debit' && p.type==='C'; // bullish debit
@@ -3788,8 +3791,9 @@ function showRollModal(idx) {
 
     ${(()=>{
       const _isCC = p.postype === 'covered_call';
-      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC;
-      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC;
+      const _isDebitR    = p.postype === 'spread_debit';
+      const _isShortPut  = p.type==='P' && !isLongOption(p) && !_isCC && !_isDebitR;
+      const _isShortCall = p.type==='C' && !isLongOption(p) && !_isCC && !_isDebitR;
       const _isLongCall  = p.postype==='long_call';
       const _isLongPut   = p.postype==='long_put';
       let rows = '';
@@ -5839,7 +5843,7 @@ async function askClaudeSingle(idx) {
       const total = calls + puts;
       const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
       if (total >= (bigNames.includes(ticker) ? 200000 : 50000)) {
-        flowData[ticker] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), calls, puts };
+        flowData[ticker] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), premium: total, calls, puts };
       }
     }
   } catch(e) {}
@@ -6821,7 +6825,7 @@ async function runAIDiscover() {
               });
               var total = calls + puts;
               if (total >= 50000) {
-                flowData[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), calls, puts };
+                flowData[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), premium: total, calls, puts };
               }
             }
           } catch(e) {}
