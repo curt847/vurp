@@ -5775,18 +5775,6 @@ async function askClaudeSingle(idx) {
     }
   }
 
-  // All open positions on this ticker (for context — not the focus of the question)
-  const allPos = POSITIONS.filter(pos => pos.ticker === ticker).map(pos => {
-    const tl = pos.postype === 'spread_credit' ? (pos.type === 'P' ? 'P-CR' : 'C-CR')
-             : pos.postype === 'spread_debit'  ? (pos.type === 'P' ? 'P-DB' : 'C-DB')
-             : pos.postype === 'covered_call'  ? 'CC'
-             : pos.postype === 'long_call'     ? 'Call'
-             : pos.postype === 'long_put'      ? 'Put' : pos.postype;
-    const { mid } = getSpreadMid(pos);
-    const pctGain = pos.open > 0 ? Math.round((1 - mid / Math.abs(pos.open)) * 100) : null;
-    return tl + ' $' + pos.short + (pos.long ? '/$' + pos.long : '') + ' exp:' + pos.expiry + ' DTE:' + getDTE(pos) + ' cts:' + pos.cts + (pctGain !== null ? ' gain:' + pctGain + '%' : '');
-  }).join(' | ');
-
   const note   = TICKER_NOTES && TICKER_NOTES[ticker] ? TICKER_NOTES[ticker].text : null;
   const earn   = earningsMap[ticker] || null;
   const sector = getSector(ticker);
@@ -5796,7 +5784,6 @@ async function askClaudeSingle(idx) {
     s:    sector,
     p:    lp.price ? (lp.price.toFixed(2) + ' ' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct || 0).toFixed(1) + '%') : '?',
     b:    bias,
-    ps:   allPos || null,
     n:    note,
     ivr:  ivrStr,
     iv:   ivPct,
@@ -5822,15 +5809,10 @@ async function askClaudeSingle(idx) {
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
-  // Determine gain% on this position to drive exit vs add-more framing
-  const { mid: posMid } = getSpreadMid(p);
-  const gainPct = p.open > 0 ? Math.round((1 - posMid / Math.abs(p.open)) * 100) : null;
-  const isNearMax = gainPct !== null && gainPct >= 75;
-
   try {
-    const singlePrompt = 'You are an options trading assistant for an experienced credit spread / covered call seller. Today: ' + today + '. '
+    const singlePrompt = 'You are an options trading assistant for an experienced credit spread seller. Today: ' + today + '. '
+      + 'Treat this ticker exactly like a watchlist entry — ignore any existing position details and focus purely on current conditions. '
       + 'FIELD GUIDE: t=ticker, s=sector, p=current price+todayChg, b=user_bias(bull/bear/neu), '
-      + 'ps=existing_positions(type strikes/expiry/DTE/contracts/pctGainSoFar), '
       + 'n=userNote, ivr=IV_rank_0to100(50+=elevated good for premium selling; <30=low avoid selling premium), '
       + 'iv=current_implied_volatility_pct, flow=optionsFlowSentiment(confidence) total$ calls$ puts$, '
       + 'vol=today_volume_vs_20day_avg(high=2x+ strong conviction, above-avg=1.2-2x, normal=0.8-1.2x, low=below 0.8x weak conviction), '
@@ -5840,17 +5822,14 @@ async function askClaudeSingle(idx) {
       + 'High volume confirms signals, low volume = skepticism. '
       + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
       + 'DATA: ' + JSON.stringify(tickerData) + ' '
-      + (isNearMax
-          ? 'This position is near max profit (' + gainPct + '% captured). The PRIMARY question is the EXIT DECISION: '
-            + '(A) close now and RE-ENTER IMMEDIATELY with a new position at current levels, or '
-            + '(B) close now and WAIT for a better entry (pullback, IV expansion, cleaner setup). '
-            + 'Base this on: current momentum/trend, IV rank (is premium still worth selling right now?), flow sentiment, and how extended the move is. '
-            + 'Also flag if earnings is within 2 weeks of a potential new expiry. '
-          : 'The position has ' + (gainPct !== null ? gainPct + '% gain so far' : 'an open gain') + '. The PRIMARY question is: SHOULD THE USER ADD ANOTHER POSITION on this ticker? '
-            + 'Consider current conditions — momentum, IV rank, flow, earnings proximity. Note concentration risk if adding to an existing position. ')
+      + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
+      + 'Earnings beyond the 30-45 DTE window are not a concern — only flag earnings if they fall WITHIN the target expiry window. '
       + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
+      + 'RSI GUIDANCE: RSI>70 = wait for pullback to 60-70 before entering. RSI 40-65 = healthy, supports entry. '
+      + 'MACD GUIDANCE: fresh bullish crossover after pullback = ideal entry signal. '
+      + '52-WEEK BIAS: near 52wk high = bullish but wait for RSI cooldown. Within 10% of 52wk low = avoid put spreads. '
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
-      + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences — cite ivr, flow, price action, earnings if relevant","action":"close+reenter|close+wait|add|hold","action_reason":"1 sentence specific reasoning for the action","suggestion":"concrete trade with specific strikes and expiry, or empty string if waiting","risk":"single biggest specific threat"}';
+      + '{"ticker":"X","sentiment":"bullish|bearish|neutral|mixed","read":"2 sentences — cite ivr, flow+volume, key tech signal","entry":"good now|wait for X","suggestion":"concrete trade with specific strikes and expiry targeting 30-45 DTE, or empty string if waiting","risk":"single biggest specific threat"}';
 
     const step1 = await fetch(PROXY_URL + '?action=writeContext', {
       method: 'POST',
@@ -5872,54 +5851,33 @@ async function askClaudeSingle(idx) {
 
     const sc = scColor(r.sentiment);
     const sb = scBg(r.sentiment);
-
-    const typeLabel = p.postype === 'spread_credit' ? (p.type === 'P' ? 'Put Credit Spread' : 'Call Credit Spread')
-                    : p.postype === 'covered_call'  ? 'Covered Call'
-                    : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'Put Debit Spread' : 'Call Debit Spread')
-                    : p.postype === 'long_call'     ? 'Long Call'
-                    : p.postype === 'long_put'      ? 'Long Put' : p.postype;
-
-    const posCount = POSITIONS.filter(pos => pos.ticker === ticker).length;
     const ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
 
-    // Action badge config
-    const actionCfg = {
-      'close+reenter': { label: '↺ CLOSE & RE-ENTER',  color: 'var(--accent)',  bg: 'rgba(0,212,255,.1)',  border: 'rgba(0,212,255,.4)'  },
-      'close+wait':    { label: '⏸ CLOSE & WAIT',      color: 'var(--yellow)', bg: 'var(--yellow-dim)',   border: 'rgba(245,200,66,.4)' },
-      'add':           { label: '＋ ADD POSITION',      color: 'var(--green)',  bg: 'var(--green-dim)',    border: 'rgba(0,232,138,.3)'  },
-      'hold':          { label: '◈ HOLD',               color: 'var(--muted)', bg: 'rgba(74,85,104,.15)', border: 'var(--border)'       },
-    };
-    const act = actionCfg[r.action] || { label: r.action || '—', color: 'var(--muted)', bg: 'rgba(74,85,104,.15)', border: 'var(--border)' };
-    const contextLabel = isNearMax ? 'Near max profit · Exit decision' : 'Add another position?';
+    const entryGood = r.entry && !r.entry.toLowerCase().startsWith('wait');
+    const entryColor  = entryGood ? 'var(--green)'  : 'var(--yellow)';
+    const entryBg     = entryGood ? 'var(--green-dim)' : 'var(--yellow-dim)';
+    const entryBorder = entryGood ? 'rgba(0,232,138,.3)' : 'rgba(245,200,66,.4)';
 
     content.innerHTML =
-      // Header
       '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'
       + '<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:17px">' + ticker + '</span>'
       + '<span style="font-size:11px;color:var(--muted)">' + (lp && lp.price ? '$' + lp.price.toFixed(2) : '') + '</span>'
-      + (gainPct !== null ? '<span style="font-size:10px;color:' + (gainPct>=75?'var(--green)':'var(--muted)') + ';background:rgba(0,232,138,.08);border:1px solid rgba(0,232,138,.2);padding:1px 6px;border-radius:3px">' + gainPct + '% captured</span>' : '')
-      + '<span style="font-size:9px;color:var(--muted);margin-left:auto">' + contextLabel + '</span>'
       + '</div>'
-      // Sentiment + IVR row
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
       + '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;background:' + sb + ';border:1px solid ' + sc + ';color:' + sc + '">' + scLabel(r.sentiment) + '</span>'
       + (ivrStr !== 'unavailable' ? '<span style="font-size:10px;color:var(--muted)">IVR ' + ivrStr + '</span>' : '')
       + '</div>'
-      // Read
-      + '<div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:10px">📊 ' + r.read + '</div>'
-      // Action recommendation
-      + '<div style="padding:8px 12px;background:' + act.bg + ';border:1px solid ' + act.border + ';border-radius:4px;margin-bottom:8px">'
-      + '<div style="font-size:14px;font-weight:700;color:' + act.color + ';letter-spacing:.5px;margin-bottom:4px">' + act.label + '</div>'
-      + '<div style="font-size:12px;color:var(--text);line-height:1.5">' + (r.action_reason || '') + '</div>'
+      + '<div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:10px">\ud83d\udcca ' + r.read + '</div>'
+      + '<div style="padding:8px 12px;background:' + entryBg + ';border:1px solid ' + entryBorder + ';border-radius:4px;margin-bottom:8px">'
+      + '<div style="font-size:9px;font-weight:700;color:' + entryColor + ';letter-spacing:1px;margin-bottom:3px">ENTRY</div>'
+      + '<div style="font-size:13px;color:var(--text)">' + (r.entry || '—') + '</div>'
       + '</div>'
-      // Suggested trade (only if there is one)
       + (r.suggestion ? '<div style="padding:8px 10px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;margin-bottom:8px">'
         + '<div style="font-size:9px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px">SUGGESTED TRADE</div>'
         + '<div style="font-size:13px;color:var(--text);line-height:1.6">' + r.suggestion + '</div>'
         + '</div>' : '')
-      // Risk
-      + (r.risk ? '<div style="font-size:11px;color:var(--orange);margin-top:2px">⚠ ' + r.risk + '</div>' : '')
-      + '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:12px">' + ts + ' · Not financial advice</div>';
+      + (r.risk ? '<div style="font-size:11px;color:var(--orange);margin-top:2px">\u26a0 ' + r.risk + '</div>' : '')
+      + '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:12px">' + ts + ' \u00b7 Not financial advice</div>';
 
   } catch(err) {
     content.innerHTML = '<div class="aip-err">Analysis failed: ' + err.message + '</div>';
