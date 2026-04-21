@@ -707,6 +707,7 @@
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
       <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
       <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="if(confirm('Reset all sector assignments to defaults?'))resetSectors()" title="Reset all sector assignments to defaults">↺ SECTORS</button>
+      <button id="watchFilterToggle" class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="toggleWatchFilter()" title="Toggle between all cards and watching-only">👁 ALL</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <input id="watchInput" placeholder="TICKER" maxlength="6"
@@ -7003,6 +7004,25 @@ async function runAIDiscover() {
 }
 
 
+let watchFilterMode = 'all'; // 'all' | 'watching'
+
+function toggleWatchFilter() {
+  watchFilterMode = watchFilterMode === 'all' ? 'watching' : 'all';
+  const btn = document.getElementById('watchFilterToggle');
+  if (watchFilterMode === 'watching') {
+    btn.textContent = '👁 WATCHING';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    btn.style.background = 'rgba(0,212,255,.08)';
+  } else {
+    btn.textContent = '👁 ALL';
+    btn.style.borderColor = '';
+    btn.style.color = 'var(--muted)';
+    btn.style.background = '';
+  }
+  renderWatchList();
+}
+
 function renderWatchList() {
   const grid = document.getElementById('watchGrid');
   const posTickers = new Set(POSITIONS.map(p => p.ticker));
@@ -7022,8 +7042,11 @@ function renderWatchList() {
     if (p.postype !== 'covered_call' && !isLongOption(p)) tickerCollateral[p.ticker] += p.collateral;
   });
 
-  // All tickers to show: position tickers + watchlist
-  const allTickers = [...new Set([...posTickers, ...WATCHLIST])];
+  // All tickers to show: position tickers + watchlist (filtered by watchFilterMode)
+  const allTickersRaw = [...new Set([...posTickers, ...WATCHLIST])];
+  const allTickers = watchFilterMode === 'watching'
+    ? allTickersRaw.filter(t => !posTickers.has(t))
+    : allTickersRaw;
 
   // Group by sector
   const bySector = {};
