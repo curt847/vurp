@@ -1,3 +1,16 @@
+
+
+  // DTE-aware ITM floor: returns the minimum reasonable price for a fully-ITM spread.
+  // Higher near expiry (intrinsic dominates), lower with more time (time value is meaningful).
+  // This is only used as a sanity-check floor — real quotes always take precedence.
+  function itmFloor(width, dte) {
+    const pct = dte <= 10 ? 0.90
+               : dte <= 20 ? 0.82
+               : dte <= 35 ? 0.72
+               : dte <= 50 ? 0.65
+               :             0.58;
+    return width * pct;
+  }
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1237,7 +1250,7 @@ function getSpreadMid(p) {
       isDebit2 ? (p.type === 'C' ? S2 > p.short : S2 < p.short)
                : (p.type === 'C' ? S2 > p.long  : S2 < p.long)
     );
-    const floored = bothITM2 ? Math.max(liveMid, w2 * 0.90) : liveMid;
+    const floored = bothITM2 ? Math.max(liveMid, itmFloor(w2, getDTE(p))) : liveMid;
     return { mid: Math.min(Math.max(0, floored), w2 || Infinity), isLive: true, isBs: false };
   }
 
@@ -1251,7 +1264,7 @@ function getSpreadMid(p) {
       isDebit3 ? (p.type === 'C' ? S3 > p.short : S3 < p.short)
                : (p.type === 'C' ? S3 > p.long  : S3 < p.long)
     );
-    const floored3 = bothITM3 ? Math.max(bsMid, w3 * 0.90) : bsMid;
+    const floored3 = bothITM3 ? Math.max(bsMid, itmFloor(w3, getDTE(p))) : bsMid;
     return { mid: Math.min(Math.max(0, floored3), w3 || Infinity), isLive: false, isBs: true };
   }
 
@@ -1272,7 +1285,7 @@ function getSpreadMid(p) {
               : (p.type === 'C' ? S > p.long  : S < p.long)
     );
     let mid = Math.max(0, isDebit ? (longMid - shortMid) : (shortMid - longMid));
-    if (bothITM && width > 0) mid = Math.max(mid, width * 0.90);
+    if (bothITM && width > 0) mid = Math.max(mid, itmFloor(width, getDTE(p)));
     return { mid: Math.min(mid, width), isLive: true, isBs: false };
   }
   if (sBid != null && sAsk != null) {
@@ -2847,16 +2860,17 @@ async function fetchTicker(ticker) {
             ? (p.type === 'C' ? S > pShort : S < pShort)
             : (p.type === 'C' ? S > pLong  : S < pLong)
         );
-        // If both legs are ITM, quoted mid can be unreliable — floor at 90% of width
-        const sanitizedMid = bothITM ? Math.max(rawMid, width * 0.90) : rawMid;
+        // If both legs are ITM, quoted mid can be unreliable — floor is DTE-aware
+        const _itmFloor = bothITM ? itmFloor(width, getDTE(p)) : 0;
+        const sanitizedMid = bothITM ? Math.max(rawMid, _itmFloor) : rawMid;
 
         if (sanitizedMid > 0 && sanitizedMid <= width * 0.995) {
           liveData[ticker][liveKey]   = sanitizedMid;
           liveData[ticker][liveKeyTs] = cycleId;
           delete liveData[ticker][bsKey];
         } else if (bothITM && sanitizedMid > width * 0.995) {
-          // Deep ITM floor may push above the width cap — store at 90% regardless
-          liveData[ticker][liveKey]   = width * 0.90;
+          // Deep ITM floor may push above the width cap — store at floor regardless
+          liveData[ticker][liveKey]   = Math.min(_itmFloor, width * 0.995);
           liveData[ticker][liveKeyTs] = cycleId;
           delete liveData[ticker][bsKey];
         }
@@ -3010,7 +3024,7 @@ async function fetchTicker(ticker) {
           ? (p.type === 'C' ? S > pShort : S < pShort)   // debit: short leg is the further OTM one
           : (p.type === 'C' ? S > pLong  : S < pLong);   // credit: long leg is the further OTM one
         if (bothITM) {
-          bsMid = Math.max(bsMid, width * 0.90);
+          bsMid = Math.max(bsMid, itmFloor(width, getDTE(p)));
         }
       }
 
@@ -3684,11 +3698,16 @@ function showRollModal(idx) {
       const ivR = getLiveIV(p);
       const today2 = new Date(); today2.setHours(0,0,0,0);
       const curExp = new Date(p.expiry + 'T12:00:00');
-      const minDate = new Date(Math.max(today2.getTime() + 45*86400000, curExp.getTime() + 1));
+      const minDate = new Date(today2.getTime() + 45*86400000);
       function tf3(yr,mo){ let f=0; for(let i=1;i<=31;i++){const t=new Date(yr,mo,i);if(t.getMonth()!==mo)break;if(t.getDay()===5&&++f===3)return t;} return new Date(yr,mo,21); }
       let rExp=null;
-      for(let m=0;m<8;m++){const d=new Date(minDate.getFullYear(),minDate.getMonth()+m,1);const tf=tf3(d.getFullYear(),d.getMonth());if(tf>=minDate){rExp=tf;break;}}
-      if(!rExp) rExp=tf3(minDate.getFullYear(),minDate.getMonth()+1);
+      for(let m=0;m<8;m++){
+        const d=new Date(minDate.getFullYear(),minDate.getMonth()+m,1);
+        const tf=tf3(d.getFullYear(),d.getMonth());
+        const isSameExpiry=tf.getFullYear()===curExp.getFullYear()&&tf.getMonth()===curExp.getMonth();
+        if(tf>=minDate&&!isSameExpiry){rExp=tf;break;}
+      }
+      if(!rExp) rExp=tf3(minDate.getFullYear(),minDate.getMonth()+2);
       const rExpStr = rExp.toISOString().slice(0,10);
       const rT = Math.max(1, Math.round((rExp - today2)/86400000))/365;
       const rDTE = Math.round((rExp - today2)/86400000);
