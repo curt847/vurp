@@ -694,7 +694,7 @@
         onblur="this.style.borderColor='var(--border)'" />
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
-      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="runAISuggest()" id="suggestBtn">&#x1F4A1; SUGGEST</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="runAISuggest()" id="suggestBtn">&#x1F9F9; CURATE</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
     </div>
   </div>
@@ -708,7 +708,7 @@
   </div>
   <div id="suggestPanel">
     <div class="sug-hdr">
-      <div class="sug-title">&#x1F4A1; Ticker Suggestions</div>
+      <div class="sug-title">&#x1F9F9; Curate Watchlist</div>
       <button class="aip-close" onclick="document.getElementById('suggestPanel').classList.remove('open')">&#x2715; CLOSE</button>
     </div>
     <div id="suggestContent"></div>
@@ -6376,8 +6376,8 @@ async function runAISuggest() {
 
   panel.classList.add('open');
   btn.disabled = true;
-  btn.textContent = 'THINKING...';
-  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Building your trading profile\u2026</div></div>';
+  btn.textContent = 'CURATING...';
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Reviewing your watchlist\u2026</div></div>';
 
   // Build profile from positions + watchlist
   var posTickers  = new Set(POSITIONS.map(function(p){ return p.ticker; }));
@@ -6478,11 +6478,9 @@ async function runAISuggest() {
 
     var ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
     content.innerHTML =
-      '<div class="sug-section"><div class="sug-section-label">\u2795 Add to Watchlist</div>'
-      + renderCards(result.add, 'sug-add') + '</div>'
-      + '<div class="sug-section"><div class="sug-section-label">\u2796 Consider Removing</div>'
-      + renderCards(result.remove, 'sug-remove') + '</div>'
-      + '<div class="sug-section"><div class="sug-section-label">\u26a0 Worth Watching</div>'
+      '<div class="sug-section"><div class="sug-section-label">\u2796 Avoid / Remove</div>'
+      + renderCards(result.avoid, 'sug-remove') + '</div>'
+      + '<div class="sug-section"><div class="sug-section-label">\u26a0 Worth Watching Closely</div>'
       + renderCards(result.watch, 'sug-caution') + '</div>'
       + '<div class="aip-ts">Generated ' + ts + ' \u00b7 Not financial advice</div>';
 
@@ -6492,7 +6490,7 @@ async function runAISuggest() {
   }
 
   btn.disabled = false;
-  btn.textContent = '\ud83d\udca1 SUGGEST';
+  btn.textContent = '\ud83e\uddf9 CURATE';
 }
 
 // ══════════════════════════════════════════
