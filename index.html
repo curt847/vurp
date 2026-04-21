@@ -3539,7 +3539,19 @@ async function fetchEarnings(tickers) {
       const arr = Array.isArray((r&&r.data)) ? r.data : [];
       if (!arr.length) return;
       const upcoming = arr
-        .map(x => x.date || x.earnings_date || x.report_date || x.confirmed_date || x.estimated_date)
+        .map(x => {
+          const raw = x.date || x.earnings_date || x.report_date || x.confirmed_date || x.estimated_date;
+          if (!raw) return null;
+          // Normalize: strip time component, keep YYYY-MM-DD only
+          // If the raw value contains a T (ISO timestamp), parse as UTC and extract date
+          // to avoid timezone shift turning e.g. "2025-05-04T00:00:00Z" into May 3rd locally
+          if (raw.includes('T') || raw.includes('Z')) {
+            const d = new Date(raw);
+            // Use UTC date parts to avoid local timezone shifting the day
+            return d.toISOString().slice(0, 10);
+          }
+          return raw.slice(0, 10); // already a date string
+        })
         .filter(d => d && d >= today)
         .sort()[0];
       if (upcoming) earningsMap[t] = upcoming; // override fallback with live date
@@ -5823,6 +5835,7 @@ async function askClaudeSingle(idx) {
       + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
       + 'DATA: ' + JSON.stringify(tickerData) + ' '
       + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
+      + 'IMPORTANT: Options expire on Fridays. Always ensure suggested expiry dates land on a Friday — never Saturday or any other day. Double-check before responding. '
       + 'Earnings beyond the 30-45 DTE window are not a concern — only flag earnings if they fall WITHIN the target expiry window. If the suggested expiry straddles an upcoming earnings date, flag it prominently in the read with the exact date and note increased volatility risk. Do not silently recommend through earnings — always acknowledge it even if the trade is otherwise sound. Let the trader decide. '
       + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
       + 'DELTA GUIDANCE: Target short strike delta of 0.30-0.35 as the default. 0.35-0.40 is acceptable when multiple signals align strongly (IVR 50+, clear trend, confirming flow). Avoid deltas below 0.28 — premium is too thin to be worthwhile. Always note the approximate delta of the suggested short strike. '
