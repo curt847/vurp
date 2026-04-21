@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RollWatch v3.0</title>
+<title>RollWatch v2</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2308,14 +2308,24 @@ async function fetchTechnicals(ticker) {
     const hi52 = Math.max(...year).toFixed(2);
     const lo52 = Math.min(...year).toFixed(2);
 
-    // ── RSI(14) ───────────────────────────────────────────
-    let gains = 0, losses = 0;
-    for (let i = closes.length - 14; i < closes.length; i++) {
-      const d = closes[i] - closes[i-1];
-      if (d >= 0) gains += d; else losses -= d;
+    // ── RSI(14) — Wilder's smoothed method ───────────────
+    let avgGain = 0, avgLoss = 0;
+    // Seed: simple average of first 14 periods
+    for (let i = 1; i <= 14; i++) {
+      const d = closes[i] - closes[i - 1];
+      if (d >= 0) avgGain += d; else avgLoss -= d;
     }
-    const avgG = gains / 14, avgL = losses / 14;
-    const rsi = avgL === 0 ? 100 : (100 - 100 / (1 + avgG / avgL));
+    avgGain /= 14;
+    avgLoss /= 14;
+    // Smooth remaining periods using Wilder's method
+    for (let i = 15; i < closes.length; i++) {
+      const d = closes[i] - closes[i - 1];
+      const g = d >= 0 ? d : 0;
+      const l = d < 0 ? -d : 0;
+      avgGain = (avgGain * 13 + g) / 14;
+      avgLoss = (avgLoss * 13 + l) / 14;
+    }
+    const rsi = avgLoss === 0 ? 100 : (100 - 100 / (1 + avgGain / avgLoss));
 
     // ── MACD(12,26,9) ─────────────────────────────────────
     const ema = (arr, n) => {
@@ -2324,16 +2334,18 @@ async function fetchTechnicals(ticker) {
       for (let i = n; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
       return e;
     };
-    const macdLine   = closes.length >= 26 ? ema(closes, 12) - ema(closes, 26) : null;
-    // signal = 9-period EMA of macd — approximate with last 9 daily macd values
-    let macdSignal = null, macdHist = null;
-    if (macdLine !== null && closes.length >= 35) {
+    let macdLine = null, macdSignal = null, macdHist = null;
+    if (closes.length >= 35) {
+      // Build full MACD line series starting from index 25 (first valid 26-period EMA)
       const macdSeries = [];
-      for (let i = closes.length - 35; i <= closes.length - 1; i++) {
-        macdSeries.push(ema(closes.slice(0, i+1), 12) - ema(closes.slice(0, i+1), 26));
+      for (let i = 25; i < closes.length; i++) {
+        const slice = closes.slice(0, i + 1);
+        macdSeries.push(ema(slice, 12) - ema(slice, 26));
       }
-      macdSignal = ema(macdSeries, 9);
-      macdHist   = macdLine - macdSignal;
+      macdLine   = macdSeries[macdSeries.length - 1];
+      // Signal = 9-period EMA of the full MACD series
+      macdSignal = macdSeries.length >= 9 ? ema(macdSeries, 9) : null;
+      macdHist   = macdSignal !== null ? macdLine - macdSignal : null;
     }
 
     return {
