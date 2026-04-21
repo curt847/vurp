@@ -1418,7 +1418,7 @@ function getFiltered() {
         return scoreDiff !== 0 ? scoreDiff : getEffectiveDelta(b)-getEffectiveDelta(a);
       }
       case 'expiry':     { const expDiff=a.expiry.localeCompare(b.expiry); return expDiff!==0?expDiff:a.ticker.localeCompare(b.ticker); }
-      case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); return dteDiff!==0?dteDiff:a.ticker.localeCompare(b.ticker); }
+      case 'dte':        { const dteDiff=calcDTE(a.expiry)-calcDTE(b.expiry); if(dteDiff!==0) return dteDiff; const aShort=parseFloat(a.short)||0; const bShort=parseFloat(b.short)||0; return bShort-aShort; }
       case 'collateral': return b.collateral-a.collateral;
       case 'remain':     return b.remain-a.remain;
       case 'delta':      return getEffectiveDelta(b)-getEffectiveDelta(a);
@@ -5172,6 +5172,9 @@ function confirmClose(idx) {
         <button onclick="executeClose()" style="flex:1;background:var(--green);color:#000;border:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px;border-radius:4px;cursor:pointer">✓ CONFIRM CLOSE &amp; LOG</button>
         <button onclick="document.getElementById('closeModal').remove();closingIdx=null" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 16px;border-radius:4px;cursor:pointer">CANCEL</button>
       </div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <button onclick="deletePositionFromCloseModal()" style="width:100%;background:transparent;border:1px solid rgba(255,61,90,.4);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:7px;border-radius:4px;cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--red-dim)'" onmouseout="this.style.background='transparent'">🗑 DELETE POSITION (no log entry)</button>
+      </div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) { overlay.remove(); closingIdx=null; } });
@@ -5314,6 +5317,26 @@ function executeClose() {
 }
 
 
+
+function deletePositionFromCloseModal() {
+  const p = POSITIONS[closingIdx];
+  if (!p) return;
+  if (!confirm(`Delete ${p.ticker} position (${p.expiry}) with no log entry? This cannot be undone.`)) return;
+  POSITIONS.splice(closingIdx, 1);
+  closingIdx = null;
+  saveToStorage();
+  renderTable();
+  renderWatchList();
+  renderOndsCard();
+  updateStats();
+  updatePnlBar();
+  document.getElementById('closeModal')?.remove();
+  const toast = document.createElement('div');
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;z-index:999;box-shadow:0 4px 16px rgba(255,61,90,.3)";
+  toast.textContent = `🗑 Position deleted`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
 
 // ══════════════════════════════════════════
 // TRADE LOG VIEWER
