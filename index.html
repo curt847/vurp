@@ -682,8 +682,6 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
-      <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
-      <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="if(confirm('Reset all sector assignments to saved default?'))resetSectors()" title="Reset sector assignments to saved default">↺ SECTORS</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <input id="watchInput" placeholder="TICKER" maxlength="6"
@@ -694,8 +692,8 @@
         onblur="this.style.borderColor='var(--border)'" />
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
-      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="runAISuggest()" id="suggestBtn">&#x1F9F9; CURATE</button>
-      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="document.querySelector('.sug-title').textContent='🧹 Curate Watchlist';runAISuggest()" id="suggestBtn">&#x1F9F9; CURATE</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="document.querySelector('.sug-title').textContent='🔭 Discover Results';runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
     </div>
   </div>
   <div id="watchGrid"></div>
@@ -6782,7 +6780,6 @@ function renderWatchList() {
         ${noteBtn}
         ${sigHtml}${sigSpacer}
         ${biasBtn}
-        ${sectorSelect}
       </div>`;
     }).join('');
 
