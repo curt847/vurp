@@ -1,16 +1,3 @@
-
-
-  // DTE-aware ITM floor: returns the minimum reasonable price for a fully-ITM spread.
-  // Higher near expiry (intrinsic dominates), lower with more time (time value is meaningful).
-  // This is only used as a sanity-check floor — real quotes always take precedence.
-  function itmFloor(width, dte) {
-    const pct = dte <= 10 ? 0.90
-               : dte <= 20 ? 0.82
-               : dte <= 35 ? 0.72
-               : dte <= 50 ? 0.65
-               :             0.58;
-    return width * pct;
-  }
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1120,7 +1107,18 @@ function getLiveIV(p) {
   };
   return defaults[p.ticker] || 50; // 50% if totally unknown
 }
-function isITM(p)        { const s=getLiveStock(p); return p.type==='P'?s<p.short:s>p.short; }
+  // DTE-aware ITM floor: returns the minimum reasonable price for a fully-ITM spread.
+  // Higher near expiry (intrinsic dominates), lower with more time (time value is meaningful).
+  // This is only used as a sanity-check floor — real quotes always take precedence.
+  function itmFloor(width, dte) {
+    const pct = dte <= 10 ? 0.90
+               : dte <= 20 ? 0.82
+               : dte <= 35 ? 0.72
+               : dte <= 50 ? 0.65
+               :             0.58;
+    return width * pct;
+  }
+  function isITM(p)        { const s=getLiveStock(p); return p.type==='P'?s<p.short:s>p.short; }
 
 function getEffectiveDelta(p) {
   const key=`${p.short}_${p.type}`;
