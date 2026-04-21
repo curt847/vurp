@@ -682,6 +682,7 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Watch List</div>
+      <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="if(confirm('Reset all sector assignments to defaults?'))resetSectors()" title="Reset all sector assignments to defaults">↺ SECTORS</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <input id="watchInput" placeholder="TICKER" maxlength="6"
