@@ -3381,9 +3381,16 @@ async function fetchWhales() {
         console.log(`[RW] 🐋 ${t} whale sample fields:`, Object.keys(r.data[0]).join(', '));
         console.log(`[RW] 🐋 ${t} whale sample values:`, JSON.stringify(r.data[0]).slice(0, 500));
       }
+      // Only keep trades from today — purge anything from previous days
+      const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD in UTC
       r.data.forEach(x => {
         const f = extractFlowFields(x);
         if (!f.type || f.premium < WHALE_THRESHOLD) return;
+        // Date-gate: skip trades not from today
+        if (f.time) {
+          const tradeDate = new Date(f.time).toISOString().slice(0, 10);
+          if (tradeDate < todayStr) return;
+        }
         const score = scoreFlowTrade(f);
         trades.push({ ...f, score });
       });
@@ -3457,7 +3464,7 @@ function renderWhaleFeed() {
 
   let tickers = Object.keys(whaleData).sort();
   if (!tickers.length) {
-    body.innerHTML = `<div class="whale-empty">No $500K+ whale trades found on your tickers<br><span style="font-size:10px;margin-top:6px;display:block;opacity:.6">Try again later — whale flow is intermittent</span></div>`;
+    body.innerHTML = `<div class="whale-empty">No $500K+ whale trades found today<br><span style="font-size:10px;margin-top:6px;display:block;opacity:.6">Trades from previous days are filtered out · Try again later or check back tomorrow</span></div>`;
     statsBar.style.display = 'none';
     return;
   }
