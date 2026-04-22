@@ -4171,8 +4171,8 @@ function toggleAuto() {
     clearInterval(autoTimer); autoTimer=null;
     btn.textContent='⏱ AUTO: OFF'; btn.classList.remove('on');
   } else {
-    fetchAll(); autoTimer=setInterval(fetchAll,30*60*1000);
-    btn.textContent='⏱ AUTO: 30MIN'; btn.classList.add('on');
+    fetchAll(); autoTimer=setInterval(fetchAll,60*60*1000);
+    btn.textContent='⏱ AUTO: 60MIN'; btn.classList.add('on');
   }
 }
 
