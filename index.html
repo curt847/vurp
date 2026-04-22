@@ -6628,10 +6628,21 @@ async function runAIAnalysis() {
     results.forEach(function(r) {
       var entry_lc = r.entry.toLowerCase();
       var good = entry_lc === 'good now' || entry_lc.startsWith('contrarian') || !(entry_lc.indexOf('wait') >= 0 || entry_lc.indexOf('avoid') >= 0 || entry_lc.indexOf('no trade') >= 0 || entry_lc.indexOf('no_trade') >= 0);
+      // Derive trade_type from sentiment + entry if the AI didn't return it explicitly
+      var trade_type = r.trade_type || null;
+      if (!trade_type) {
+        var sent = (r.sentiment || '').toLowerCase();
+        if (entry_lc === 'good now') {
+          // bullish/overbought(still going) = put credit spread; bearish = call credit spread
+          trade_type = (sent === 'bearish') ? 'C-CR' : 'P-CR';
+        } else if (entry_lc.startsWith('contrarian')) {
+          trade_type = 'C-CR'; // contrarian call spread = bearish short-term play
+        }
+      }
       AI_SIGNALS[r.ticker] = {
         good:         good,
         entry:        r.entry        || '',
-        trade_type:   r.trade_type   || null,
+        trade_type:   trade_type,
         entry_detail: r.entry_detail || null,
         sentiment:    r.sentiment    || 'neutral'
       };
@@ -7260,7 +7271,7 @@ function renderWatchList() {
 
       // AI entry signal badge
       const sig = AI_SIGNALS[ticker];
-      const isBearish = sig && sig.sentiment === 'bearish';
+      const isBearish = sig && (sig.sentiment === 'bearish' || (sig.entry && sig.entry.toLowerCase().startsWith('contrarian')));
       const sigHtml = (sig && sig.good)
         ? `<span class="ai-signal${isBearish ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
         : (sig && !sig.good)
