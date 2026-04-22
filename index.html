@@ -6051,19 +6051,21 @@ async function askClaudeSingle(idx) {
       + 'Only flag earnings if they fall WITHIN the target expiry window. '
       + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
       + 'DELTA GUIDANCE: Target short strike delta 0.30-0.35 default. 0.35-0.40 acceptable when IVR 50+, clear trend, confirming flow. Avoid below 0.28. '
-      + 'RSI: >70=overbought. 40-65=healthy supports entry. <30=oversold/falling knife — do NOT recommend put spreads unless MACD histogram is also turning up. '
+      + 'RSI: 40-65=healthy, supports entry. >70=overbought, entry is BLOCKED (see rules below). <30=oversold/falling knife — no put spread unless MACD histogram is also turning up. '
       + 'MACD: histogram turning positive/rising = bullish momentum confirmed. Histogram still falling even with RSI<30 = bottom NOT confirmed, no put spread. '
       + 'SENTIMENT RULES (CRITICAL): An overbought stock in a bullish trend is NOT bearish. Use sentiment:"overbought" for RSI>70 stocks that are still structurally bullish. '
       + 'Only use sentiment:"bearish" for genuine downtrends, bearish MACD cross, breaking key support, or strong bearish flow on a downtrending stock. '
-      + 'OVERBOUGHT + STALLING MOMENTUM = contrarian call spread opportunity: '
-      + 'If RSI>75 AND MACD histogram is flattening or declining (not still rising strongly) AND IVR>=40: '
-      + 'entry = "contrarian call spread", suggest a C·CR (call credit spread) with short strike above current price. '
-      + 'This is a SHORT-TERM trade against momentum stall, not a full trend reversal. '
-      + 'If MACD histogram is still rising strongly, use "wait for RSI to cool" instead. '
+      + 'OVERBOUGHT RULES (HARD — these override IVR, flow, and everything else): '
+      + 'RSI>=70: entry is NEVER "good now". High IVR does not override this. Strong flow does not override this. '
+      + 'RSI>=70 default entry = "wait for RSI to cool". '
+      + 'CONTRARIAN CALL SPREAD is a rare, high-conviction exception — ALL of the following must be true simultaneously: '
+      + '(1) RSI>=80, (2) MACD histogram is clearly declining (negative slope, not just flat), (3) IVR>=45, (4) flow is neutral or bearish. '
+      + 'If ANY of those four conditions is missing, use "wait for RSI to cool" instead — never default to contrarian. '
       + 'CONFLICT RESOLUTION (CRITICAL): When signals conflict you MUST pick a side. '
-      + 'RSI<30 + MACD still falling = no put spread, entry = "wait for MACD to confirm bottom". '
-      + 'RSI>70 + MACD still rising strongly = "wait for RSI to cool". '
-      + 'RSI>75 + MACD histogram flattening/falling + IVR>=40 = "contrarian call spread". '
+      + 'RSI<30 + MACD still falling = "wait for MACD to confirm bottom". '
+      + 'RSI 70-79 (any MACD) = "wait for RSI to cool". '
+      + 'RSI>=80 + MACD still rising = "wait for RSI to cool". '
+      + 'RSI>=80 + MACD declining + IVR>=45 + neutral/bearish flow = "contrarian call spread". '
       + 'Weak/low-conviction flow does NOT override technicals. Only above-avg or high volume flow can shift the call. '
       + 'ENTRY must be exactly one of: '
       + '"good now" | "contrarian call spread" | "wait for MACD to confirm bottom" | "wait for RSI to cool" | "wait for pullback" | "wait for bounce" | "no trade". '
@@ -6071,7 +6073,6 @@ async function askClaudeSingle(idx) {
       + 'SUMMARY: one sentence, plain English, lead with the action. Examples: '
       + '"No trade — MACD still falling despite oversold RSI, wait for momentum to confirm a bottom." '
       + '"Enter put spread now — IVR 60, RSI 52, MACD just crossed bullish." '
-      + '"Contrarian call spread — RSI 81, MACD histogram rolling over, IVR 55 makes premium attractive against stalling momentum." '
       + '"Wait for RSI to cool — bullish trend intact but RSI 74 still rising, hold off." '
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
@@ -6089,6 +6090,11 @@ async function askClaudeSingle(idx) {
     const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
     const jsonMatch = clean.match(/\{[\s\S]*\}/);
     const r = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
+
+    // CLIENT-SIDE GUARDRAIL: overbought sentiment can never be "good now"
+    if (r.sentiment === 'overbought' && (r.entry || '').toLowerCase() === 'good now') {
+      r.entry = 'wait for RSI to cool';
+    }
 
     function scColor(s) { return s==='bullish'?'var(--green)':s==='bearish'?'var(--red)':s==='overbought'?'var(--orange)':s==='mixed'?'var(--orange)':'var(--muted)'; }
     function scBg(s)    { return s==='bullish'?'var(--green-dim)':s==='bearish'?'var(--red-dim)':s==='overbought'?'var(--orange-dim)':s==='mixed'?'var(--orange-dim)':'rgba(74,85,104,.15)'; }
@@ -6596,17 +6602,19 @@ async function runAIAnalysis() {
     + 'tech=RSI(14) MACD(12/26/9 line/signal/histogram) MA50 MA200 52wkHigh 52wkLow, '
     + 'vol=today_volume_vs_avg(high=2x+_strong_conviction above-avg=1.2-2x normal=0.8-1.2x low=below_0.8x_weak_conviction). '
     + 'High volume confirms flow signals and price moves. Low volume = treat directional signals with skepticism. '
-    + 'Use tech to sharpen entries: RSI>70=overbought(see below) RSI<30=oversold(caution for bears). '
+    + 'Use tech to sharpen entries: RSI>70=overbought(see rules below) RSI<30=oversold(caution for bears). '
     + 'MACD hist positive+rising=bullish momentum negative+falling=bearish. '
     + 'Price vs MA50/MA200=trend context. 52wk range=where price sits in its annual range. '
     + 'CRITICAL: use the actual ivr number provided — never assume low IV if ivr=unavailable, just omit IV commentary. '
     + 'For stock_above_short/stock_below_short: negative means stock has crossed the short strike (ITM threat). '
     + 'SENTIMENT RULES (CRITICAL): An overbought stock in a bullish trend is NOT bearish. Use sentiment:overbought for RSI>70 stocks still structurally bullish. '
     + 'Only use sentiment:bearish for genuine downtrends, bearish MACD cross, breaking key support, or strong bearish flow. '
-    + 'OVERBOUGHT + STALLING MOMENTUM = contrarian call spread: '
-    + 'If RSI>75 AND MACD histogram flattening/declining (not still rising strongly) AND IVR>=40: '
-    + 'entry = contrarian call spread, suggest C·CR above current price. SHORT-TERM momentum stall trade only. '
-    + 'If MACD histogram still rising strongly, use wait for RSI to cool instead. '
+    + 'OVERBOUGHT RULES (HARD — these override IVR, flow, and everything else): '
+    + 'RSI>=70: entry is NEVER good now. High IVR does not override this. Strong bullish flow does not override this. '
+    + 'RSI>=70 default entry = wait for RSI to cool. '
+    + 'CONTRARIAN CALL SPREAD is a rare exception — ALL four must be true: (1) RSI>=80, (2) MACD histogram clearly declining (negative slope), (3) IVR>=45, (4) flow neutral or bearish. '
+    + 'If ANY condition is missing, use wait for RSI to cool — never default to contrarian. '
+    + 'RSI 70-79 (any MACD) = wait for RSI to cool. RSI>=80 + MACD still rising = wait for RSI to cool. '
     + 'ENTRY must be exactly one of: good now | contrarian call spread | wait for MACD to confirm bottom | wait for RSI to cool | wait for pullback | wait for bounce | no trade. '
     + JSON.stringify(tickerData) + ' '
     + 'For each ticker provide: sentiment(bullish/overbought/bearish/neutral), read(2 sentences max — cite ivr, flow direction, earnings if relevant), '
@@ -6641,7 +6649,13 @@ async function runAIAnalysis() {
     // Store signals for watch card badges
     AI_SIGNALS = {};
     results.forEach(function(r) {
+      // CLIENT-SIDE GUARDRAIL: overbought sentiment can never be "good now"
+      // If the AI slipped through with good now on an overbought stock, downgrade it
       var entry_lc = r.entry.toLowerCase();
+      if (r.sentiment === 'overbought' && entry_lc === 'good now') {
+        r.entry = 'wait for RSI to cool';
+        entry_lc = 'wait for rsi to cool';
+      }
       var good = entry_lc === 'good now' || entry_lc.startsWith('contrarian') || !(entry_lc.indexOf('wait') >= 0 || entry_lc.indexOf('avoid') >= 0 || entry_lc.indexOf('no trade') >= 0 || entry_lc.indexOf('no_trade') >= 0);
       // Derive trade_type from sentiment + entry if the AI didn't return it explicitly
       var trade_type = r.trade_type || null;
@@ -7061,11 +7075,14 @@ async function runAIDiscover() {
       + '<div class="sug-section-label">\ud83d\udd2d Discover \u2014 New Tickers for Your Book</div>'
       + (picks.length ? picks.map(function(r) {
           return '<div class="sug-card">'
-            + '<div class="sug-ticker" style="color:var(--purple)">' + r.ticker
-            + ' <span style="font-size:9px;color:var(--muted);font-weight:400">' + (r.sector || '') + '</span></div>'
-            + '<div class="sug-body"><strong>' + (r.reason || '') + '</strong> \u2014 ' + (r.detail || '')
-            + (r.trade ? '<br><span style="color:var(--accent);font-size:10px">\ud83d\udca1 ' + r.trade + '</span>' : '')
-            + (r.risk  ? '<br><span style="color:var(--orange);font-size:10px">\u26a0 ' + r.risk  + '</span>' : '')
+            + '<div style="min-width:70px;flex-shrink:0">'
+            + '<div class="sug-ticker" style="color:var(--purple);margin-bottom:2px">' + r.ticker + '</div>'
+            + '<div style="font-size:9px;color:var(--muted);font-weight:400;letter-spacing:.3px">' + (r.sector || '') + '</div>'
+            + '</div>'
+            + '<div class="sug-body" style="flex:1;min-width:0">'
+            + '<strong>' + (r.reason || '') + '</strong> \u2014 ' + (r.detail || '')
+            + (r.trade ? '<div style="color:var(--accent);font-size:11px;margin-top:3px">\ud83d\udca1 ' + r.trade + '</div>' : '')
+            + (r.risk  ? '<div style="color:var(--orange);font-size:11px;margin-top:2px">\u26a0 ' + r.risk  + '</div>' : '')
             + '</div></div>';
         }).join('') : '<div style="color:var(--muted);font-size:11px">No picks returned.</div>')
       + '</div>'
