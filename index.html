@@ -253,10 +253,10 @@
   @keyframes aip-pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
   .aip-err{color:var(--red);font-size:14px;text-align:center;padding:16px}
   .aip-ts{font-size:11px;color:var(--muted);text-align:right;margin-top:10px;font-family:'JetBrains Mono',monospace}
-  #suggestPanel{display:none;margin-top:10px;border:1px solid rgba(245,200,66,.3);border-radius:8px;background:rgba(245,200,66,.03);padding:16px 20px}
+  #suggestPanel{display:none;margin-top:10px;border:1px solid rgba(167,139,250,.3);border-radius:8px;background:rgba(167,139,250,.03);padding:16px 20px}
   #suggestPanel.open{display:block}
   .sug-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .sug-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--yellow);letter-spacing:1px;text-transform:uppercase}
+  .sug-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--purple);letter-spacing:1px;text-transform:uppercase}
   .sug-section{margin-bottom:16px}
   .sug-section-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
   .sug-card{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -720,8 +720,7 @@
         onblur="this.style.borderColor='var(--border)'" />
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="addWatchTicker()">+ ADD</button>
       <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent)" onclick="runAIAnalysis()" id="aipBtn">&#x1F916; ANALYZE</button>
-      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.4);color:var(--yellow)" onclick="document.querySelector('.sug-title').textContent='🧹 Curate Watchlist';runAISuggest()" id="suggestBtn">&#x1F9F9; CURATE</button>
-      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="document.querySelector('.sug-title').textContent='🔭 Discover Results';runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
+      <button class="btn" style="font-size:10px;padding:5px 14px;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:var(--purple)" onclick="runAIDiscover()" id="discoverBtn">&#x1F52D; DISCOVER</button>
     </div>
   </div>
   <div id="watchGrid"></div>
@@ -734,7 +733,7 @@
   </div>
   <div id="suggestPanel">
     <div class="sug-hdr">
-      <div class="sug-title">&#x1F9F9; Curate Watchlist</div>
+      <div class="sug-title">&#x1F52D; Discover Results</div>
       <button class="aip-close" onclick="document.getElementById('suggestPanel').classList.remove('open')">&#x2715; CLOSE</button>
     </div>
     <div id="suggestContent"></div>
@@ -6710,11 +6709,102 @@ async function runAIAnalysis() {
       return b === 'bull' ? '\u2191 BULL' : b === 'bear' ? '\u2193 BEAR' : b === 'sell' ? 'SELL' : 'NONE';
     }
 
-    // Sort: "good now" entries first
+    // Sort by actionability tier, then by tradeability score within each tier
+    function entryTier(entry) {
+      var e = entry.toLowerCase();
+      if (e === 'good now')                          return 0;
+      if (e.startsWith('contrarian'))               return 1;
+      if (e.startsWith('wait for pullback') ||
+          e.startsWith('wait for bounce'))           return 2;
+      if (e.startsWith('wait for rsi') ||
+          e.startsWith('wait for macd'))             return 3;
+      if (e === 'no trade')                          return 4;
+      return 3; // any other wait
+    }
+    function tradeScore(r) {
+      // Higher = more tradeable. Used as secondary sort within same tier.
+      var score = 0;
+      var tc = typeof techData !== 'undefined' && techData[r.ticker];
+      var lp = livePrices[r.ticker];
+      var fd = flowData[r.ticker];
+      var isBearish = (r.sentiment === 'bearish') || r.entry.toLowerCase().startsWith('contrarian');
+
+      // 1. MA50/MA200 — trend structure, the foundation (up to 28pts, penalize -15)
+      if (tc && lp) {
+        var px = lp.price;
+        var aboveMA50  = tc.ma50  != null && px > tc.ma50;
+        var aboveMA200 = tc.ma200 != null && px > tc.ma200;
+        if (!isBearish) {
+          if      (aboveMA50 && aboveMA200)   score += 28; // above both — strong bull trend
+          else if (!aboveMA50 && aboveMA200)  score += 10; // above 200 only — longer-term bull, short-term weak
+          else if (!aboveMA200)               score -= 15; // below 200MA — downtrend, swimming upstream
+        } else {
+          if      (!aboveMA50 && !aboveMA200) score += 28; // below both — confirmed downtrend
+          else if (!aboveMA50 && aboveMA200)  score += 10; // below 50 only — short-term weakness
+          else if (aboveMA50 && aboveMA200)   score -= 15; // above both — fighting the trend
+        }
+      }
+
+      // 2. MACD histogram — momentum confirmation (up to 25pts)
+      if (tc && tc.hist != null) {
+        var hist = tc.hist;
+        if (isBearish) {
+          score += hist < -0.3 ? 25 : hist < -0.1 ? 15 : hist < 0 ? 8 : 0;
+        } else {
+          score += hist > 0.3 ? 25 : hist > 0.1 ? 15 : hist > 0 ? 8 : 0;
+        }
+      }
+
+      // 3. Flow conviction — institutional confirmation (up to 20pts)
+      if (fd) {
+        var conf = (fd.confidence || '').toLowerCase();
+        score += conf === 'high' ? 20 : conf === 'above-avg' ? 12 : conf === 'normal' ? 5 : 0;
+      }
+
+      // 4. Daily move — entry timing sweet spot (up to 15pts, penalize -10)
+      if (lp && lp.pct != null) {
+        var pct = lp.pct;
+        if (!isBearish) {
+          score += (pct >= -2.5 && pct <= -1.0) ? 15
+                 : (pct >= -1.0 && pct <  -0.5) ?  8
+                 : (pct >= -0.5 && pct <=  0.5) ?  3
+                 : 0;
+          if (pct > 3.0 || pct < -4.0) score -= 10;
+        } else {
+          score += (pct >= 1.0 && pct <= 3.0) ? 15
+                 : (pct >  0.5 && pct <  1.0) ?  8
+                 : (pct >= -0.5 && pct <= 0.5) ?  3
+                 : 0;
+          if (pct < -3.0 || pct > 4.0) score -= 10;
+        }
+      }
+
+      // 5. RSI zone — not chasing an extended move (up to 12pts)
+      if (tc && tc.rsi != null) {
+        var rsi = tc.rsi;
+        score += (rsi >= 45 && rsi <= 65) ? 12 : (rsi >= 35 && rsi <= 70) ? 6 : 0;
+      }
+
+      // 6. 52wk position — supporting context, partially redundant with MAs (up to 7pts, penalize -7)
+      if (tc && tc.hi52 != null && tc.lo52 != null && lp) {
+        var pctFromHigh = (tc.hi52 - lp.price) / tc.hi52;
+        var pctFromLow  = (lp.price - tc.lo52) / tc.lo52;
+        score += pctFromHigh <= 0.05 ? 7 : pctFromHigh <= 0.10 ? 3 : 0;
+        if (pctFromLow <= 0.10) score -= 7;
+      }
+
+      // 7. IVR — gate/filter not a ranking signal (up to 8pts, penalize -8 when too low)
+      var ivr = liveData[r.ticker] && liveData[r.ticker].ivr != null ? liveData[r.ticker].ivr : 0;
+      score += ivr >= 50 ? 8 : ivr >= 40 ? 5 : ivr >= 30 ? 2 : 0;
+      if (ivr < 25) score -= 8;
+
+      return score;
+    }
     results.sort(function(a, b) {
-      var aGood = !(a.entry.toLowerCase().indexOf('wait') >= 0 || a.entry.toLowerCase().indexOf('avoid') >= 0);
-      var bGood = !(b.entry.toLowerCase().indexOf('wait') >= 0 || b.entry.toLowerCase().indexOf('avoid') >= 0);
-      return (bGood ? 1 : 0) - (aGood ? 1 : 0);
+      var tierDiff = entryTier(a.entry) - entryTier(b.entry);
+      if (tierDiff !== 0) return tierDiff;
+      // Same tier — sort by tradeability score descending
+      return tradeScore(b) - tradeScore(a);
     });
 
     var html = results.map(function(r) {
@@ -6754,159 +6844,6 @@ async function runAIAnalysis() {
   btn.textContent = '\ud83e\udd16 ANALYZE';
 }
 
-// ══════════════════════════════════════════
-// AI TICKER SUGGESTIONS
-// ══════════════════════════════════════════
-async function runAISuggest() {
-  var panel   = document.getElementById('suggestPanel');
-  var content = document.getElementById('suggestContent');
-  var btn     = document.getElementById('suggestBtn');
-
-  panel.classList.add('open');
-  btn.disabled = true;
-  btn.textContent = 'CURATING...';
-  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Reviewing your watchlist\u2026</div></div>';
-
-  // Build profile from positions + watchlist
-  var posTickers  = new Set(POSITIONS.map(function(p){ return p.ticker; }));
-  var watchOnly   = WATCHLIST.filter(function(t){ return !posTickers.has(t); });
-  var posTickerList = Array.from(posTickers);
-
-  // Sector breakdown
-  var sectorCount = {};
-  posTickerList.concat(WATCHLIST).forEach(function(t) {
-    var s = getSector(t);
-    sectorCount[s] = (sectorCount[s] || 0) + 1;
-  });
-
-  // Strategy breakdown from positions
-  var stratCount = {};
-  POSITIONS.forEach(function(p) {
-    var k = p.postype === 'spread_credit' ? (p.type === 'P' ? 'Put CR' : 'Call CR')
-          : p.postype === 'covered_call'  ? 'CC'
-          : p.postype === 'spread_debit'  ? (p.type === 'P' ? 'Put DB' : 'Call DB')
-          : p.postype === 'long_call'     ? 'Long Call'
-          : p.postype === 'long_put'      ? 'Long Put' : p.postype;
-    stratCount[k] = (stratCount[k] || 0) + 1;
-  });
-
-  var profile = {
-    positionTickers: posTickerList,
-    watchlistTickers: watchOnly,
-    sectorExposure: sectorCount,
-    strategyMix: stratCount,
-    totalPositions: POSITIONS.length,
-    totalCollateral: POSITIONS.reduce(function(s,p){ return s + (p.collateral||0); }, 0),
-    livePrices: (function() {
-      var prices = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        var lp = livePrices[t];
-        if (lp) prices[t] = '$' + lp.price.toFixed(2) + ' (' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct).toFixed(1) + '%)';
-      });
-      return prices;
-    })(),
-    ivrByTicker: (function() {
-      var out = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        var ivr = liveData[t] && liveData[t].ivr != null ? Math.round(liveData[t].ivr) : null;
-        if (ivr !== null) out[t] = ivr + '/100';
-      });
-      return out;
-    })(),
-    flowByTicker: (function() {
-      var out = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        var fd = flowData[t];
-        if (fd && fd.sentiment) {
-          out[t] = fd.sentiment + '(' + fd.confidence + ')';
-          if (fd.calls != null && fd.puts != null) {
-            out[t] += ' $' + ((fd.calls + fd.puts)/1000).toFixed(0) + 'K calls:$' + (fd.calls/1000).toFixed(0) + 'K puts:$' + (fd.puts/1000).toFixed(0) + 'K';
-          }
-        }
-      });
-      return out;
-    })(),
-    earningsByTicker: (function() {
-      var out = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        if (earningsMap[t]) out[t] = earningsMap[t];
-      });
-      return out;
-    })(),
-    volByTicker: (function() {
-      var out = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        var lp = livePrices[t];
-        if (lp && lp.vol && lp.avgVol && lp.avgVol > 0) {
-          var ratio = (lp.vol / lp.avgVol).toFixed(2);
-          var label = ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low';
-          out[t] = label + '(' + ratio + 'x)';
-        }
-      });
-      return out;
-    })(),
-    techByTicker: (function() {
-      var out = {};
-      posTickerList.concat(watchOnly).forEach(function(t) {
-        var tc = typeof techData !== 'undefined' && techData[t];
-        if (!tc) return;
-        var parts = [];
-        if (tc.rsi   != null) parts.push('RSI:' + tc.rsi);
-        if (tc.hist  != null) parts.push('MACDhist:' + tc.hist);
-        if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
-        if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
-        if (tc.hi52  != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
-        if (parts.length) out[t] = parts.join(' ');
-      });
-      return out;
-    })()
-  };
-
-  // Write profile to Drive via POST (content too large for URL params)
-  var step1 = await fetch(PROXY_URL + '?action=writeContext', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'content=' + encodeURIComponent(JSON.stringify(profile))
-  });
-  var step1text = await step1.text();
-
-  var response = await fetch(PROXY_URL + '?action=suggest&count=' + posTickerList.length, { method: 'GET' });
-  var rawResp  = await response.text();
-
-  try {
-    var data     = JSON.parse(rawResp);
-    var rawText  = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
-    var clean    = rawText.replace(/```json|```/g, '').trim();
-    var result   = JSON.parse(clean);
-
-    function renderCards(items, cls) {
-      if (!items || !items.length) return '<div style="color:var(--muted);font-size:11px">None</div>';
-      return items.map(function(item) {
-        return '<div class="sug-card">'
-          + '<div class="sug-ticker ' + cls + '">' + item.ticker + '</div>'
-          + '<div class="sug-body"><strong>' + (item.reason || '') + '</strong>'
-          + (item.detail ? ' — ' + item.detail : '')
-          + (item.trade ? '<br><span style="color:var(--accent);font-size:10px">\ud83d\udca1 ' + item.trade + '</span>' : '')
-          + '</div></div>';
-      }).join('');
-    }
-
-    var ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
-    content.innerHTML =
-      '<div class="sug-section"><div class="sug-section-label">\u2796 Avoid / Remove</div>'
-      + renderCards(result.avoid, 'sug-remove') + '</div>'
-      + '<div class="sug-section"><div class="sug-section-label">\u26a0 Worth Watching Closely</div>'
-      + renderCards(result.watch, 'sug-caution') + '</div>'
-      + '<div class="aip-ts">Generated ' + ts + ' \u00b7 Not financial advice</div>';
-
-  } catch(err) {
-    content.innerHTML = '<div class="aip-err">Suggestions failed: ' + err.message + '<br><span style="font-size:10px;color:var(--muted)">' + rawResp.slice(0,200) + '</span></div>';
-    console.error('[RollWatch SUGGEST]', err);
-  }
-
-  btn.disabled = false;
-  btn.textContent = '\ud83e\uddf9 CURATE';
-}
 
 // ══════════════════════════════════════════
 // AI TICKER DISCOVERY — finds new names outside your list
