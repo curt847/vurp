@@ -1076,6 +1076,7 @@ let autoTimer   = null;
 // ══════════════════════════════════════════
 // MATH
 // ══════════════════════════════════════════
+function fmtDelta(d) { return d.toFixed(2).replace('0.', '.'); }
 function normCDF(x) {
   const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
   const s=x<0?-1:1; x=Math.abs(x)/Math.sqrt(2);
@@ -1633,13 +1634,13 @@ function renderTable() {
       const isDeltaProfit = delta <= THRESH_DELTA_PROFIT;
       const isDeltaWatch  = delta <= THRESH_DELTA_WATCH_PROFIT;
       if (profitLevel === 'close') {
-        const label = liveGain >= 70 ? `⭐⭐ ${isLong?'SELL':'CLOSE'}` : `⭐⭐ CLOSE (Δ${delta.toFixed(2)})`;
+        const label = liveGain >= 70 ? `⭐⭐ ${isLong?'SELL':'CLOSE'}` : `⭐⭐ CLOSE (Δ${fmtDelta(delta)})`;
         statusHtml += ` <span class="pill pill-close" style="margin-left:2px">${label}</span>`;
       } else if (profitLevel === 'profit') {
-        const label = liveGain >= 50 ? '⭐ TAKE PROFIT' : `⭐ LOW Δ (${delta.toFixed(2)})`;
+        const label = liveGain >= 50 ? '⭐ TAKE PROFIT' : `⭐ LOW Δ (${fmtDelta(delta)})`;
         statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">${label}</span>`;
       } else if (profitLevel === 'watch_profit') {
-        const label = liveGain >= THRESH_WATCH_PROFIT ? '🔷 PROFIT RADAR' : `🔷 LOW Δ (${delta.toFixed(2)})`;
+        const label = liveGain >= THRESH_WATCH_PROFIT ? '🔷 PROFIT RADAR' : `🔷 LOW Δ (${fmtDelta(delta)})`;
         statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">${label}</span>`;
       }
     }
@@ -1782,8 +1783,8 @@ function renderTable() {
     // Delta column label — for long options, high delta is good
     const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : null;
     const isCovCall = p.postype === 'covered_call';
-    const deltaSubLabel = isCovCall ? '' : entryD ? `OpenΔ${entryD.toFixed(2)}` : (src==='live' ? '●LIVE' : '~BS');
-    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${deltaSubLabel ? `<div style="color:var(--muted);font-size:9px;font-weight:400;margin-top:1px">${deltaSubLabel}</div>` : ''}`;
+    const deltaSubLabel = isCovCall ? '' : entryD ? `OpenΔ${fmtDelta(entryD)}` : (src==='live' ? '●LIVE' : '~BS');
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${fmtDelta(delta)}</span>${deltaSubLabel ? `<div style="color:var(--muted);font-size:9px;font-weight:400;margin-top:1px">${deltaSubLabel}</div>` : ''}`;
 
     // Action buttons — order is always: ✎ pencil | [↩ ROLL] | ✓ CLOSE/SELL
     const askClaudeBtn = `<button class="action-btn" onclick="askClaudeSingle(${idx})" title="Ask Claude" style="border-color:rgba(0,212,255,.4);color:var(--accent)">\ud83e\udd16</button>`;
@@ -2066,7 +2067,7 @@ function renderMobile() {
             <span class="mob-ticker">${p.ticker}</span>
             <span class="type-badge ${typeBadgeClass(p)}">${typeLabel(p)}</span>
           </div>
-          <span class="mob-delta" style="color:${dColor}">${delta.toFixed(2)}Δ<span style="font-size:10px;color:var(--muted);font-weight:400"> ${src==='live'?'●':'~'}</span></span>
+          <span class="mob-delta" style="color:${dColor}">${fmtDelta(delta)}Δ<span style="font-size:10px;color:var(--muted);font-weight:400"> ${src==='live'?'●':'~'}</span></span>
         </div>
         <div class="mob-card-mid">
           <span class="mob-strikes">${p.type} ${strikes}</span>
