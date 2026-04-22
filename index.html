@@ -3835,8 +3835,8 @@ function showRollModal(idx) {
       const isCC = p.postype === 'covered_call';
       return `
       <div class="modal-row"><span class="modal-label">Target Expiry</span><span class="modal-val" style="color:var(--accent)">${rMo} ${rExp.getFullYear()} <span style="font-size:13px;font-weight:400;color:var(--muted)">· ${rDTE}d out</span></span></div>
-      ${isCC ? line(0.30, 'Standard',   'var(--orange)') : line(0.50, 'Aggressive', 'var(--orange)')}
-      ${isCC ? line(0.20, 'Conservative','var(--green)')  : line(0.35, 'Defensive',  'var(--green)')}`;
+      ${isCC ? line(0.30, 'Standard',   'var(--orange)') : line(0.45, 'Suggested',  'var(--accent)')}
+      ${isCC ? line(0.20, 'Conservative','var(--green)')  : ''}`;
     })()}
 
     ${earningsMap[p.ticker]?`
