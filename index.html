@@ -613,6 +613,8 @@
   <div class="pnl-stat" style="border-left:1px solid rgba(0,200,180,.1)">
     <div class="pnl-stat-val" id="pnl-betadelta" style="color:var(--accent)">—</div>
     <div class="pnl-stat-lbl">β-Wtd Δ / 1%</div>
+    <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:4px;display:none"></div>
+    <div id="pnl-betadelta-daily-lbl" style="font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:none">est. daily total</div>
   </div>
 </div>
 
@@ -1948,6 +1950,22 @@ function updateStats() {
     const dollarMove = Math.round(netDelta * spyPrice * 0.01);
     ndEl.textContent = dollarMove === 0 ? '$0' : (dollarMove > 0 ? '+$' : '-$') + Math.abs(dollarMove).toLocaleString();
     ndEl.style.color = dollarMove > 200 ? 'var(--green)' : dollarMove < -200 ? 'var(--red)' : 'var(--accent)';
+
+    // Daily total: beta-wtd delta × actual SPY % move today
+    const dailyEl = document.getElementById('pnl-betadelta-daily');
+    const dailyLblEl = document.getElementById('pnl-betadelta-daily-lbl');
+    const spyPct = livePrices['SPY'] && livePrices['SPY'].pct != null ? livePrices['SPY'].pct : null;
+    if (dailyEl && dailyLblEl && spyPct !== null) {
+      const dailyTotal = Math.round(dollarMove * spyPct);
+      const isPos = dailyTotal >= 0;
+      dailyEl.textContent = (isPos ? '+$' : '-$') + Math.abs(dailyTotal).toLocaleString();
+      dailyEl.style.color = isPos ? 'var(--green)' : 'var(--red)';
+      dailyEl.style.display = 'block';
+      dailyLblEl.style.display = 'block';
+    } else if (dailyEl && dailyLblEl) {
+      dailyEl.style.display = 'none';
+      dailyLblEl.style.display = 'none';
+    }
   }
   // Avg DTE → stats bar
   const avgDteEl = document.getElementById('s-avgdte');
