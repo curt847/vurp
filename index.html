@@ -615,6 +615,8 @@
     <div class="pnl-stat-lbl">β-Wtd Δ / 1%</div>
     <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:4px;display:none"></div>
     <div id="pnl-betadelta-daily-lbl" style="font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:none">est. daily total</div>
+    <div id="pnl-gammadelta" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:5px;display:none"></div>
+    <div id="pnl-gammadelta-lbl" title="BWD scaled by √(30/DTE) per position — near-dated positions carry more weight" style="font-size:9px;color:#a78bfa;letter-spacing:.5px;text-transform:uppercase;display:none">γ-adj / 1%</div>
   </div>
 </div>
 
@@ -1088,6 +1090,16 @@ function bsDelta(S,K,T,iv,type) {
   T=Math.max(T,1/365); iv=Math.max(0.05,Math.min(iv/100,3));
   const r=0.043, d1=(Math.log(S/K)+(r+0.5*iv*iv)*T)/(iv*Math.sqrt(T));
   return type==='P'?normCDF(d1)-1:normCDF(d1);
+}
+function bsGamma(S,K,T,iv) {
+  T=Math.max(T,1/365); iv=Math.max(0.05,Math.min(iv/100,3));
+  const r=0.043, d1=(Math.log(S/K)+(r+0.5*iv*iv)*T)/(iv*Math.sqrt(T));
+  const phi=Math.exp(-0.5*d1*d1)/Math.sqrt(2*Math.PI);
+  return phi/(S*iv*Math.sqrt(T));
+}
+function getEffectiveGamma(p) {
+  const S=getLiveStock(p), T=Math.max(getDTE(p),1)/365, iv=getLiveIV(p);
+  return bsGamma(S, p.short, T, iv);
 }
 // Black-Scholes theoretical option price — used as fallback when UW has no live quote
 function bsTheoPrice(ticker, strike, type, expiry) {
@@ -1884,7 +1896,7 @@ function renderTable() {
 
 function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
-  let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0;
+  let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0,netGammaDelta=0;
   POSITIONS.forEach(p=>{
     if (!isLongOption(p)) cnt[getAlertLevel(p)]++;
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
@@ -1914,6 +1926,10 @@ function updateStats() {
     else if (p.type === 'C')                                 signedD = -d * cts;
     // Beta-weight: multiply by (beta × stockPrice / spyPrice) then by SPY's 1% move value
     netDelta += signedD * beta * (stockPrice / spyPrice);
+    // Gamma-adjusted BWD: scale each position by √(30/DTE) so near-dated positions carry more weight
+    const dte = Math.max(getDTE(p), 1);
+    const gammaScale = Math.sqrt(30 / dte);
+    netGammaDelta += signedD * beta * (stockPrice / spyPrice) * gammaScale;
   });
   document.getElementById('s-red').textContent=cnt.red;
   document.getElementById('s-orange').textContent=cnt.orange;
@@ -1965,6 +1981,20 @@ function updateStats() {
     } else if (dailyEl && dailyLblEl) {
       dailyEl.style.display = 'none';
       dailyLblEl.style.display = 'none';
+    }
+
+    // Gamma-adjusted BWD — only show when we have positions
+    const gdEl    = document.getElementById('pnl-gammadelta');
+    const gdLblEl = document.getElementById('pnl-gammadelta-lbl');
+    if (gdEl && gdLblEl && POSITIONS.length > 0) {
+      const gammaDollar = Math.round(netGammaDelta * spyPrice * 0.01);
+      gdEl.textContent = gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString();
+      gdEl.style.color = gammaDollar > 200 ? 'var(--green)' : gammaDollar < -200 ? 'var(--red)' : '#a78bfa';
+      gdEl.style.display = 'block';
+      gdLblEl.style.display = 'block';
+    } else if (gdEl && gdLblEl) {
+      gdEl.style.display = 'none';
+      gdLblEl.style.display = 'none';
     }
   }
   // Avg DTE → stats bar
