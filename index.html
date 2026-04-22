@@ -4419,6 +4419,7 @@ function saveToStorage() {
     localStorage.setItem('rollwatch_flow_ts_v1',    String(Date.now()));
     if (Object.keys(whaleData).length) localStorage.setItem('rollwatch_whale_ts_v1', String(Date.now()));
     localStorage.setItem('rollwatch_livets_v1',     String(Date.now()));
+    if (Object.keys(AI_SIGNALS).length) localStorage.setItem('rollwatch_aisignals_v1', JSON.stringify(AI_SIGNALS));
     const badge = getStorageBadge();
     if (badge) { badge.textContent = '💾 SAVED'; setTimeout(() => { if(badge) badge.textContent = '💾 LOCAL'; }, 1500); }
     // Push full portable state to Drive — only after initial load is done
@@ -4527,6 +4528,12 @@ function loadFromStorage() {
       const mins = Math.round((Date.now() - Number(rawLts)) / 60000);
       const staleLabel = mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
       document.getElementById('lastRefresh').textContent = `⏱ restored · last live ${staleLabel}`;
+    }
+    // Restore AI signals (no expiry — cleared only when Analyze is re-run)
+    const rawAi = localStorage.getItem('rollwatch_aisignals_v1');
+    if (rawAi) {
+      const savedAi = JSON.parse(rawAi);
+      if (savedAi && typeof savedAi === 'object') Object.assign(AI_SIGNALS, savedAi);
     }
     if (rawFlTs && flowAgeHrs < 8) {
       const fMins = Math.round((Date.now() - Number(rawFlTs)) / 60000);
@@ -6622,6 +6629,7 @@ async function runAIAnalysis() {
         sentiment:    r.sentiment    || 'neutral'
       };
     });
+    localStorage.setItem('rollwatch_aisignals_v1', JSON.stringify(AI_SIGNALS)); // persist immediately
     renderWatchList(); // refresh cards to show signal badges
 
     function scColor(s) {
@@ -7042,11 +7050,17 @@ async function runAIDiscover() {
 }
 
 
-let watchFilterMode = 'all'; // 'all' | 'watching'
+let watchFilterMode = 'watching'; // 'all' | 'watching' — default to watching-only (no positions)
 
 function toggleWatchFilter() {
   watchFilterMode = watchFilterMode === 'all' ? 'watching' : 'all';
+  updateWatchFilterBtn();
+  renderWatchList();
+}
+
+function updateWatchFilterBtn() {
   const btn = document.getElementById('watchFilterToggle');
+  if (!btn) return;
   if (watchFilterMode === 'watching') {
     btn.textContent = '👁 WATCHING';
     btn.style.borderColor = 'var(--accent)';
@@ -7058,7 +7072,6 @@ function toggleWatchFilter() {
     btn.style.color = 'var(--muted)';
     btn.style.background = '';
   }
-  renderWatchList();
 }
 
 function renderWatchList() {
@@ -7240,8 +7253,9 @@ function renderWatchList() {
 
       // AI entry signal badge
       const sig = AI_SIGNALS[ticker];
+      const isBearish = sig && sig.sentiment === 'bearish';
       const sigHtml = (sig && sig.good)
-        ? `<span class="ai-signal${sig.sentiment === 'bearish' ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
+        ? `<span class="ai-signal${isBearish ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
         : (sig && !sig.good)
           ? (() => {
               const el = sig.entry ? sig.entry.toLowerCase() : '';
@@ -7252,7 +7266,10 @@ function renderWatchList() {
                           : el.includes('bounce')   ? 'wait · bounce'
                           : el.includes('pullback') ? 'wait · pullback'
                           : 'wait';
-              return `<span class="ai-signal" style="background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)">${icon} ${label}</span>`;
+              const waitStyle = isBearish
+                ? `background:rgba(255,61,90,0.12);border-color:rgba(255,61,90,0.4);color:var(--red)`
+                : `background:rgba(74,85,104,.12);border-color:var(--border);color:var(--muted)`;
+              return `<span class="ai-signal" style="${waitStyle}">${icon} ${label}</span>`;
             })()
           : '';
 
@@ -7409,6 +7426,7 @@ updateStats();
 renderTable();
 renderStocks();
 renderOndsCard();
+updateWatchFilterBtn(); // sync button label with default watchFilterMode
 renderWatchList();
 updatePortfolioStat();
 updatePnlBar();
