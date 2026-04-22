@@ -611,12 +611,10 @@
     <div class="pnl-stat-lbl">Est. Daily Theta</div>
   </div>
   <div class="pnl-stat" style="border-left:1px solid rgba(0,200,180,.1)">
-    <div class="pnl-stat-val" id="pnl-betadelta" style="color:var(--accent)">—</div>
-    <div class="pnl-stat-lbl">β-Wtd Δ / 1%</div>
+    <div class="pnl-stat-val" id="pnl-gammadelta" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight" style="color:var(--accent)">—</div>
+    <div class="pnl-stat-lbl" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight">βγ-Wtd Δ / 1%</div>
     <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:4px;display:none"></div>
     <div id="pnl-betadelta-daily-lbl" style="font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:none">est. daily total</div>
-    <div id="pnl-gammadelta" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:5px;display:none"></div>
-    <div id="pnl-gammadelta-lbl" title="BWD scaled by √(30/DTE) per position — near-dated positions carry more weight" style="font-size:9px;color:#a78bfa;letter-spacing:.5px;text-transform:uppercase;display:none">γ-adj / 1%</div>
   </div>
 </div>
 
@@ -1959,42 +1957,29 @@ function updateStats() {
       }
     }
   }
-  // Beta-weighted delta → P&L bar element
-  const ndEl = document.getElementById('pnl-betadelta');
-  if (ndEl) {
-    const spyPrice = (livePrices['SPY'] && livePrices['SPY'].price) || 560;
-    const dollarMove = Math.round(netDelta * spyPrice * 0.01);
-    ndEl.textContent = dollarMove === 0 ? '$0' : (dollarMove > 0 ? '+$' : '-$') + Math.abs(dollarMove).toLocaleString();
-    ndEl.style.color = dollarMove > 200 ? 'var(--green)' : dollarMove < -200 ? 'var(--red)' : 'var(--accent)';
+  // Beta+gamma-adjusted delta → hero number; daily total off gamma
+  const spyPrice = (livePrices['SPY'] && livePrices['SPY'].price) || 560;
+  const spyPct   = livePrices['SPY'] && livePrices['SPY'].pct != null ? livePrices['SPY'].pct : null;
 
-    // Daily total: beta-wtd delta × actual SPY % move today
-    const dailyEl = document.getElementById('pnl-betadelta-daily');
-    const dailyLblEl = document.getElementById('pnl-betadelta-daily-lbl');
-    const spyPct = livePrices['SPY'] && livePrices['SPY'].pct != null ? livePrices['SPY'].pct : null;
+  const gdEl       = document.getElementById('pnl-gammadelta');
+  const dailyEl    = document.getElementById('pnl-betadelta-daily');
+  const dailyLblEl = document.getElementById('pnl-betadelta-daily-lbl');
+
+  if (gdEl) {
+    const gammaDollar = Math.round(netGammaDelta * spyPrice * 0.01);
+    gdEl.textContent  = gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString();
+    gdEl.style.color  = gammaDollar > 200 ? 'var(--green)' : gammaDollar < -200 ? 'var(--red)' : 'var(--accent)';
+
     if (dailyEl && dailyLblEl && spyPct !== null) {
-      const dailyTotal = Math.round(dollarMove * spyPct);
+      const dailyTotal = Math.round(gammaDollar * spyPct);
       const isPos = dailyTotal >= 0;
-      dailyEl.textContent = (isPos ? '+$' : '-$') + Math.abs(dailyTotal).toLocaleString();
-      dailyEl.style.color = isPos ? 'var(--green)' : 'var(--red)';
-      dailyEl.style.display = 'block';
+      dailyEl.textContent      = (isPos ? '+$' : '-$') + Math.abs(dailyTotal).toLocaleString();
+      dailyEl.style.color      = isPos ? 'var(--green)' : 'var(--red)';
+      dailyEl.style.display    = 'block';
       dailyLblEl.style.display = 'block';
     } else if (dailyEl && dailyLblEl) {
-      dailyEl.style.display = 'none';
+      dailyEl.style.display    = 'none';
       dailyLblEl.style.display = 'none';
-    }
-
-    // Gamma-adjusted BWD — only show when we have positions
-    const gdEl    = document.getElementById('pnl-gammadelta');
-    const gdLblEl = document.getElementById('pnl-gammadelta-lbl');
-    if (gdEl && gdLblEl && POSITIONS.length > 0) {
-      const gammaDollar = Math.round(netGammaDelta * spyPrice * 0.01);
-      gdEl.textContent = gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString();
-      gdEl.style.color = gammaDollar > 200 ? 'var(--green)' : gammaDollar < -200 ? 'var(--red)' : '#a78bfa';
-      gdEl.style.display = 'block';
-      gdLblEl.style.display = 'block';
-    } else if (gdEl && gdLblEl) {
-      gdEl.style.display = 'none';
-      gdLblEl.style.display = 'none';
     }
   }
   // Avg DTE → stats bar
