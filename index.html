@@ -1430,6 +1430,15 @@ function getFiltered() {
     }
   });
   const sort=document.getElementById('sortSelect').value;
+  // When earnings filter is active, always sort by soonest earnings date first
+  if (currentFilter === 'earnings') {
+    pos.sort((a,b) => {
+      const ea = earningsMap[a.ticker] || '9999';
+      const eb = earningsMap[b.ticker] || '9999';
+      return ea.localeCompare(eb) || a.ticker.localeCompare(b.ticker);
+    });
+    return pos;
+  }
   pos.sort((a,b)=>{
     switch(sort){
       case 'alert':      {
