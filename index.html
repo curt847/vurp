@@ -1780,7 +1780,8 @@ function renderTable() {
           : '$' + p.collateral.toLocaleString();
 
     // Delta column label — for long options, high delta is good
-    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--text);font-size:9px;font-weight:400;margin-top:1px">${src==='live' ? `●LIVE ${deltaRefreshTs||''}` : isStaleSession ? '~stale' : `~BS ${deltaRefreshTs||''}`}</div>`;
+    const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : null;
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span><div style="color:var(--muted);font-size:9px;font-weight:400;margin-top:1px">${entryD ? `open Δ${entryD.toFixed(2)}` : (src==='live' ? '●LIVE' : '~BS')}</div>`;
 
     // Action buttons — order is always: ✎ pencil | [↩ ROLL] | ✓ CLOSE/SELL
     const askClaudeBtn = `<button class="action-btn" onclick="askClaudeSingle(${idx})" title="Ask Claude" style="border-color:rgba(0,212,255,.4);color:var(--accent)">\ud83e\udd16</button>`;
