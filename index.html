@@ -6124,10 +6124,23 @@ async function askClaudeSingle(idx) {
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|good now (call spread)|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
 
-    // Write small ticker data payload via GET, then trigger singleAnalysis via GET (no POST/CORS issues)
-    const _ctxPayload = encodeURIComponent(JSON.stringify({ single: true, tickerData, expiries: _expiriesStr, today }));
-    await fetch(PROXY_URL + '?action=writeContext&content=' + _ctxPayload);
-    const resp = await fetch(PROXY_URL + '?action=singleAnalysis');
+    // Write ticker data, wait for Drive to flush, then trigger Claude
+    const _ctxJson = JSON.stringify({ single: true, tickerData, expiries: _expiriesStr, today });
+    let _writeOk = false;
+    for (let _wi = 0; _wi < 3; _wi++) {
+      const _wr = await fetch(PROXY_URL + '?action=writeContext', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'content=' + encodeURIComponent(_ctxJson)
+      });
+      const _wt = await _wr.text();
+      try { if (JSON.parse(_wt).ok) { _writeOk = true; break; } } catch(e) {}
+      await new Promise(r => setTimeout(r, 800));
+    }
+    if (!_writeOk) throw new Error('Drive write failed after 3 attempts — try again in a moment');
+    // Small pause to let Drive flush before reading
+    await new Promise(r => setTimeout(r, 1000));
+    const resp = await fetch(PROXY_URL + '?action=claude&count=1');
     const raw   = await resp.text();
     if (!raw || !raw.trim()) throw new Error('Empty response from Apps Script — check PROXY_URL and deployment');
     if (!resp.ok) throw new Error('singleAnalysis HTTP ' + resp.status + ': ' + raw.slice(0, 200));
