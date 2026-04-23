@@ -6124,13 +6124,25 @@ async function askClaudeSingle(idx) {
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|good now (call spread)|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
 
-    const step1 = await fetch(PROXY_URL + '?action=writeContext', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'content=' + encodeURIComponent(singlePrompt)
-    });
-    const step1Text = await step1.text();
-    if (!step1.ok) throw new Error('writeContext failed (' + step1.status + '): ' + step1Text.slice(0, 200));
+    // writeContext with retry — Drive service errors are transient, usually succeed on 2nd attempt
+    let step1Ok = false;
+    for (let _attempt = 0; _attempt < 3; _attempt++) {
+      const _s1 = await fetch(PROXY_URL + '?action=writeContext', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'content=' + encodeURIComponent(singlePrompt)
+      });
+      const _s1text = await _s1.text();
+      try {
+        const _s1json = JSON.parse(_s1text);
+        if (_s1json.ok) { step1Ok = true; break; }
+        if (_s1json.error) throw new Error(_s1json.error);
+      } catch(e) {
+        if (_attempt === 2) throw new Error('writeContext failed after 3 attempts: ' + e.message);
+        content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Drive busy, retrying\u2026 (' + (_attempt + 2) + '/3)</div></div>';
+        await new Promise(r => setTimeout(r, 600 * (_attempt + 1)));
+      }
+    }
 
     const resp  = await fetch(PROXY_URL + '?action=singleAnalysis');
     const raw   = await resp.text();
