@@ -351,6 +351,7 @@
   .onds-trigger.ok{border-color:rgba(0,232,138,.3);background:var(--green-dim);color:var(--green)}
   .onds-trigger.warn{border-color:rgba(255,140,66,.4);background:var(--orange-dim);color:var(--orange)}
   .onds-trigger.fire{border-color:rgba(255,61,90,.4);background:var(--red-dim);color:var(--red)}
+  .onds-trigger.profit{border-color:rgba(59,158,255,.4);background:rgba(59,158,255,.1);color:#3b9eff}
   .onds-cc-list{grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px}
   .onds-cc-item{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:6px 12px;font-size:11px}
 
@@ -1610,19 +1611,25 @@ function renderTable() {
 
     // CC roll triggers
     if (p.postype === 'covered_call') {
-      if (ccRoll === 'dte') {
-        const _ext2 = calcExtrinsic(p);
-        const _op2  = Math.abs(p.open);
-        const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
-        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px"><span class="dot dot-red"></span>ITM ${_pct2}% left</span>`;
-      }
-      else if (ccRoll === 'dte_watch') {
-        const _ext3 = calcExtrinsic(p);
-        const _op3  = Math.abs(p.open);
-        const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
-        statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">👁 ${_pct3}% left</span>`;
-      }
       const ccProfitLevel = getProfitLevel(p, liveGain);
+      const ccIsProfitable = ccProfitLevel === 'close' || ccProfitLevel === 'profit' || ccProfitLevel === 'watch_profit';
+
+      // Only show extrinsic warning pills when NOT already showing a profit/roll pill
+      if (!ccIsProfitable) {
+        if (ccRoll === 'dte') {
+          const _ext2 = calcExtrinsic(p);
+          const _op2  = Math.abs(p.open);
+          const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
+          statusHtml += ` <span class="pill pill-close" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ Roll · ${_pct2}% left</span>`;
+        }
+        else if (ccRoll === 'dte_watch') {
+          const _ext3 = calcExtrinsic(p);
+          const _op3  = Math.abs(p.open);
+          const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
+          statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ Roll · ${_pct3}% left</span>`;
+        }
+      }
+
       if (ccProfitLevel === 'close') {
         statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ROLL NOW</span>`;
       } else if (ccProfitLevel === 'profit') {
@@ -2287,19 +2294,18 @@ function renderOndsCard() {
           const extVal    = calcExtrinsic(p).value;
           const extRemPct = openPrem > 0 ? Math.min(100, Math.max(0, extVal / openPrem * 100)) : 100;
 
-          // Distance to strike: green >5%, orange 2-5%, red <2% or ITM
-          const trigger1Class = signedDist < 0 ? 'fire'
-                              : distPct < 2    ? 'fire'
+          // Distance to strike: green >5%, orange 2-5% or ITM — never red
+          const trigger1Class = (signedDist < 0 || distPct < 2) ? 'warn'
                               : distPct < 5    ? 'warn' : 'ok';
 
-          // DTE: green >10, orange 5-10, red <=5
-          const trigger2Class = dte <= 5 ? 'fire' : dte <= 10 ? 'warn' : 'ok';
+          // DTE: green >10, orange <=10 — never red
+          const trigger2Class = dte <= 10 ? 'warn' : 'ok';
 
           const extOfMid = mid > 0 ? Math.min(100, extVal / mid * 100) : 100;
           const decayPct = Math.max(0, Math.min(100, 100 - extRemPct));
-          const trigger3Class = (extRemPct <= 15 || decayPct >= 90) ? 'fire'
-                              : (extRemPct <= 25 || decayPct >= 75) ? 'warn'
-                              : 'ok';
+          // Decay pill: blue at 50%+, brighter blue at 75%+, brightest at 90%+
+          const decayStars = decayPct >= 90 ? '⭐⭐ ' : decayPct >= 75 ? '⭐ ' : '';
+          const trigger3Class = decayPct >= 50 ? 'profit' : 'ok';
 
           const _expDate = new Date(p.expiry + 'T12:00:00');
           const mo = _expDate.toLocaleString('en-US',{month:'short'});
@@ -2310,7 +2316,7 @@ function renderOndsCard() {
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
               <span class="onds-trigger ${trigger3Class}" style="display:inline-flex;gap:0;padding:0;overflow:hidden;border-radius:4px">
                 <span style="padding:4px 7px;border-right:1px solid rgba(255,255,255,.12)">⏳ ${extOfMid.toFixed(0)}% Ext</span>
-                <span style="padding:4px 7px">${decayPct.toFixed(0)}% decay</span>
+                <span style="padding:4px 7px">${decayStars}${decayPct.toFixed(0)}% decay</span>
               </span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
@@ -3846,14 +3852,19 @@ function showRollModal(idx) {
       const ivR = getLiveIV(p);
       const today2 = new Date(); today2.setHours(0,0,0,0);
       const curExp = new Date(p.expiry + 'T12:00:00');
-      const minDate = new Date(today2.getTime() + 45*86400000);
+      const isCC = p.postype === 'covered_call';
+      // CCs: target 21-30 DTE. Spreads: target 45+ DTE.
+      const minDTE = isCC ? 21 : 45;
+      const maxDTE = isCC ? 30 : 999;
+      const minDate = new Date(today2.getTime() + minDTE*86400000);
       function tf3(yr,mo){ let f=0; for(let i=1;i<=31;i++){const t=new Date(yr,mo,i);if(t.getMonth()!==mo)break;if(t.getDay()===5&&++f===3)return t;} return new Date(yr,mo,21); }
       let rExp=null;
       for(let m=0;m<8;m++){
         const d=new Date(minDate.getFullYear(),minDate.getMonth()+m,1);
         const tf=tf3(d.getFullYear(),d.getMonth());
         const isSameExpiry=tf.getFullYear()===curExp.getFullYear()&&tf.getMonth()===curExp.getMonth();
-        if(tf>=minDate&&!isSameExpiry){rExp=tf;break;}
+        const dte=Math.round((tf-today2)/86400000);
+        if(tf>=minDate&&!isSameExpiry&&(dte<=maxDTE||!isCC)){rExp=tf;break;}
       }
       if(!rExp) rExp=tf3(minDate.getFullYear(),minDate.getMonth()+2);
       const rExpStr = rExp.toISOString().slice(0,10);
@@ -3869,7 +3880,6 @@ function showRollModal(idx) {
       }
       function line(tgt, label, color){
         const ns = findDelta(tgt);
-        const isCC = p.postype === 'covered_call';
         let nm, strikes, rc;
         if (isCC) {
           nm = bsTheoPrice(p.ticker, ns, 'C', rExpStr);
@@ -3883,24 +3893,20 @@ function showRollModal(idx) {
           rc = (nm - curMid) * 100 * p.cts;
           strikes = p.type==='P' ? `$${ns}/$${nl}P` : `$${ns}/$${nl}C`;
         }
-        // rc > 0 = net credit (good), rc < 0 = net debit (costs money)
         const rcColor = rc>=0 ? 'var(--green)' : 'var(--red)';
         const rcBig   = rc>=0 ? `CR $${Math.abs(rc).toFixed(0)}` : `Debit $${Math.abs(rc).toFixed(0)}`;
         return `<div class="modal-row">
-          <span class="modal-label" style="color:${color};font-size:${label==='Suggested'?'18px':'14px'};font-weight:${label==='Suggested'?'700':'normal'}">${label} Δ${tgt.toFixed(2)}</span>
+          <span class="modal-label" style="color:${color};font-size:18px;font-weight:700">${label} Δ${tgt.toFixed(2)}</span>
           <span class="modal-val" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
             <span style="font-size:18px;font-weight:800;color:${rcColor}">${rcBig}</span>
             <span style="font-size:13px;color:var(--muted)">${strikes}</span>
           </span>
         </div>`;
       }
-      // For CCs: use 0.30 (conservative) and 0.20 (very conservative) delta targets
-      // Standard CC entry is 0.20–0.30 delta, not the 0.35–0.50 used for spreads
-      const isCC = p.postype === 'covered_call';
       return `
       <div class="modal-row"><span class="modal-label">Target Expiry</span><span class="modal-val" style="color:var(--accent)">${rMo} ${rExp.getFullYear()} <span style="font-size:13px;font-weight:400;color:var(--muted)">· ${rDTE}d out</span></span></div>
-      ${isCC ? line(0.30, 'Standard',   'var(--orange)') : line(0.45, 'Suggested',  'var(--accent)')}
-      ${isCC ? line(0.20, 'Conservative','var(--green)')  : ''}`;
+      ${isCC ? line(0.25, 'Suggested', 'var(--accent)') : line(0.45, 'Suggested', 'var(--accent)')}
+      ${isCC ? '' : ''}`;
     })()}
 
     ${earningsMap[p.ticker]?`
