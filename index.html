@@ -106,7 +106,7 @@
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
-  .strike-range{color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600}
+  .strike-range{color:var(--text);font-size:17px;font-family:'DM Sans',sans-serif;font-weight:700}
   .dte-val{color:var(--green);font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
@@ -114,7 +114,7 @@
   .stock-atm{color:var(--yellow);font-weight:700}
   .stock-otm{color:var(--green)}
   .stock-chg{font-size:11px;display:block}
-  .delta-cell{font-weight:700;font-size:15px}
+  .delta-cell{font-weight:700;font-size:17px;font-family:'DM Sans',sans-serif}
   .alert-red{color:var(--red)}
   .alert-orange{color:var(--orange)}
   .alert-yellow{color:var(--yellow)}
@@ -710,6 +710,7 @@
       <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="saveSectorsAsDefault()" title="Save current sector layout as default">💾 SAVE DEFAULT</button>
       <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="if(confirm('Reset all sector assignments to defaults?'))resetSectors()" title="Reset all sector assignments to defaults">↺ SECTORS</button>
       <button id="watchFilterToggle" class="btn btn-ghost" style="font-size:9px;padding:3px 8px;color:var(--muted)" onclick="toggleWatchFilter()" title="Toggle between all cards and watching-only">👁 ALL</button>
+      <span id="watchingCount" style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.35);border-radius:5px;font-family:'DM Sans',sans-serif;font-size:20px;font-weight:800;color:var(--accent);padding:0 8px;line-height:1" title="Tickers being watched (no position)">0</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <input id="watchInput" placeholder="TICKER" maxlength="6"
@@ -1241,9 +1242,9 @@ function getProfitLevel(p, liveGain) {
   // intentionally, so delta-based profit flags fire immediately and are meaningless)
   if (p.postype === 'covered_call') {
     if (isLive) {
-      if (liveGain >= 75) return 'close';        // 75% decay — strong roll/close candidate
-      if (liveGain >= 50) return 'profit';       // 50% decay — primary roll trigger
-      if (liveGain >= 35) return 'watch_profit';
+      if (liveGain >= 90) return 'close';
+      if (liveGain >= 75) return 'profit';
+      if (liveGain >= 50) return 'watch_profit';
     }
     return null; // no delta fallback for CCs
   }
@@ -1607,22 +1608,27 @@ function renderTable() {
       ? ''
       : (isLong && isITM(p) && getDTE(p) <= 7) ? pills['green_expiring'] : pills[level];
 
-    // CC roll triggers — color logic:
-    // RED   = actionable for bad reason (stock near/through strike)
-    // BLUE  = actionable for good reason (extrinsic nearly gone — roll now)
-    // ORANGE = watch, extrinsic thinning (start thinking about next cycle)
+    // CC roll triggers
     if (p.postype === 'covered_call') {
       if (ccRoll === 'dte') {
         const _ext2 = calcExtrinsic(p);
         const _op2  = Math.abs(p.open);
         const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
-        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ROLL ${_pct2}% left</span>`;
+        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px"><span class="dot dot-red"></span>ITM ${_pct2}% left</span>`;
       }
       else if (ccRoll === 'dte_watch') {
         const _ext3 = calcExtrinsic(p);
         const _op3  = Math.abs(p.open);
         const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
         statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">👁 ${_pct3}% left</span>`;
+      }
+      const ccProfitLevel = getProfitLevel(p, liveGain);
+      if (ccProfitLevel === 'close') {
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ROLL NOW</span>`;
+      } else if (ccProfitLevel === 'profit') {
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ ROLL</span>`;
+      } else if (ccProfitLevel === 'watch_profit') {
+        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 DECAY</span>`;
       }
     } else {
       // Profit-side alert for spreads/longs
@@ -1874,10 +1880,10 @@ function renderTable() {
         </div>
         <div style="color:var(--text);font-size:9px;margin-top:1px">${liveLabel}</div>
       </td>
-      <td class="${liveGainClass}">${liveGainStr}<span style="color:var(--muted);font-size:8px"> ${liveGainTag}</span></td>
-      <td class="${dteClass}">
+      <td class="${liveGainClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px">${liveGainStr}<span style="color:var(--muted);font-size:9px;font-weight:400"> ${liveGainTag}</span></td>
+      <td class="${dteClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px">
         ${getDTE(p)}d
-        <div style="color:var(--muted);font-size:10px;font-weight:400">${p.expiry.slice(5).replace('-','/')}</div>
+        <div style="color:var(--muted);font-size:11px;font-weight:400;font-family:'JetBrains Mono',monospace">${p.expiry.slice(5).replace('-','/')}</div>
       </td>
       <td class="${p.postype==='covered_call' ? (itm ? '' : Math.abs(stock-p.short)/p.short<0.05 ? 'stock-atm' : 'stock-otm') : dClass}" style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px${p.postype==='covered_call'&&itm ? ';color:var(--muted)' : ''}">$${stock.toFixed(2)}${chgHtml}${(()=>{
         if (p.postype !== 'covered_call' || stock <= 0 || p.short <= 0) return '';
@@ -2289,15 +2295,8 @@ function renderOndsCard() {
           // DTE: green >10, orange 5-10, red <=5
           const trigger2Class = dte <= 5 ? 'fire' : dte <= 10 ? 'warn' : 'ok';
 
-          // % of current mid that is extrinsic (100% when OTM, drops when ITM)
           const extOfMid = mid > 0 ? Math.min(100, extVal / mid * 100) : 100;
-
-          // % decayed: how much of original premium has eroded (inverse of extRemPct)
           const decayPct = Math.max(0, Math.min(100, 100 - extRemPct));
-
-          // Color: driven by whichever is more urgent — extrinsic dropping (ITM) OR decay milestone
-          // Extrinsic thresholds: <=15% = fire, <=25% = warn
-          // Decay thresholds: >=90% = fire, >=75% = warn, >=50% = ok-highlight
           const trigger3Class = (extRemPct <= 15 || decayPct >= 90) ? 'fire'
                               : (extRemPct <= 25 || decayPct >= 75) ? 'warn'
                               : 'ok';
@@ -2305,7 +2304,7 @@ function renderOndsCard() {
           const _expDate = new Date(p.expiry + 'T12:00:00');
           const mo = _expDate.toLocaleString('en-US',{month:'short'});
           const dy = _expDate.getDate();
-          return `<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
+          return `<div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
@@ -7096,6 +7095,12 @@ function updateWatchFilterBtn() {
     btn.style.color = 'var(--muted)';
     btn.style.background = '';
   }
+  const countEl = document.getElementById('watchingCount');
+  if (countEl) {
+    const posTickers = new Set(POSITIONS.map(p => p.ticker));
+    const watchingCount = WATCHLIST.filter(t => !posTickers.has(t)).length;
+    countEl.textContent = watchingCount;
+  }
 }
 
 function renderWatchList() {
@@ -7330,6 +7335,7 @@ function renderWatchList() {
 
   grid.innerHTML = html || '<div style="color:var(--muted);font-size:12px">No tickers yet — add one above</div>';
   if (document.getElementById('mobWatch')) renderMobileWatch();
+  updateWatchFilterBtn();
 }
 
 // ══════════════════════════════════════════
