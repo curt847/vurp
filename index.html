@@ -106,7 +106,7 @@
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
-  .strike-range{color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600}
+  .strike-range{color:var(--text);font-size:17px;font-family:'DM Sans',sans-serif;font-weight:700}
   .dte-val{color:var(--green);font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
@@ -1241,9 +1241,9 @@ function getProfitLevel(p, liveGain) {
   // intentionally, so delta-based profit flags fire immediately and are meaningless)
   if (p.postype === 'covered_call') {
     if (isLive) {
-      if (liveGain >= 75) return 'close';        // 75% decay — strong roll/close candidate
-      if (liveGain >= 50) return 'profit';       // 50% decay — primary roll trigger
-      if (liveGain >= 35) return 'watch_profit';
+      if (liveGain >= 90) return 'close';        // 90% decay — strong roll candidate
+      if (liveGain >= 75) return 'profit';       // 75% decay — primary roll trigger
+      if (liveGain >= 50) return 'watch_profit'; // 50% decay — on the radar
     }
     return null; // no delta fallback for CCs
   }
@@ -1608,21 +1608,30 @@ function renderTable() {
       : (isLong && isITM(p) && getDTE(p) <= 7) ? pills['green_expiring'] : pills[level];
 
     // CC roll triggers — color logic:
-    // RED   = actionable for bad reason (stock near/through strike)
-    // BLUE  = actionable for good reason (extrinsic nearly gone — roll now)
-    // ORANGE = watch, extrinsic thinning (start thinking about next cycle)
+    // RED   = stock near/through strike (defensive) OR extrinsic nearly gone (ITM)
+    // ORANGE = extrinsic thinning (also effectively ITM signal)
+    // Profit pills (theta decay): 50% / 75% / 90% — shown separately from extrinsic
     if (p.postype === 'covered_call') {
       if (ccRoll === 'dte') {
         const _ext2 = calcExtrinsic(p);
         const _op2  = Math.abs(p.open);
         const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
-        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ROLL ${_pct2}% left</span>`;
+        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px"><span class="dot dot-red"></span>ITM ${_pct2}% left</span>`;
       }
       else if (ccRoll === 'dte_watch') {
         const _ext3 = calcExtrinsic(p);
         const _op3  = Math.abs(p.open);
         const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
         statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">👁 ${_pct3}% left</span>`;
+      }
+      // Theta decay profit pills — independent of extrinsic/ITM triggers
+      const ccProfitLevel = getProfitLevel(p, liveGain);
+      if (ccProfitLevel === 'close') {
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ROLL NOW</span>`;
+      } else if (ccProfitLevel === 'profit') {
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ ROLL</span>`;
+      } else if (ccProfitLevel === 'watch_profit') {
+        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 DECAY</span>`;
       }
     } else {
       // Profit-side alert for spreads/longs
