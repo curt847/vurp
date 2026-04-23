@@ -6124,15 +6124,13 @@ async function askClaudeSingle(idx) {
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
       + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|good now (call spread)|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
 
-    // Send prompt directly to Claude via the existing doPost 'claude' action — no Drive involved
-    const resp = await fetch(PROXY_URL + '?action=claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'prompt=' + encodeURIComponent(singlePrompt)
-    });
+    // Write small ticker data payload via GET, then trigger singleAnalysis via GET (no POST/CORS issues)
+    const _ctxPayload = encodeURIComponent(JSON.stringify({ single: true, tickerData, expiries: _expiriesStr, today }));
+    await fetch(PROXY_URL + '?action=writeContext&content=' + _ctxPayload);
+    const resp = await fetch(PROXY_URL + '?action=singleAnalysis');
     const raw   = await resp.text();
     if (!raw || !raw.trim()) throw new Error('Empty response from Apps Script — check PROXY_URL and deployment');
-    if (!resp.ok) throw new Error('claude POST HTTP ' + resp.status + ': ' + raw.slice(0, 200));
+    if (!resp.ok) throw new Error('singleAnalysis HTTP ' + resp.status + ': ' + raw.slice(0, 200));
 
     let data;
     try { data = JSON.parse(raw); }
