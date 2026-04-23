@@ -1789,8 +1789,8 @@ function renderTable() {
     // Delta column label — for long options, high delta is good
     const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : null;
     const isCovCall = p.postype === 'covered_call';
-    const deltaSubLabel = isCovCall ? '' : entryD ? `OpenΔ${fmtDelta(entryD)}` : (src==='live' ? '●LIVE' : '~BS');
-    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${deltaSubLabel ? `<div style="color:var(--muted);font-size:9px;font-weight:400;margin-top:1px">${deltaSubLabel}</div>` : ''}`;
+    const deltaSubLabel = isCovCall ? '' : entryD ? `(${fmtDelta(entryD)}Δ)` : (src==='live' ? '●LIVE' : '~BS');
+    const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${deltaSubLabel ? `<div style="color:var(--muted);font-size:11px;font-weight:400;font-family:'JetBrains Mono',monospace;margin-top:1px">${deltaSubLabel}</div>` : ''}`;
 
     // Action buttons — order is always: ✎ pencil | [↩ ROLL] | ✓ CLOSE/SELL
     const askClaudeBtn = `<button class="action-btn" onclick="askClaudeSingle(${idx})" title="Ask Claude" style="border-color:rgba(0,212,255,.4);color:var(--accent)">\ud83e\udd16</button>`;
