@@ -2654,7 +2654,7 @@ async function fetchAll() {
   const watchOnly  = WATCHLIST.filter(t => !posTickers.includes(t));
   let done = 0;
   const BATCH = 5;        // tickers per batch — keeps req/min well under UW rate limit
-  const BATCH_PAUSE = 30; // seconds to wait between batches (resets UW per-minute window)
+  const BATCH_PAUSE = 20; // seconds to wait between batches (resets UW per-minute window)
 
   btn.textContent = `⏳ 0/${posTickers.length} tickers…`;
   yahooReady = false; // suppress pct colors until Yahoo corrects at end
@@ -2682,7 +2682,7 @@ async function fetchAll() {
     // Gap between individual tickers within a batch — spread requests over time
     const isLastInBatch = (i + 1) % BATCH === 0;
     if (i < posTickers.length - 1 && !isLastInBatch) {
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 
