@@ -5927,6 +5927,12 @@ function closeAskClaude() {
   document.getElementById('askClaudeModal').classList.remove('show');
 }
 
+function askClaudeForTicker(ticker) {
+  const idx = POSITIONS.findIndex(p => p.ticker === ticker);
+  if (idx === -1) return;
+  askClaudeSingle(idx);
+}
+
 async function askClaudeSingle(idx) {
   const modal   = document.getElementById('askClaudeModal');
   const content = document.getElementById('askClaudeContent');
@@ -7211,6 +7217,11 @@ function renderWatchList() {
         ? `<span class="wc-pos in">${posCount} pos</span>`
         : `<span class="wc-pos out">watching</span>`;
 
+      // Ask Claude button — only for cards with positions
+      const wcAskBtn = hasPos
+        ? `<button onclick="askClaudeForTicker('${ticker}')" title="Ask Claude" style="background:transparent;border:1px solid rgba(0,212,255,.4);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;cursor:pointer;line-height:1;letter-spacing:.3px">🤖</button>`
+        : '';
+
       const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
       const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NONE';
       const biasBg    = bias==='bull'?'var(--green-dim)':bias==='bear'?'var(--red-dim)':bias==='sell'?'var(--orange-dim)':'rgba(74,85,104,.15)';
@@ -7323,6 +7334,7 @@ function renderWatchList() {
           <div style="font-size:16px;line-height:1;opacity:${entryTriggered?'0.95':'0.8'}" title="${entryTriggered?(bullAlert?'Entry hit — price at or below target':'Entry hit — price at or above target'):(entryTarget?'Watching for entry at $'+entryTarget:'')}">${entryTriggered?'⚡':(entryTarget?'🎯':'')}</div>
           <div style="display:flex;align-items:center;gap:6px">
             ${posBadge}
+            ${wcAskBtn}
             ${removeBtn}
           </div>
         </div>
