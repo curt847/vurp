@@ -1040,9 +1040,9 @@ const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // Roll trigger: relative drift from entryDelta + absolute cap, whichever fires first
 // Yellow = trigger - 0.05, Red = trigger
 const DTE_BANDS = [
-  { maxDte: 26,  drift: 0.12, cap: 0.60 },  // <26 DTE
-  { maxDte: 30,  drift: 0.18, cap: 0.65 },  // 26-30 DTE
-  { maxDte: 9999,drift: 0.25, cap: 0.75 },  // >30 DTE
+  { maxDte: 26,  drift: 0.14, cap: 0.50 },  // <26 DTE — tightest near expiry
+  { maxDte: 40,  drift: 0.18, cap: 0.55 },  // 26-39 DTE
+  { maxDte: 9999,drift: 0.22, cap: 0.60 },  // >40 DTE — most breathing room
 ];
 function getDteBand(dte) {
   return DTE_BANDS.find(b => dte <= b.maxDte) || DTE_BANDS[DTE_BANDS.length-1];
@@ -1196,9 +1196,11 @@ function getAlertLevel(p) {
 
   // Credit/debit spreads: DTE-aware relative + absolute cap
   const trigger = getRollTrigger(p);
-  const warn    = trigger - 0.05; // yellow fires 0.05 below red trigger
+  const watch   = trigger - 0.08; // orange (WATCH) — look into rolling, need a reason to hold
+  const warn    = trigger - 0.15; // yellow (RADAR) — heads up, just be aware
 
   if (d >= trigger)  return 'red';
+  if (d >= watch)    return 'orange';
   if (d >= warn)     return 'yellow';
 
   // ITM safety net — even if delta hasn't hit trigger, ITM near expiry is orange
@@ -6240,7 +6242,7 @@ function renderStocks() {
     body.innerHTML = '<tr><td colspan="8" style="padding:12px 10px;color:var(--muted);font-size:10px">No stock positions — click + ADD STOCK</td></tr>';
     return;
   }
-  let totalValue = 0, totalCost = 0;
+  let totalValue = 0, totalCost = 0, totalDayGL = 0, hasDayGL = false;
   body.innerHTML = STOCKS.map((s, i) => {
     const lp      = livePrices[s.ticker];
     const current = (lp&&lp.price) || s.cost;
@@ -6248,13 +6250,12 @@ function renderStocks() {
     const cost    = s.cost * s.shares;
     const gl      = value - cost;
     const glPct   = ((current - s.cost) / s.cost) * 100;
-    // Day $ uses prev_close ONLY — must match same basis as lp.pct (Yahoo prev close)
-    // Never fall back to lp.open (intraday open) as that creates a mismatch where % shows 0% but $ shows large value
     const prevClose = lp && lp.prev > 0 ? lp.prev : null;
     const dayGL   = lp && prevClose ? (current - prevClose) * s.shares : null;
     const dayGLPct = dayGL != null ? lp.pct : null;
     totalValue   += value;
     totalCost    += cost;
+    if (dayGL != null) { totalDayGL += dayGL; hasDayGL = true; }
     const glClass = gl >= 0 ? 'pnl-pos' : 'pnl-neg';
     const dayClass = lp ? (yahooReady ? (lp.pct >= 0 ? 'price-up' : 'price-dn') : 'price-neu') : 'price-neu';
     const dayGLClass = dayGL != null ? (dayGL >= 0 ? 'pnl-pos' : 'pnl-neg') : '';
@@ -6291,11 +6292,15 @@ function renderStocks() {
   // Totals row
   const totalGL = totalValue - totalCost;
   const totalGLClass = totalGL >= 0 ? 'pnl-pos' : 'pnl-neg';
+  const totalDayGLClass = totalDayGL >= 0 ? 'pnl-pos' : 'pnl-neg';
+  const dayTotalHtml = hasDayGL
+    ? `<div class="${totalDayGLClass}" style="font-size:12px;font-weight:600">${totalDayGL>=0?'+':''}$${Math.round(Math.abs(totalDayGL)).toLocaleString()} today</div>`
+    : '';
   body.innerHTML += `<tr style="border-top:2px solid var(--border);font-size:17px">
     <td colspan="4" style="color:var(--muted);font-size:11px;padding:8px 10px">TOTAL</td>
     <td style="color:var(--text);font-weight:700;font-size:19px">$${(totalValue/1000).toFixed(1)}K</td>
     <td></td>
-    <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}</td>
+    <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}${dayTotalHtml}</td>
     <td></td>
   </tr>`;
   if (document.getElementById('mobStocks')) renderMobileStocks();
