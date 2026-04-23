@@ -1077,7 +1077,7 @@ let autoTimer   = null;
 // ══════════════════════════════════════════
 // MATH
 // ══════════════════════════════════════════
-function fmtDelta(d) { return d.toFixed(2).replace('0.', '.'); }
+function fmtDelta(d) { return '(' + d.toFixed(2) + ')'; }
 function normCDF(x) {
   const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
   const s=x<0?-1:1; x=Math.abs(x)/Math.sqrt(2);
@@ -1380,11 +1380,11 @@ function getCCRollTrigger(p) {
   // Remaining extrinsic as % of original premium collected
   const extRemainPct = openPrem > 0 ? (ext.value / openPrem) * 100 : 100;
 
-  // Red: ≤15% extrinsic remaining — almost nothing left, act now
-  if (extRemainPct <= 15) return 'dte';
+  // Red: ≤25% extrinsic remaining — almost nothing left, act now
+  if (extRemainPct <= 25) return 'dte';
 
-  // Orange: ≤25% extrinsic remaining — thinning, start thinking about next cycle
-  if (extRemainPct <= 25) return 'dte_watch';
+  // Orange: ≤50% extrinsic remaining — thinning, start thinking about next cycle
+  if (extRemainPct <= 50) return 'dte_watch';
 
   return null;
 }
@@ -1789,7 +1789,7 @@ function renderTable() {
     // Delta column label — for long options, high delta is good
     const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : null;
     const isCovCall = p.postype === 'covered_call';
-    const deltaSubLabel = isCovCall ? '' : entryD ? `(${fmtDelta(entryD)}Δ)` : (src==='live' ? '●LIVE' : '~BS');
+    const deltaSubLabel = isCovCall ? '' : entryD ? `${fmtDelta(entryD)}` : (src==='live' ? '●LIVE' : '~BS');
     const deltaLabel = `<span style="font-family:'DM Sans',sans-serif">${delta.toFixed(2)}</span>${deltaSubLabel ? `<div style="color:var(--muted);font-size:11px;font-weight:400;font-family:'JetBrains Mono',monospace;margin-top:1px">${deltaSubLabel}</div>` : ''}`;
 
     // Action buttons — order is always: ✎ pencil | [↩ ROLL] | ✓ CLOSE/SELL
@@ -1890,9 +1890,9 @@ function renderTable() {
         const _dist  = p.short - stock;  // positive = OTM, negative = ITM
         const _pct   = Math.abs(_dist) / p.short * 100;
         const _label = _dist >= 0 ? 'OTM' : 'ITM';
-        const _color = _dist < 0 ? 'var(--red)'
-                     : _pct < 2  ? 'var(--red)'
-                     : _pct < 5  ? 'var(--orange)'
+        const _color = _dist < 0 ? 'var(--orange)'
+                     : _pct < 2  ? 'var(--orange)'
+                     : _pct < 5  ? 'var(--yellow)'
                      : 'var(--green)';
         return `<div style="font-size:10px;font-weight:600;color:${_color};margin-top:1px">$${Math.abs(_dist).toFixed(2)} / ${_pct.toFixed(1)}% ${_label}</div>`;
       })()}</td>
@@ -6090,6 +6090,8 @@ async function askClaudeSingle(idx) {
       + 'OVERBOUGHT RULES (HARD — these override IVR, flow, and everything else): '
       + 'RSI>=70: entry is NEVER "good now". High IVR does not override this. Strong flow does not override this. '
       + 'RSI>=70 default entry = "wait for RSI to cool". '
+      + 'BEARISH DOWNTREND CALL SPREAD: price below MA200, MACD negative/falling, RSI 35-60, IVR 35+ = entry is "good now (call spread)", trade_type "C·CR". '
+      + 'Price below MA200 with RSI <35 = "wait for bounce" before entering call spread. '
       + 'CONTRARIAN CALL SPREAD is a rare, high-conviction exception — ALL of the following must be true simultaneously: '
       + '(1) RSI>=75, (2) MACD histogram is clearly declining (negative slope, not just flat), (3) flow is neutral or bearish. '
       + 'If ANY of those three conditions is missing, use "wait for RSI to cool" instead — never default to contrarian. '
@@ -6100,14 +6102,15 @@ async function askClaudeSingle(idx) {
       + 'RSI>=75 + MACD declining + neutral/bearish flow = "contrarian call spread". '
       + 'Weak/low-conviction flow does NOT override technicals. Only above-avg or high volume flow can shift the call. '
       + 'ENTRY must be exactly one of: '
-      + '"good now" | "contrarian call spread" | "wait for MACD to confirm bottom" | "wait for RSI to cool" | "wait for pullback" | "wait for bounce" | "no trade". '
+      + '"good now" | "good now (call spread)" | "contrarian call spread" | "wait for MACD to confirm bottom" | "wait for RSI to cool" | "wait for pullback" | "wait for bounce" | "no trade". '
       + 'Never use "wait for pullback" when stock is already in a significant pullback (RSI<40 or down 5%+ from recent high). '
       + 'SUMMARY: one sentence, plain English, lead with the action. Examples: '
       + '"No trade — MACD still falling despite oversold RSI, wait for momentum to confirm a bottom." '
       + '"Enter put spread now — IVR 60, RSI 52, MACD just crossed bullish." '
+      + '"Enter call spread now — confirmed downtrend below both MAs, IVR 64, RSI 36 stabilizing." '
       + '"Wait for RSI to cool — bullish trend intact but RSI 72 still rising, hold off." '
       + 'Respond ONLY as raw JSON, no markdown, no preamble: '
-      + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
+      + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|good now (call spread)|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","suggestion":"concrete trade with strikes and expiry or empty string if not entering","risk":"single biggest specific threat"}';
 
     const step1 = await fetch(PROXY_URL + '?action=writeContext', {
       method: 'POST',
@@ -6137,7 +6140,7 @@ async function askClaudeSingle(idx) {
     const ts = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
 
     const entryLc     = (r.entry || '').toLowerCase();
-    const entryGood   = entryLc === 'good now' || entryLc.startsWith('contrarian');
+    const entryGood   = entryLc === 'good now' || entryLc === 'good now (call spread)' || entryLc.startsWith('contrarian');
     const entryNoTrade = entryLc === 'no trade' || entryLc.startsWith('no trade');
     const entryColor  = entryGood ? 'var(--green)' : entryNoTrade ? 'var(--orange)' : 'var(--yellow)';
     const entryBg     = entryGood ? 'var(--green-dim)' : entryNoTrade ? 'var(--orange-dim)' : 'var(--yellow-dim)';
@@ -6691,7 +6694,7 @@ async function runAIAnalysis() {
         r.entry = 'wait for RSI to cool';
         entry_lc = 'wait for rsi to cool';
       }
-      var good = entry_lc === 'good now' || entry_lc.startsWith('contrarian') || !(entry_lc.indexOf('wait') >= 0 || entry_lc.indexOf('avoid') >= 0 || entry_lc.indexOf('no trade') >= 0 || entry_lc.indexOf('no_trade') >= 0);
+      var good = entry_lc === 'good now' || entry_lc === 'good now (call spread)' || entry_lc.startsWith('contrarian') || !(entry_lc.indexOf('wait') >= 0 || entry_lc.indexOf('avoid') >= 0 || entry_lc.indexOf('no trade') >= 0 || entry_lc.indexOf('no_trade') >= 0);
       // Derive trade_type from sentiment + entry if the AI didn't return it explicitly
       var trade_type = r.trade_type || null;
       if (!trade_type) {
@@ -6699,6 +6702,8 @@ async function runAIAnalysis() {
         if (entry_lc === 'good now') {
           // bullish/overbought(still going) = put credit spread; bearish = call credit spread
           trade_type = (sent === 'bearish') ? 'C-CR' : 'P-CR';
+        } else if (entry_lc === 'good now (call spread)') {
+          trade_type = 'C·CR';
         } else if (entry_lc.startsWith('contrarian')) {
           trade_type = 'C-CR'; // contrarian call spread = bearish short-term play
         }
@@ -6734,6 +6739,7 @@ async function runAIAnalysis() {
     function entryTier(entry) {
       var e = entry.toLowerCase();
       if (e === 'good now')                          return 0;
+      if (e === 'good now (call spread)')            return 0;
       if (e.startsWith('contrarian'))               return 1;
       if (e.startsWith('wait for pullback') ||
           e.startsWith('wait for bounce'))           return 2;
@@ -6748,7 +6754,7 @@ async function runAIAnalysis() {
       var tc = typeof techData !== 'undefined' && techData[r.ticker];
       var lp = livePrices[r.ticker];
       var fd = flowData[r.ticker];
-      var isBearish = (r.sentiment === 'bearish') || r.entry.toLowerCase().startsWith('contrarian');
+      var isBearish = (r.sentiment === 'bearish') || r.entry.toLowerCase().startsWith('contrarian') || r.entry.toLowerCase() === 'good now (call spread)';
 
       // 1. MA50/MA200 — trend structure, the foundation (up to 28pts, penalize -15)
       if (tc && lp) {
@@ -7282,7 +7288,7 @@ function renderWatchList() {
 
       // AI entry signal badge
       const sig = AI_SIGNALS[ticker];
-      const isBearish = sig && (sig.sentiment === 'bearish' || (sig.entry && sig.entry.toLowerCase().startsWith('contrarian')));
+      const isBearish = sig && (sig.sentiment === 'bearish' || (sig.entry && (sig.entry.toLowerCase().startsWith('contrarian') || sig.entry.toLowerCase() === 'good now (call spread)')));
       const sigHtml = (sig && sig.good)
         ? `<span class="ai-signal${isBearish ? ' bear-signal' : ''}">✅ ${sig.trade_type || ''}${sig.entry_detail ? '  ' + sig.entry_detail : ''}</span>`
         : (sig && !sig.good)
