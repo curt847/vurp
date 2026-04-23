@@ -1194,6 +1194,17 @@ function getAlertLevel(p) {
     return 'green';
   }
 
+  // Debit spreads: high delta is GOOD (going your way), low delta is bad (thesis failing)
+  // Alert when delta is fading — opposite of credit spread logic
+  if (p.postype === 'spread_debit') {
+    if (dte <= 14 && d < 0.30) return 'red';    // running out of time, thesis not working
+    if (dte <= 21 && d < 0.25) return 'red';    // very little time, deeply OTM
+    if (d < 0.20) return 'red';                 // delta almost gone regardless of DTE
+    if (d < 0.30) return 'orange';              // fading, watch it
+    if (d < 0.40) return 'yellow';              // below entry delta, heads up
+    return 'green';                             // on track or going ITM
+  }
+
   // Credit/debit spreads: DTE-aware relative + absolute cap
   const trigger = getRollTrigger(p);
   const watch   = trigger - 0.08; // orange (WATCH) — look into rolling, need a reason to hold
