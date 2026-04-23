@@ -106,7 +106,7 @@
   /* Legacy fallbacks */
   .type-C{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.35)}
   .type-P{background:rgba(255,100,180,.15);color:#ff64b4;border:1px solid rgba(255,100,180,.35)}
-  .strike-range{color:var(--text);font-size:17px;font-family:'DM Sans',sans-serif;font-weight:700}
+  .strike-range{color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600}
   .dte-val{color:var(--green);font-weight:500}
   .dte-near{color:var(--orange)}
   .dte-urgent{color:var(--red);font-weight:700}
@@ -1241,9 +1241,9 @@ function getProfitLevel(p, liveGain) {
   // intentionally, so delta-based profit flags fire immediately and are meaningless)
   if (p.postype === 'covered_call') {
     if (isLive) {
-      if (liveGain >= 90) return 'close';        // 90% decay — strong roll candidate
-      if (liveGain >= 75) return 'profit';       // 75% decay — primary roll trigger
-      if (liveGain >= 50) return 'watch_profit'; // 50% decay — on the radar
+      if (liveGain >= 75) return 'close';        // 75% decay — strong roll/close candidate
+      if (liveGain >= 50) return 'profit';       // 50% decay — primary roll trigger
+      if (liveGain >= 35) return 'watch_profit';
     }
     return null; // no delta fallback for CCs
   }
@@ -1608,30 +1608,21 @@ function renderTable() {
       : (isLong && isITM(p) && getDTE(p) <= 7) ? pills['green_expiring'] : pills[level];
 
     // CC roll triggers — color logic:
-    // RED   = stock near/through strike (defensive) OR extrinsic nearly gone (ITM)
-    // ORANGE = extrinsic thinning (also effectively ITM signal)
-    // Profit pills (theta decay): 50% / 75% / 90% — shown separately from extrinsic
+    // RED   = actionable for bad reason (stock near/through strike)
+    // BLUE  = actionable for good reason (extrinsic nearly gone — roll now)
+    // ORANGE = watch, extrinsic thinning (start thinking about next cycle)
     if (p.postype === 'covered_call') {
       if (ccRoll === 'dte') {
         const _ext2 = calcExtrinsic(p);
         const _op2  = Math.abs(p.open);
         const _pct2 = _op2 > 0 ? (_ext2.value / _op2 * 100).toFixed(0) : '?';
-        statusHtml += ` <span class="pill pill-red" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px"><span class="dot dot-red"></span>ITM ${_pct2}% left</span>`;
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔔 ROLL ${_pct2}% left</span>`;
       }
       else if (ccRoll === 'dte_watch') {
         const _ext3 = calcExtrinsic(p);
         const _op3  = Math.abs(p.open);
         const _pct3 = _op3 > 0 ? (_ext3.value / _op3 * 100).toFixed(0) : '?';
         statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">👁 ${_pct3}% left</span>`;
-      }
-      // Theta decay profit pills — independent of extrinsic/ITM triggers
-      const ccProfitLevel = getProfitLevel(p, liveGain);
-      if (ccProfitLevel === 'close') {
-        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ROLL NOW</span>`;
-      } else if (ccProfitLevel === 'profit') {
-        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ ROLL</span>`;
-      } else if (ccProfitLevel === 'watch_profit') {
-        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 DECAY</span>`;
       }
     } else {
       // Profit-side alert for spreads/longs
@@ -2298,8 +2289,18 @@ function renderOndsCard() {
           // DTE: green >10, orange 5-10, red <=5
           const trigger2Class = dte <= 5 ? 'fire' : dte <= 10 ? 'warn' : 'ok';
 
-          // Extrinsic remaining: red <=15%, orange <=25%
-          const trigger3Class = extRemPct <= 15 ? 'fire' : extRemPct <= 25 ? 'warn' : 'ok';
+          // % of current mid that is extrinsic (100% when OTM, drops when ITM)
+          const extOfMid = mid > 0 ? Math.min(100, extVal / mid * 100) : 100;
+
+          // % decayed: how much of original premium has eroded (inverse of extRemPct)
+          const decayPct = Math.max(0, Math.min(100, 100 - extRemPct));
+
+          // Color: driven by whichever is more urgent — extrinsic dropping (ITM) OR decay milestone
+          // Extrinsic thresholds: <=15% = fire, <=25% = warn
+          // Decay thresholds: >=90% = fire, >=75% = warn, >=50% = ok-highlight
+          const trigger3Class = (extRemPct <= 15 || decayPct >= 90) ? 'fire'
+                              : (extRemPct <= 25 || decayPct >= 75) ? 'warn'
+                              : 'ok';
 
           const _expDate = new Date(p.expiry + 'T12:00:00');
           const mo = _expDate.toLocaleString('en-US',{month:'short'});
@@ -2308,7 +2309,10 @@ function renderOndsCard() {
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
-              <span class="onds-trigger ${trigger3Class}">⏳ ${extRemPct.toFixed(0)}% Ext</span>
+              <span class="onds-trigger ${trigger3Class}" style="display:inline-flex;gap:0;padding:0;overflow:hidden;border-radius:4px">
+                <span style="padding:4px 7px;border-right:1px solid rgba(255,255,255,.12)">⏳ ${extOfMid.toFixed(0)}% Ext</span>
+                <span style="padding:4px 7px">${decayPct.toFixed(0)}% decay</span>
+              </span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
