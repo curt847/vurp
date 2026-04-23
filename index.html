@@ -1040,9 +1040,9 @@ const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // Roll trigger: relative drift from entryDelta + absolute cap, whichever fires first
 // Yellow = trigger - 0.05, Red = trigger
 const DTE_BANDS = [
-  { maxDte: 26,  drift: 0.14, cap: 0.50 },  // <26 DTE — tightest near expiry
-  { maxDte: 40,  drift: 0.18, cap: 0.55 },  // 26-39 DTE
-  { maxDte: 9999,drift: 0.22, cap: 0.60 },  // >40 DTE — most breathing room
+  { maxDte: 26,  drift: 0.14, cap: 0.60 },  // <26 DTE — tightest near expiry
+  { maxDte: 40,  drift: 0.18, cap: 0.65 },  // 26-40 DTE
+  { maxDte: 9999,drift: 0.22, cap: 0.70 },  // >40 DTE — most breathing room
 ];
 function getDteBand(dte) {
   return DTE_BANDS.find(b => dte <= b.maxDte) || DTE_BANDS[DTE_BANDS.length-1];
