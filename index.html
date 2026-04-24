@@ -743,7 +743,7 @@
 </div>
 
 <div class="footer-note">
-  ROLLWATCH v2.1 — Spreads: DTE-aware triggers · &lt;26d cap 0.55 · 26–30d cap 0.65 · &gt;30d cap 0.75 · Yellow = 0.05 below trigger — Long Options: &lt;0.15Δ 🔴 | &lt;0.25Δ 🟠 | &lt;0.35Δ 🟡 — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 | ≤0.30Δ 🔷 — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.)
+  ROLLWATCH v2.1 — Spreads: DTE-aware triggers · &lt;26d cap 0.55 · 26–30d cap 0.65 · &gt;30d cap 0.75 · Favorable drift loosens trigger 0.06 · Yellow RADAR suppressed for OTM · Yellow = 0.05 below trigger — Long Options: &lt;0.15Δ 🔴 | &lt;0.25Δ 🟠 | &lt;0.35Δ 🟡 — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 | ≤0.30Δ 🔷 — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.)
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -1038,12 +1038,14 @@ const POSITIONS = [
 const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // DTE-aware delta thresholds (replaces fixed THRESH_ROLL/WATCH/RADAR for spreads)
 // Roll trigger: relative drift from entryDelta + absolute cap, whichever fires first
-// Yellow = trigger - 0.05, Red = trigger
+// If price has drifted IN YOUR FAVOR (delta is below entry), trigger is loosened by a grace amount.
+// Yellow RADAR is suppressed entirely for OTM positions — you won't roll OTM.
 const DTE_BANDS = [
   { maxDte: 26,  drift: 0.14, cap: 0.60 },  // <26 DTE — tightest near expiry
   { maxDte: 40,  drift: 0.18, cap: 0.65 },  // 26-40 DTE
   { maxDte: 9999,drift: 0.22, cap: 0.70 },  // >40 DTE — most breathing room
 ];
+const FAVORABLE_DRIFT_GRACE = 0.06; // loosen trigger this much if price drifted in your favor
 function getDteBand(dte) {
   return DTE_BANDS.find(b => dte <= b.maxDte) || DTE_BANDS[DTE_BANDS.length-1];
 }
@@ -1051,8 +1053,12 @@ function getRollTrigger(p) {
   const dte  = getDTE(p);
   const band = getDteBand(dte);
   const base = typeof p.entryDelta === 'number' ? p.entryDelta : 0.30; // fallback
-  const relative = base + band.drift;
-  const normal = Math.min(relative, band.cap);
+  const currentDelta = getEffectiveDelta(p);
+  // If current delta is BELOW entry delta, price has moved favorably — loosen the trigger
+  const hasFavorableDrift = (typeof p.entryDelta === 'number') && (currentDelta < p.entryDelta);
+  const grace = hasFavorableDrift ? FAVORABLE_DRIFT_GRACE : 0;
+  const relative = base + band.drift + grace;
+  const normal = Math.min(relative, band.cap + grace);
   if (p.convictionHold) return Math.min(normal + 0.15, 0.85);
   return normal;
 }
@@ -1209,10 +1215,11 @@ function getAlertLevel(p) {
   const trigger = getRollTrigger(p);
   const watch   = trigger - 0.08; // orange (WATCH) — look into rolling, need a reason to hold
   const warn    = trigger - 0.15; // yellow (RADAR) — heads up, just be aware
+  const otm     = !isITM(p);     // OTM spreads: suppress yellow noise, keep orange/red
 
-  if (d >= trigger)  return 'red';
-  if (d >= watch)    return 'orange';
-  if (d >= warn)     return 'yellow';
+  if (d >= trigger)            return 'red';
+  if (d >= watch)              return 'orange';
+  if (d >= warn && !otm)       return 'yellow'; // suppress RADAR for OTM — you won't roll OTM
 
   // ITM safety net — even if delta hasn't hit trigger, ITM near expiry is orange
   // convictionHold softens by one level (red→yellow, orange→green)
