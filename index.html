@@ -1234,11 +1234,11 @@ function calcLiveGain(p) {
   const { mid } = getSpreadMid(p);
   const openPrem = Math.abs(p.open);
   if (openPrem === 0) return 0;
-  if (isLongOption(p)) {
-    // Long option: gain = how much it has appreciated
+  if (isLongOption(p) || p.postype === 'spread_debit') {
+    // Long option or debit spread: gain = how much it has appreciated vs what we paid
     return ((mid - openPrem) / openPrem) * 100;
   }
-  // Credit spread: gain = how much premium has decayed
+  // Credit spread / covered call: gain = how much premium has decayed
   return ((openPrem - mid) / openPrem) * 100;
 }
 
@@ -1583,7 +1583,7 @@ function renderTable() {
     // % gain: uses calcLiveGain which handles both credit spreads (decay) and long options (appreciation)
     const openPrem = Math.abs(p.open);
     const liveGain = calcLiveGain(p);
-    const liveGainClass = isLongOption(p)
+    const liveGainClass = (isLongOption(p) || p.postype === 'spread_debit')
       ? (liveGain >= 0 ? 'pnl-pos' : 'pnl-neg')
       : p.postype === 'covered_call'
         ? (liveGain >= 0 ? 'pnl-pos' : 'pnl-neu')   // CC: green=decay working, grey=underwater (not actionable)
@@ -6109,6 +6109,7 @@ async function askClaudeSingle(idx) {
       + 'DELTA GUIDANCE: Target short strike delta 0.30-0.35 default. 0.35-0.40 acceptable when IVR 50+, clear trend, confirming flow. Avoid below 0.28. '
       + 'RSI: 40-65=healthy, supports entry. >70=overbought, entry is BLOCKED (see rules below). <30=oversold/falling knife — no put spread unless MACD histogram is also turning up. '
       + 'MACD: histogram turning positive/rising = bullish momentum confirmed. Histogram still falling even with RSI<30 = bottom NOT confirmed, no put spread. '
+      + 'RSI/PRICE DIVERGENCE (incorporate when signals present): BULLISH DIVERGENCE = price lower low but RSI higher low — weakening bearish momentum, reversal signal upward; treat as +1 bullish confirming signal, can tip a wait to good-now if MACD histogram also rising. BEARISH DIVERGENCE = price higher high but RSI lower high — weakening bullish momentum, reversal signal downward; treat as +1 bearish confirming signal, can help tip overbought to contrarian-call-spread if other contrarian conditions also met. Divergence alone is NOT sufficient for entry — still require IVR, MACD, MA conditions. Mention divergence in read when present. '
       + 'MA50/MA200 TREND RULES: Price above both MA50 and MA200 = strong bull trend, supports put spread entry. '
       + 'Price above MA200 but below MA50 = longer-term bull but short-term weak, mild caution. '
       + 'Price below MA200 = downtrend — avoid put spreads, flag in read. '
@@ -6629,7 +6630,8 @@ async function runAIAnalysis() {
              : p.postype === 'long_call'     ? 'Call'
              : p.postype === 'long_put'      ? 'Put' : p.postype;
       var { mid } = getSpreadMid(p);
-      var pctGain = p.open > 0 ? Math.round((1 - mid / Math.abs(p.open)) * 100) : null;
+      var isDebitPos = p.postype === 'spread_debit' || p.postype === 'long_call' || p.postype === 'long_put';
+      var pctGain = p.open > 0 ? (isDebitPos ? Math.round(((mid - Math.abs(p.open)) / Math.abs(p.open)) * 100) : Math.round((1 - mid / Math.abs(p.open)) * 100)) : null;
       var stockNow = lp ? lp.price : null;
       var distPct = (stockNow && p.short_strike) ? ((stockNow - p.short_strike) / stockNow * 100).toFixed(1) + '%' : null;
       var distLabel = distPct ? (p.type === 'P' ? 'stock_above_short:' : 'stock_below_short:') + distPct : null;
@@ -6686,6 +6688,7 @@ async function runAIAnalysis() {
     + 'Use tech to sharpen entries: RSI>70=overbought(see rules below) RSI<30=oversold(caution for bears). '
     + 'MACD hist positive+rising=bullish momentum negative+falling=bearish. '
     + 'Price vs MA50/MA200=trend context. '
+    + 'RSI/PRICE DIVERGENCE: BULLISH DIVERGENCE=price lower low but RSI higher low — weakening bearish momentum, reversal signal upward, treat as +1 bullish confirming signal, can tip wait to good-now if MACD also rising. BEARISH DIVERGENCE=price higher high but RSI lower high — weakening bullish momentum, reversal signal downward, treat as +1 bearish confirming signal, can help tip overbought to contrarian-call-spread when other contrarian conditions met. Divergence alone insufficient for entry — still require IVR, MACD, MA conditions. Mention divergence in read when present. '
     + '52WK RANGE RULES: Price within 5% of 52wkHigh = strongly bullish context, supports put spread entry, mention in read. '
     + 'Price within 10% of 52wkLow = bearish/weak context, warns against put spreads, supports call spread or no trade, mention in read. '
     + 'Mid-range = neutral on range, rely on RSI/MACD/flow as primary signals. '
