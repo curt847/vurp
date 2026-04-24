@@ -1200,15 +1200,16 @@ function getAlertLevel(p) {
     return 'green';
   }
 
-  // Debit spreads: high delta is GOOD (going your way), low delta is bad (thesis failing)
-  // Alert when delta is fading — opposite of credit spread logic
+  // Debit spreads — treated like covered calls:
+  // Delta fading from entry = thesis failing = roll/exit alert.
+  // High delta is GOOD (going your way); low/fading delta is bad.
   if (p.postype === 'spread_debit') {
-    if (dte <= 14 && d < 0.30) return 'red';    // running out of time, thesis not working
-    if (dte <= 21 && d < 0.25) return 'red';    // very little time, deeply OTM
-    if (d < 0.20) return 'red';                 // delta almost gone regardless of DTE
-    if (d < 0.30) return 'orange';              // fading, watch it
-    if (d < 0.40) return 'yellow';              // below entry delta, heads up
-    return 'green';                             // on track or going ITM
+    const dbRoll = getCCRollTrigger(p);
+    if (dbRoll === 'dte')       return 'red';
+    if (dbRoll === 'dte_watch') return 'orange';
+    // Deep ITM near expiry is a WIN for debit spreads — stay green
+    if (isITM(p) && dte <= 7)  return 'green';
+    return 'green';
   }
 
   // Credit/debit spreads: DTE-aware relative + absolute cap
@@ -1268,6 +1269,24 @@ function getProfitLevel(p, liveGain) {
       if (liveGain >= 50) return 'watch_profit';
     }
     return null; // no delta fallback for CCs
+  }
+
+  // Debit spreads — mirror CC profit logic:
+  // % gain is primary signal; rising delta (deep ITM) is the fallback.
+  // Only flag profit when NOT already in exit territory (fading delta).
+  if (p.postype === 'spread_debit') {
+    const rollLevel = getAlertLevel(p);
+    if (rollLevel === 'red' || rollLevel === 'orange') return null; // thesis failing — not a profit signal
+    if (isLive) {
+      if (liveGain >= 75) return 'close';        // captured most of the move — take it
+      if (liveGain >= 50) return 'profit';
+      if (liveGain >= 30) return 'watch_profit';
+    }
+    // Delta fallback: spread approaching max value (deep ITM)
+    const delta = getEffectiveDelta(p);
+    if (delta >= 0.85) return 'close';
+    if (delta >= 0.75) return 'profit';
+    return null;
   }
 
   // Credit spread / spread_debit: only flag profit if NOT in roll territory
@@ -1394,18 +1413,37 @@ function getRollCost(p) {
 
 // Returns the highest-priority CC roll trigger, or null if none firing
 function getCCRollTrigger(p) {
-  if (p.postype !== 'covered_call') return null;
-  const dte      = getDTE(p);
-  const ext      = calcExtrinsic(p);
-  const openPrem = Math.abs(p.open);
-  // Remaining extrinsic as % of original premium collected
-  const extRemainPct = openPrem > 0 ? (ext.value / openPrem) * 100 : 100;
+  if (p.postype !== 'covered_call' && p.postype !== 'spread_debit') return null;
 
-  // Red: ≤25% extrinsic remaining — almost nothing left, act now
-  if (extRemainPct <= 25) return 'dte';
+  if (p.postype === 'covered_call') {
+    const ext      = calcExtrinsic(p);
+    const openPrem = Math.abs(p.open);
+    // Remaining extrinsic as % of original premium collected
+    const extRemainPct = openPrem > 0 ? (ext.value / openPrem) * 100 : 100;
+    // Red: ≤25% extrinsic remaining — almost nothing left, act now
+    if (extRemainPct <= 25) return 'dte';
+    // Orange: ≤50% extrinsic remaining — thinning, start thinking about next cycle
+    if (extRemainPct <= 50) return 'dte_watch';
+    return null;
+  }
 
-  // Orange: ≤50% extrinsic remaining — thinning, start thinking about next cycle
-  if (extRemainPct <= 50) return 'dte_watch';
+  // Debit spreads — same philosophy as CCs:
+  // Delta fading FROM entry = thesis failing = roll/exit signal.
+  // Uses the same DTE-aware drift bands as getRollTrigger but measured in the fading direction.
+  const d      = getEffectiveDelta(p);
+  const dte    = getDTE(p);
+  const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : 0.40; // typical debit entry
+  const band   = getDteBand(dte);
+  const fade   = entryD - d; // positive = delta has fallen below entry (bad for debit)
+
+  // DTE-scaled absolute floors (tighten near expiry)
+  const redFloor    = dte <= 14 ? 0.28 : dte <= 21 ? 0.24 : 0.20;
+  const orangeFloor = dte <= 14 ? 0.38 : dte <= 21 ? 0.32 : 0.28;
+
+  // Red: delta faded by full drift threshold OR blown through absolute floor
+  if (fade >= band.drift || d <= redFloor)                           return 'dte';
+  // Orange: delta faded by >55% of drift threshold OR near absolute floor
+  if (fade >= band.drift * 0.55 || d <= orangeFloor)                return 'dte_watch';
 
   return null;
 }
@@ -1656,6 +1694,28 @@ function renderTable() {
         statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ ROLL</span>`;
       } else if (ccProfitLevel === 'watch_profit') {
         statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 DECAY</span>`;
+      }
+    } else if (p.postype === 'spread_debit') {
+      // Debit spreads — mirror CC pill language: exit/watch when thesis failing, profit when working
+      const dbProfitLevel = getProfitLevel(p, liveGain);
+      const dbRoll = getCCRollTrigger(p);
+      const entryD = typeof p.entryDelta === 'number' ? p.entryDelta : 0.40;
+      const delta  = getEffectiveDelta(p);
+      const fadePct = entryD > 0 ? Math.round((1 - delta / entryD) * 100) : 0;
+
+      if (!dbProfitLevel) {
+        if (dbRoll === 'dte') {
+          statusHtml += ` <span class="pill pill-close" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ Exit · Δ${delta.toFixed(2)} (↓${fadePct}%)</span>`;
+        } else if (dbRoll === 'dte_watch') {
+          statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔷 Watch · Δ${delta.toFixed(2)} (↓${fadePct}%)</span>`;
+        }
+      }
+      if (dbProfitLevel === 'close') {
+        statusHtml += ` <span class="pill pill-close" style="margin-left:2px">⭐⭐ ${liveGain >= 60 ? 'CLOSE' : `CLOSE (Δ${delta.toFixed(2)})`}</span>`;
+      } else if (dbProfitLevel === 'profit') {
+        statusHtml += ` <span class="pill pill-profit" style="margin-left:2px">⭐ TAKE PROFIT</span>`;
+      } else if (dbProfitLevel === 'watch_profit') {
+        statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px">🔷 PROFIT RADAR</span>`;
       }
     } else {
       // Profit-side alert for spreads/longs
@@ -2490,24 +2550,69 @@ async function fetchTechnicals(ticker) {
     const hi52 = Math.max(...year).toFixed(2);
     const lo52 = Math.min(...year).toFixed(2);
 
-    // ── RSI(14) — Wilder's smoothed method ───────────────
+    // ── RSI(14) — Wilder's smoothed method — full series ─
     let avgGain = 0, avgLoss = 0;
-    // Seed: simple average of first 14 periods
     for (let i = 1; i <= 14; i++) {
       const d = closes[i] - closes[i - 1];
       if (d >= 0) avgGain += d; else avgLoss -= d;
     }
-    avgGain /= 14;
-    avgLoss /= 14;
-    // Smooth remaining periods using Wilder's method
+    avgGain /= 14; avgLoss /= 14;
+    // Build full RSI series so we can detect divergence
+    const rsiSeries = new Array(15).fill(null);
     for (let i = 15; i < closes.length; i++) {
       const d = closes[i] - closes[i - 1];
       const g = d >= 0 ? d : 0;
       const l = d < 0 ? -d : 0;
       avgGain = (avgGain * 13 + g) / 14;
       avgLoss = (avgLoss * 13 + l) / 14;
+      rsiSeries.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
     }
-    const rsi = avgLoss === 0 ? 100 : (100 - 100 / (1 + avgGain / avgLoss));
+    const rsi = rsiSeries[rsiSeries.length - 1];
+
+    // ── RSI/Price Divergence Detection ───────────────────
+    // Scan last 60 trading days for swing pivots (3-bar window each side)
+    const LOOKBACK = 60;
+    const WING     = 3;
+    const startIdx = Math.max(WING, closes.length - LOOKBACK);
+
+    const swingLows  = [];
+    const swingHighs = [];
+
+    for (let i = startIdx; i < closes.length - WING; i++) {
+      const p = closes[i];
+      const r = rsiSeries[i];
+      if (r == null) continue;
+      let isLow = true, isHigh = true;
+      for (let w = 1; w <= WING; w++) {
+        if (closes[i - w] <= p || closes[i + w] <= p) isLow  = false;
+        if (closes[i - w] >= p || closes[i + w] >= p) isHigh = false;
+      }
+      if (isLow)  swingLows.push({ i, price: p, rsi: r });
+      if (isHigh) swingHighs.push({ i, price: p, rsi: r });
+    }
+
+    // Compare last two swing lows/highs for divergence
+    let divergence = null;
+    if (swingLows.length >= 2) {
+      const prev = swingLows[swingLows.length - 2];
+      const last = swingLows[swingLows.length - 1];
+      // Bullish: price lower low, RSI higher low (at least 2pt difference to avoid noise)
+      if (last.price < prev.price && last.rsi > prev.rsi + 2) {
+        const priceDrop = ((last.price - prev.price) / prev.price * 100).toFixed(1);
+        const rsiRise   = (last.rsi - prev.rsi).toFixed(1);
+        divergence = 'bullish(price' + priceDrop + '% RSI+' + rsiRise + 'pts)';
+      }
+    }
+    if (!divergence && swingHighs.length >= 2) {
+      const prev = swingHighs[swingHighs.length - 2];
+      const last = swingHighs[swingHighs.length - 1];
+      // Bearish: price higher high, RSI lower high (at least 2pt difference)
+      if (last.price > prev.price && last.rsi < prev.rsi - 2) {
+        const priceRise = ((last.price - prev.price) / prev.price * 100).toFixed(1);
+        const rsiFall   = (prev.rsi - last.rsi).toFixed(1);
+        divergence = 'bearish(price+' + priceRise + '% RSI-' + rsiFall + 'pts)';
+      }
+    }
 
     // ── MACD(12,26,9) ─────────────────────────────────────
     const ema = (arr, n) => {
@@ -2538,9 +2643,118 @@ async function fetchTechnicals(ticker) {
       ma50,
       ma200,
       hi52,
-      lo52
+      lo52,
+      div:    divergence
     };
   } catch(e) { return null; }
+}
+
+// ── Fetch real chain credit at ~0.35 delta for 30-45 DTE entry ────────────────
+// Returns { expiry, type, strike, delta, credit, width, creditPct, skew } or null
+async function fetchChainCredit(ticker, bias) {
+  try {
+    // Find nearest monthly 3rd-Friday expiry in 30-45 DTE window (expand to 25-55 if needed)
+    const today = new Date();
+    function thirdFriday(yr, mo) {
+      const first = new Date(yr, mo, 1);
+      const firstFri = (5 - first.getDay() + 7) % 7;
+      return new Date(yr, mo, 1 + firstFri + 14).toISOString().slice(0, 10);
+    }
+    const candidates = [];
+    let yr = today.getFullYear(), mo = today.getMonth();
+    for (let i = 0; i < 4; i++) {
+      const tf = thirdFriday(yr, mo);
+      const dte = Math.round((new Date(tf + 'T00:00:00') - today) / 86400000);
+      if (dte >= 25 && dte <= 55) candidates.push({ expiry: tf, dte });
+      mo++; if (mo > 11) { mo = 0; yr++; }
+    }
+    if (!candidates.length) return null;
+    // Prefer 30-45 DTE, fall back to widest window
+    const target = candidates.find(c => c.dte >= 30 && c.dte <= 45) || candidates[0];
+
+    // Pull full greeks chain for this expiry
+    const g = await uw(`/api/stock/${ticker}/greeks`, target.expiry);
+    const chain = Array.isArray(g && g.data) ? g.data : [];
+    if (chain.length < 5) return null;
+
+    const lp = livePrices[ticker];
+    const stockPrice = lp && lp.price;
+    if (!stockPrice) return null;
+
+    // Decide trade direction from bias
+    const isBearish = bias === 'bear';
+    const optType   = isBearish ? 'C' : 'P';
+    const deltaKey  = isBearish ? 'call_delta' : 'put_delta';
+
+    // Filter to the correct option type and find strike nearest 0.35 delta
+    const rows = chain
+      .map(r => ({
+        strike: Number(r.strike),
+        delta:  Math.abs(Number(r[deltaKey])),
+        bid:    Number(r.bid)  || null,
+        ask:    Number(r.ask)  || null,
+        iv:     Number(r.implied_volatility || r.iv || r.call_iv || r.put_iv) || null,
+      }))
+      .filter(r => r.strike > 0 && r.delta > 0 && r.delta < 1);
+
+    if (!rows.length) return null;
+
+    // Sort by distance from 0.35 delta, pick best
+    rows.sort((a, b) => Math.abs(a.delta - 0.35) - Math.abs(b.delta - 0.35));
+    const shortLeg = rows[0];
+    if (!shortLeg || shortLeg.delta < 0.10 || shortLeg.delta > 0.65) return null;
+
+    // Mid price of short leg
+    const shortMid = (shortLeg.bid != null && shortLeg.ask != null)
+      ? (shortLeg.bid + shortLeg.ask) / 2
+      : null;
+    if (!shortMid || shortMid <= 0) return null;
+
+    // Find long leg: $5 wide (standard width for $500 collateral target)
+    const longStrike = isBearish
+      ? shortLeg.strike + 5
+      : shortLeg.strike - 5;
+    const longRow = rows.find(r => Math.abs(r.strike - longStrike) < 0.51)
+                 || rows.find(r => Math.abs(r.strike - longStrike) < 1.51);
+    const longMid = longRow && longRow.bid != null && longRow.ask != null
+      ? (longRow.bid + longRow.ask) / 2
+      : null;
+
+    // Net credit = short mid - long mid
+    const credit = longMid != null
+      ? Math.max(0, shortMid - longMid)
+      : shortMid * 0.6; // rough estimate if long leg missing
+
+    const width      = 5;
+    const creditPct  = Math.round((credit / width) * 100); // % of spread width
+    const collateral = Math.round((width - credit) * 100); // per contract
+
+    // Put skew: compare put IV vs call IV at same delta distance from ATM
+    // Use the chain to find ATM IV and OTM put IV for skew context
+    let skewNote = null;
+    const atmRow = rows.reduce((best, r) =>
+      Math.abs(r.delta - 0.50) < Math.abs(best.delta - 0.50) ? r : best, rows[0]);
+    const otm35Row = rows.find(r => Math.abs(r.delta - 0.35) < 0.05);
+    if (atmRow && otm35Row && atmRow.iv && otm35Row.iv && optType === 'P') {
+      const skew = ((otm35Row.iv - atmRow.iv) / atmRow.iv * 100).toFixed(0);
+      if (Math.abs(skew) >= 5) skewNote = 'putSkew:' + (skew > 0 ? '+' : '') + skew + '%vs ATM';
+    }
+
+    return {
+      expiry:     target.expiry,
+      dte:        target.dte,
+      type:       optType,
+      strike:     shortLeg.strike,
+      longStrike: longRow ? longRow.strike : longStrike,
+      delta:      shortLeg.delta.toFixed(2),
+      credit:     credit.toFixed(2),
+      creditPct,
+      collateral,
+      skew:       skewNote,
+    };
+  } catch(e) {
+    return null;
+  }
 }
 
 async function fetchHdrPrice(ticker) {
@@ -6011,9 +6225,12 @@ async function askClaudeSingle(idx) {
   const fd   = flowData[ticker]   || {};
   const bias = BIAS[ticker] || 'neu';
 
-  // Fetch technicals for this ticker
-  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals for ' + ticker + '\u2026</div></div>';
-  const tc = await fetchTechnicals(ticker);
+  // Fetch technicals + chain credit for this ticker
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals + chain for ' + ticker + '\u2026</div></div>';
+  const [tc, chainCredit] = await Promise.all([
+    fetchTechnicals(ticker),
+    fetchChainCredit(ticker, bias),
+  ]);
 
   const ivr    = ld.ivr != null ? ld.ivr : null;
   const ivrStr = ivr !== null ? ivr + '/100' : 'unavailable';
@@ -6056,8 +6273,19 @@ async function askClaudeSingle(idx) {
       if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
       if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
       if (tc.hi52  != null) parts.push('52wkH:' + tc.hi52 + ' 52wkL:' + tc.lo52);
+      if (tc.div   != null) parts.push('div:' + tc.div);
       return parts.join(' ') || null;
-    })() : null
+    })() : null,
+    chain: (function() {
+      if (!chainCredit) return null;
+      var cc = chainCredit;
+      var str = cc.type + ' $' + cc.strike + '/$' + cc.longStrike
+        + ' exp:' + cc.expiry + ' DTE:' + cc.dte
+        + ' delta:' + cc.delta
+        + ' credit:$' + cc.credit + '(' + cc.creditPct + '%width)'        + ' coll:$' + cc.collateral + '/ct';
+      if (cc.skew) str += ' ' + cc.skew;
+      return str;
+    })()
   };
 
   const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
@@ -6097,9 +6325,14 @@ async function askClaudeSingle(idx) {
       + 'iv=current_implied_volatility_pct, flow=optionsFlowSentiment(confidence) total$ calls$ puts$, '
       + 'vol=today_volume_vs_20day_avg(high=2x+ strong conviction, above-avg=1.2-2x, normal=0.8-1.2x, low=below 0.8x weak conviction), '
       + 'earn=upcoming_earnings_date, '
-      + 'tech=RSI(14) MACD(line/signal/histogram) MA50 MA200 52wkHigh 52wkLow. '
+      + 'tech=RSI(14) MACD(line/signal/histogram) MA50 MA200 52wkHigh 52wkLow div=divergence. '
+      + 'div field: bullish(priceX% RSI+Ypts) = price made lower low but RSI made higher low over last 60 days — genuine bullish divergence detected algorithmically. bearish(price+X% RSI-Ypts) = price made higher high but RSI made lower high — genuine bearish divergence. null = no divergence detected. Treat as a real confirmed signal, not an inference. '
       + 'High volume confirms signals, low volume = skepticism. '
       + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
+      + 'chain=live chain data at ~0.35 delta for nearest 30-45 DTE expiry: type strike/longStrike expiry DTE delta credit creditPct collateral/ct putSkew(optional). '
+      + 'When chain is present: use the EXACT strikes, expiry, and credit in your suggestion and entry_detail. '
+      + 'creditPct = credit as % of $5 spread width: 15%+ excellent, 10-14% good, below 10% thin premium — mention in read. '
+      + 'If chain is null, estimate strikes as before. '
       + 'DATA: ' + JSON.stringify(tickerData) + ' '
       + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
       + 'VALID EXPIRY DATES — use ONLY these exact dates for suggestions (these are the actual 3rd-Friday monthly expiries): ' + _expiriesStr + '. '
@@ -6110,6 +6343,7 @@ async function askClaudeSingle(idx) {
       + 'RSI: 40-65=healthy, supports entry. >70=overbought, entry is BLOCKED (see rules below). <30=oversold/falling knife — no put spread unless MACD histogram is also turning up. '
       + 'MACD: histogram turning positive/rising = bullish momentum confirmed. Histogram still falling even with RSI<30 = bottom NOT confirmed, no put spread. '
       + 'RSI/PRICE DIVERGENCE (incorporate when signals present): BULLISH DIVERGENCE = price lower low but RSI higher low — weakening bearish momentum, reversal signal upward; treat as +1 bullish confirming signal, can tip a wait to good-now if MACD histogram also rising. BEARISH DIVERGENCE = price higher high but RSI lower high — weakening bullish momentum, reversal signal downward; treat as +1 bearish confirming signal, can help tip overbought to contrarian-call-spread if other contrarian conditions also met. Divergence alone is NOT sufficient for entry — still require IVR, MACD, MA conditions. Mention divergence in read when present. '
+      + 'WORD USAGE IN READ: Never use the word "contrarian" in the read text unless the entry field is "contrarian call spread". For bullish setups where flow is mildly opposing, write e.g. "flow slightly bearish but below conviction threshold" — not "contrarian opportunity". '
       + 'MA50/MA200 TREND RULES: Price above both MA50 and MA200 = strong bull trend, supports put spread entry. '
       + 'Price above MA200 but below MA50 = longer-term bull but short-term weak, mild caution. '
       + 'Price below MA200 = downtrend — avoid put spreads, flag in read. '
@@ -6588,12 +6822,18 @@ async function runAIAnalysis() {
     } catch(e) {}
   }));
 
-  // Fetch technicals (RSI, MACD, MAs, 52wk) for all tickers
-  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals\u2026</div></div>';
-  var techData = {};
+  // Fetch technicals (RSI, MACD, MAs, 52wk) + chain credit for all tickers
+  content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals + chain data\u2026</div></div>';
+  var techData  = {};
+  var chainData = {};
   await Promise.all(allTickers.map(async function(t) {
-    var tech = await fetchTechnicals(t);
-    if (tech) techData[t] = tech;
+    var bias = BIAS[t] || 'neu';
+    var [tech, chain] = await Promise.all([
+      fetchTechnicals(t),
+      fetchChainCredit(t, bias),
+    ]);
+    if (tech)  techData[t]  = tech;
+    if (chain) chainData[t] = chain;
   }));
 
   var tickerData = allTickers.map(function(ticker) {
@@ -6669,6 +6909,18 @@ async function runAIAnalysis() {
         var ratio = (v / a).toFixed(2);
         var label = ratio >= 2.0 ? 'high' : ratio >= 1.2 ? 'above-avg' : ratio >= 0.8 ? 'normal' : 'low';
         return label + '(' + ratio + 'x avg)';
+      })(),
+      chain: (function() {
+        var cc = chainData[ticker];
+        if (!cc) return null;
+        // Format: P $165/$160 exp:2025-05-16 DTE:30 delta:0.34 credit:$0.82(16%width) coll:$418/ct
+        var str = cc.type + ' $' + cc.strike + '/$' + cc.longStrike
+          + ' exp:' + cc.expiry + ' DTE:' + cc.dte
+          + ' delta:' + cc.delta
+          + ' credit:$' + cc.credit + '(' + cc.creditPct + '%width)'
+          + ' coll:$' + cc.collateral + '/ct';
+        if (cc.skew) str += ' ' + cc.skew;
+        return str;
       })()
     };
   });
@@ -6682,8 +6934,14 @@ async function runAIAnalysis() {
     + 'iv=current_implied_volatility_percent, '
     + 'flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
     + 'earn=upcoming_earnings_date(avoid_new_positions_within_2_weeks), '
-    + 'tech=RSI(14) MACD(12/26/9 line/signal/histogram) MA50 MA200 52wkHigh 52wkLow, '
+    + 'tech=RSI(14) MACD(12/26/9 line/signal/histogram) MA50 MA200 52wkHigh 52wkLow div=divergence, '
+    + 'div field: bullish(priceX% RSI+Ypts)=price lower low but RSI higher low over last 60 days, algorithmically confirmed bullish divergence. bearish(price+X% RSI-Ypts)=price higher high but RSI lower high, confirmed bearish divergence. null=none detected. Treat as confirmed signal. '
     + 'vol=today_volume_vs_avg(high=2x+_strong_conviction above-avg=1.2-2x normal=0.8-1.2x low=below_0.8x_weak_conviction). '
+    + 'chain=live chain data at ~0.35 delta for nearest 30-45 DTE expiry: type strike/longStrike expiry DTE delta credit creditPct collateral/ct. '
+    + 'Use chain data to make suggestion concrete and specific — use the EXACT strikes, expiry, and credit from chain. '
+    + 'creditPct = credit as % of spread width ($5 wide): 15%+ is excellent, 10-14% good, below 10% thin. '
+    + 'If chain is null, estimate strikes and credit as before. '
+    + 'entry_detail must use the actual strikes and expiry from chain when available. '
     + 'High volume confirms flow signals and price moves. Low volume = treat directional signals with skepticism. '
     + 'Use tech to sharpen entries: RSI>70=overbought(see rules below) RSI<30=oversold(caution for bears). '
     + 'MACD hist positive+rising=bullish momentum negative+falling=bearish. '
@@ -6892,7 +7150,7 @@ async function runAIAnalysis() {
       var posCount = POSITIONS.filter(function(p){ return p.ticker === r.ticker; }).length;
       var posBadge = td.ip ? '<span class="aip-pill" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--accent)">' + posCount + ' pos</span>' : '';
       var entryLc  = r.entry.toLowerCase();
-      var entryOk  = entryLc === 'good now' || entryLc.startsWith('contrarian');
+      var entryOk  = entryLc === 'good now' || entryLc === 'good now (call spread)' || entryLc.startsWith('contrarian');
       var entryNone = entryLc === 'no trade' || entryLc.startsWith('no trade');
       var entryCol = entryOk ? 'var(--green)' : entryNone ? 'var(--orange)' : 'var(--yellow)';
       return '<div class="aip-block">'
