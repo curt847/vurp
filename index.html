@@ -6288,106 +6288,15 @@ async function askClaudeSingle(idx) {
     })()
   };
 
-  const today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-
-  // Pre-calculate the next 6 monthly option expiry Fridays (3rd Friday of each month)
-  const _validExpiries = (function() {
-    const results = [];
-    const now = new Date();
-    let yr = now.getFullYear(), mo = now.getMonth();
-    while (results.length < 6) {
-      // Find 3rd Friday of this month
-      let friCount = 0, day = 1;
-      while (friCount < 3) {
-        const d = new Date(yr, mo, day);
-        if (d.getDay() === 5) friCount++;
-        if (friCount < 3) day++;
-      }
-      const expDate = new Date(yr, mo, day);
-      // Only include future expiries (at least 7 days out)
-      const daysOut = Math.round((expDate - now) / 86400000);
-      if (daysOut >= 7) {
-        const label = expDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-        results.push(label + ' (' + daysOut + 'd)');
-      }
-      mo++;
-      if (mo > 11) { mo = 0; yr++; }
-    }
-    return results;
-  })();
-  const _expiriesStr = _validExpiries.join(', ');
-
   try {
-    const singlePrompt = 'You are an options trading assistant for an experienced credit spread seller. Today: ' + today + '. '
-      + 'Treat this ticker exactly like a watchlist entry — ignore any existing position details and focus purely on current conditions. '
-      + 'FIELD GUIDE: t=ticker, s=sector, p=current price+todayChg, b=user_bias(bull/bear/neu), '
-      + 'n=userNote, ivr=IV_rank_0to100(50+=elevated good for premium selling; <30=low avoid selling premium), '
-      + 'iv=current_implied_volatility_pct, flow=optionsFlowSentiment(confidence) total$ calls$ puts$, '
-      + 'vol=today_volume_vs_20day_avg(high=2x+ strong conviction, above-avg=1.2-2x, normal=0.8-1.2x, low=below 0.8x weak conviction), '
-      + 'earn=upcoming_earnings_date, '
-      + 'tech=RSI(14) MACD(line/signal/histogram) MA50 MA200 52wkHigh 52wkLow div=divergence. '
-      + 'div field: bullish(priceX% RSI+Ypts) = price made lower low but RSI made higher low over last 60 days — genuine bullish divergence detected algorithmically. bearish(price+X% RSI-Ypts) = price made higher high but RSI made lower high — genuine bearish divergence. null = no divergence detected. Treat as a real confirmed signal, not an inference. '
-      + 'High volume confirms signals, low volume = skepticism. '
-      + 'CRITICAL: use the actual ivr number. If unavailable, omit IV commentary entirely. '
-      + 'chain=live chain data at ~0.35 delta for nearest 30-45 DTE expiry: type strike/longStrike expiry DTE delta credit creditPct collateral/ct putSkew(optional). '
-      + 'When chain is present: use the EXACT strikes, expiry, and credit in your suggestion and entry_detail. '
-      + 'creditPct = credit as % of $5 spread width: 15%+ excellent, 10-14% good, below 10% thin premium — mention in read. '
-      + 'If chain is null, estimate strikes as before. '
-      + 'DATA: ' + JSON.stringify(tickerData) + ' '
-      + 'TARGET: 30-45 DTE entries. Put spreads (P·CR) for bullish/neutral, call spreads (C·CR) for bearish. '
-      + 'VALID EXPIRY DATES — use ONLY these exact dates for suggestions (these are the actual 3rd-Friday monthly expiries): ' + _expiriesStr + '. '
-      + 'Never suggest a date not on this list. Target 30-45 DTE when possible. '
-      + 'Only flag earnings if they fall WITHIN the target expiry window. '
-      + 'SIZE GUIDANCE: user targets $500-$1000 collateral per trade ($5-$10 wide spreads x1-2 contracts). '
-      + 'DELTA GUIDANCE: Target short strike delta 0.30-0.35 default. 0.35-0.40 acceptable when IVR 50+, clear trend, confirming flow. Avoid below 0.28. '
-      + 'RSI: 40-65=healthy, supports entry. >70=overbought, entry is BLOCKED (see rules below). <30=oversold/falling knife — no put spread unless MACD histogram is also turning up. '
-      + 'MACD: histogram turning positive/rising = bullish momentum confirmed. Histogram still falling even with RSI<30 = bottom NOT confirmed, no put spread. '
-      + 'RSI/PRICE DIVERGENCE (incorporate when signals present): BULLISH DIVERGENCE = price lower low but RSI higher low — weakening bearish momentum, reversal signal upward; treat as +1 bullish confirming signal, can tip a wait to good-now if MACD histogram also rising. BEARISH DIVERGENCE = price higher high but RSI lower high — weakening bullish momentum, reversal signal downward; treat as +1 bearish confirming signal, can help tip overbought to contrarian-call-spread if other contrarian conditions also met. Divergence alone is NOT sufficient for entry — still require IVR, MACD, MA conditions. Mention divergence in read when present. '
-      + 'WORD USAGE IN READ: Never use the word "contrarian" in the read text unless the entry field is "contrarian call spread". For bullish setups where flow is mildly opposing, write e.g. "flow slightly bearish but below conviction threshold" — not "contrarian opportunity". '
-      + 'MA50/MA200 TREND RULES: Price above both MA50 and MA200 = strong bull trend, supports put spread entry. '
-      + 'Price above MA200 but below MA50 = longer-term bull but short-term weak, mild caution. '
-      + 'Price below MA200 = downtrend — avoid put spreads, flag in read. '
-      + 'Price below both MAs = confirmed downtrend, supports call spread. '
-      + 'Always mention MA position in read when price is below MA200 or below both MAs. '
-      + '52WK RANGE RULES: Price within 5% of 52wkHigh = strongly bullish context, supports put spread entry, mention it in read. '
-      + 'Price within 10% of 52wkLow = bearish/weak context, warns against put spreads, supports call spread or no trade, mention it in read. '
-      + 'Mid-range (between those bands) = neutral on range, rely on RSI/MACD/flow as primary signals. '
-      + 'SENTIMENT RULES (CRITICAL): An overbought stock in a bullish trend is NOT bearish. Use sentiment:"overbought" for RSI>70 stocks that are still structurally bullish. '
-      + 'Only use sentiment:"bearish" for genuine downtrends, bearish MACD cross, breaking key support, or strong bearish flow on a downtrending stock. '
-      + 'OVERBOUGHT RULES (HARD — these override IVR, flow, and everything else): '
-      + 'RSI>=70: entry is NEVER "good now". High IVR does not override this. Strong flow does not override this. '
-      + 'RSI>=70 default entry = "wait for RSI to cool". '
-      + 'BEARISH DOWNTREND CALL SPREAD: price below MA200, MACD negative/falling, RSI 35-60, IVR 35+ = entry is "good now (call spread)", trade_type "C·CR". '
-      + 'Price below MA200 with RSI <35 = "wait for bounce" before entering call spread. '
-      + 'CONTRARIAN CALL SPREAD is a rare, high-conviction exception — ALL of the following must be true simultaneously: '
-      + '(1) RSI>=75, (2) MACD histogram is clearly declining (negative slope, not just flat), (3) flow is neutral or bearish. '
-      + 'If ANY of those three conditions is missing, use "wait for RSI to cool" instead — never default to contrarian. '
-      + 'CONFLICT RESOLUTION (CRITICAL): When signals conflict you MUST pick a side. '
-      + 'RSI<30 + MACD still falling = "wait for MACD to confirm bottom". '
-      + 'RSI 70-74 (any MACD) = "wait for RSI to cool". '
-      + 'RSI>=75 + MACD still rising = "wait for RSI to cool". '
-      + 'RSI>=75 + MACD declining + neutral/bearish flow = "contrarian call spread". '
-      + 'Weak/low-conviction flow does NOT override technicals. Only above-avg or high volume flow can shift the call. '
-      + 'ENTRY must be exactly one of: '
-      + '"good now" | "good now (call spread)" | "contrarian call spread" | "wait for MACD to confirm bottom" | "wait for RSI to cool" | "wait for pullback" | "wait for bounce" | "no trade". '
-      + 'Never use "wait for pullback" when stock is already in a significant pullback (RSI<40 or down 5%+ from recent high). '
-      + 'SUMMARY: one sentence, plain English, lead with the action. Examples: '
-      + '"No trade — MACD still falling despite oversold RSI, wait for momentum to confirm a bottom." '
-      + '"Enter put spread now — IVR 60, RSI 52, MACD just crossed bullish." '
-      + '"Enter call spread now — confirmed downtrend below both MAs, IVR 64, RSI 36 stabilizing." '
-      + '"Wait for RSI to cool — bullish trend intact but RSI 72 still rising, hold off." '
-      + 'Respond ONLY as raw JSON, no markdown, no preamble: '
-      + '{"ticker":"X","sentiment":"bullish|overbought|bearish|neutral","summary":"one sentence plain-English bottom line starting with the action","read":"2 sentences citing ivr flow+volume key tech signal","entry":"good now|good now (call spread)|contrarian call spread|wait for MACD to confirm bottom|wait for RSI to cool|wait for pullback|wait for bounce|no trade","conviction":"high|standard|low — empty string if not entering","suggestion":"concrete trade with strikes and expiry including conviction-based sizing or empty string if not entering","risk":"single biggest specific threat"}';
-
-    // Same exact pattern as bulk analysis: write ticker data array to Drive, call action=claude
-    var step1 = await fetch(PROXY_URL + '?action=writeContext', {
+    // POST ticker data directly to singleAnalysis — no Drive, no race condition.
+    // Apps Script builds the prompt using getSharedRules() — same rules as bulk.
+    const resp = await fetch(PROXY_URL + '?action=singleAnalysis', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'content=' + encodeURIComponent(JSON.stringify([tickerData]))
+      body: 'data=' + encodeURIComponent(JSON.stringify(tickerData))
     });
-    await step1.text();
-    const resp = await fetch(PROXY_URL + '?action=claude&count=1');
-    const raw   = await resp.text();
+    const raw = await resp.text();
     if (!raw || !raw.trim()) throw new Error('Empty response from Apps Script — check PROXY_URL and deployment');
     if (!resp.ok) throw new Error('singleAnalysis HTTP ' + resp.status + ': ' + raw.slice(0, 200));
 
@@ -6398,13 +6307,17 @@ async function askClaudeSingle(idx) {
     if (data.error) throw new Error('Apps Script error: ' + data.error);
     const text  = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
-    // Bulk returns an array — extract first element; legacy single returns an object
+    // singleAnalysis returns a JSON object; handle array shape too for safety
     let r;
     const parsed = JSON.parse(clean);
     r = Array.isArray(parsed) ? parsed[0] : parsed;
     if (!r) throw new Error('Empty result from Claude');
 
-    // CLIENT-SIDE GUARDRAIL: overbought sentiment can never be "good now"
+    // CLIENT-SIDE GUARDRAIL: RSI<70 cannot be overbought; overbought can never be "good now"
+    const _rsiVal = tc && tc.rsi != null ? parseFloat(tc.rsi) : null;
+    if (r.sentiment === 'overbought' && _rsiVal !== null && _rsiVal < 70) {
+      r.sentiment = 'bullish'; // Claude mislabeled — RSI<70 is not overbought
+    }
     if (r.sentiment === 'overbought' && (r.entry || '').toLowerCase() === 'good now') {
       r.entry = 'wait for RSI to cool';
     }
@@ -7000,9 +6913,13 @@ async function runAIAnalysis() {
     // Store signals for watch card badges
     AI_SIGNALS = {};
     results.forEach(function(r) {
-      // CLIENT-SIDE GUARDRAIL: overbought sentiment can never be "good now"
-      // If the AI slipped through with good now on an overbought stock, downgrade it
+      // CLIENT-SIDE GUARDRAIL: RSI<70 cannot be overbought; overbought can never be "good now"
       var entry_lc = r.entry.toLowerCase();
+      var _bulkTc  = typeof techData !== 'undefined' && techData[r.ticker];
+      var _bulkRsi = _bulkTc && _bulkTc.rsi != null ? parseFloat(_bulkTc.rsi) : null;
+      if (r.sentiment === 'overbought' && _bulkRsi !== null && _bulkRsi < 70) {
+        r.sentiment = 'bullish'; // RSI<70 cannot be overbought — Claude mislabeled
+      }
       if (r.sentiment === 'overbought' && entry_lc === 'good now') {
         r.entry = 'wait for RSI to cool';
         entry_lc = 'wait for rsi to cool';
