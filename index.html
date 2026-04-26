@@ -6167,6 +6167,54 @@ function askClaudeForTicker(ticker) {
   askClaudeSingle(idx);
 }
 
+
+// ── Market context helper — summarizes SPY/QQQ for injection into analysis prompts ──
+function buildMarketContext() {
+  function tickerCtx(t) {
+    var lp = livePrices[t] || {};
+    var tc = (typeof techData !== 'undefined' && techData[t]) || null;
+    if (!lp.price && !tc) return null;
+    var parts = [];
+    if (lp.price != null) parts.push('$' + lp.price.toFixed(2) + (lp.pct != null ? '/' + (lp.pct >= 0 ? '+' : '') + lp.pct.toFixed(1) + '%' : ''));
+    if (tc) {
+      if (tc.rsi   != null) parts.push('RSI:' + tc.rsi);
+      if (tc.hist  != null) parts.push('hist:' + tc.hist);
+      if (tc.ma50  != null) parts.push('MA50:' + tc.ma50);
+      if (tc.ma200 != null) parts.push('MA200:' + tc.ma200);
+      // Trend label
+      var price = lp.price || 0;
+      var trend = (!tc.ma50 && !tc.ma200) ? 'unknown'
+        : (price > tc.ma50 && price > tc.ma200) ? 'bull-above-both-MAs'
+        : (price > tc.ma200 && price <= tc.ma50) ? 'weakening-below-MA50'
+        : 'bear-below-MA200';
+      parts.push('trend:' + trend);
+    }
+    return parts.join(' ');
+  }
+
+  var spy = tickerCtx('SPY');
+  var qqq = tickerCtx('QQQ');
+  if (!spy && !qqq) return null;
+
+  // Overall market label
+  var spyTc = (typeof techData !== 'undefined' && techData['SPY']) || null;
+  var qqqTc = (typeof techData !== 'undefined' && techData['QQQ']) || null;
+  var spyP  = (livePrices['SPY'] || {}).price || 0;
+  var qqqP  = (livePrices['QQQ'] || {}).price || 0;
+  var spyBull = spyTc && spyP > spyTc.ma50 && spyP > spyTc.ma200;
+  var spyBear = spyTc && spyP < spyTc.ma200;
+  var qqqBull = qqqTc && qqqP > qqqTc.ma50 && qqqP > qqqTc.ma200;
+  var overall = (spyBear || (qqqTc && qqqP < qqqTc.ma200)) ? 'BEARISH'
+              : (spyBull && qqqBull) ? 'BULLISH'
+              : 'MIXED';
+
+  var parts = [];
+  if (spy) parts.push('SPY ' + spy);
+  if (qqq) parts.push('QQQ ' + qqq);
+  parts.push('overall:' + overall);
+  return parts.join(' | ');
+}
+
 async function askClaudeSingle(idx) {
   const modal   = document.getElementById('askClaudeModal');
   const content = document.getElementById('askClaudeContent');
@@ -6285,7 +6333,9 @@ async function askClaudeSingle(idx) {
         + ' credit:$' + cc.credit + '(' + cc.creditPct + '%width)'        + ' coll:$' + cc.collateral + '/ct';
       if (cc.skew) str += ' ' + cc.skew;
       return str;
-    })()
+    })(),
+    beta: lp.beta != null ? parseFloat(lp.beta).toFixed(2) : null,
+    mkt:  buildMarketContext()
   };
 
   try {
@@ -6840,56 +6890,14 @@ async function runAIAnalysis() {
           + ' coll:$' + cc.collateral + '/ct';
         if (cc.skew) str += ' ' + cc.skew;
         return str;
-      })()
+      })(),
+      beta: lp ? (lp.beta != null ? parseFloat(lp.beta).toFixed(2) : null) : null
     };
   });
 
-  var today = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  var prompt = 'Options trading assistant for experienced credit spread seller. Today: ' + today + '. '
-    + 'Field guide: t=ticker, s=sector, p=price+todayChg, b=user_bias(bull/bear/neu), ip=inPosition(1/0), '
-    + 'ps=positions(type strikes/exp/DTE/contracts/pctGainSoFar/stockDistanceFromShortStrike), '
-    + 'et=entryTarget, n=userNote, '
-    + 'ivr=IV_rank_0to100(50+=elevated_good_for_premium_selling; below_30=low_avoid_premium), '
-    + 'iv=current_implied_volatility_percent, '
-    + 'flow=optionsFlowSentiment(confidence) totalDollarVolume callsVsPuts, '
-    + 'earn=upcoming_earnings_date(avoid_new_positions_within_2_weeks), '
-    + 'tech=RSI(14) MACD(12/26/9 line/signal/histogram) MA50 MA200 52wkHigh 52wkLow div=divergence, '
-    + 'div field: bullish(priceX% RSI+Ypts)=price lower low but RSI higher low over last 60 days, algorithmically confirmed bullish divergence. bearish(price+X% RSI-Ypts)=price higher high but RSI lower high, confirmed bearish divergence. null=none detected. Treat as confirmed signal. '
-    + 'vol=today_volume_vs_avg(high=2x+_strong_conviction above-avg=1.2-2x normal=0.8-1.2x low=below_0.8x_weak_conviction). '
-    + 'chain=live chain data at ~0.35 delta for nearest 30-45 DTE expiry: type strike/longStrike expiry DTE delta credit creditPct collateral/ct. '
-    + 'Use chain data to make suggestion concrete and specific — use the EXACT strikes, expiry, and credit from chain. '
-    + 'creditPct = credit as % of spread width ($5 wide): 15%+ is excellent, 10-14% good, below 10% thin. '
-    + 'If chain is null, estimate strikes and credit as before. '
-    + 'entry_detail must use the actual strikes and expiry from chain when available. '
-    + 'High volume confirms flow signals and price moves. Low volume = treat directional signals with skepticism. '
-    + 'Use tech to sharpen entries: RSI>70=overbought(see rules below) RSI<30=oversold(caution for bears). '
-    + 'MACD hist positive+rising=bullish momentum negative+falling=bearish. '
-    + 'Price vs MA50/MA200=trend context. '
-    + 'RSI/PRICE DIVERGENCE: BULLISH DIVERGENCE=price lower low but RSI higher low — weakening bearish momentum, reversal signal upward, treat as +1 bullish confirming signal, can tip wait to good-now if MACD also rising. BEARISH DIVERGENCE=price higher high but RSI lower high — weakening bullish momentum, reversal signal downward, treat as +1 bearish confirming signal, can help tip overbought to contrarian-call-spread when other contrarian conditions met. Divergence alone insufficient for entry — still require IVR, MACD, MA conditions. Mention divergence in read when present. '
-    + '52WK RANGE RULES: Price within 5% of 52wkHigh = strongly bullish context, supports put spread entry, mention in read. '
-    + 'Price within 10% of 52wkLow = bearish/weak context, warns against put spreads, supports call spread or no trade, mention in read. '
-    + 'Mid-range = neutral on range, rely on RSI/MACD/flow as primary signals. '
-    + 'CRITICAL: use the actual ivr number provided — never assume low IV if ivr=unavailable, just omit IV commentary. '
-    + 'For stock_above_short/stock_below_short: negative means stock has crossed the short strike (ITM threat). '
-    + 'SENTIMENT RULES (CRITICAL): An overbought stock in a bullish trend is NOT bearish. Use sentiment:overbought for RSI>70 stocks still structurally bullish. '
-    + 'Only use sentiment:bearish for genuine downtrends, bearish MACD cross, breaking key support, or strong bearish flow. '
-    + 'OVERBOUGHT RULES (HARD — these override IVR, flow, and everything else): '
-    + 'RSI>=70: entry is NEVER good now. High IVR does not override this. Strong bullish flow does not override this. '
-    + 'RSI>=70 default entry = wait for RSI to cool. '
-    + 'CONTRARIAN CALL SPREAD is a rare exception — ALL three must be true: (1) RSI>=75, (2) MACD histogram clearly declining (negative slope), (3) flow neutral or bearish. '
-    + 'If ANY condition is missing, use wait for RSI to cool — never default to contrarian. '
-    + 'RSI 70-74 (any MACD) = wait for RSI to cool. RSI>=75 + MACD still rising = wait for RSI to cool. '
-    + 'ENTRY must be exactly one of: good now | contrarian call spread | wait for MACD to confirm bottom | wait for RSI to cool | wait for pullback | wait for bounce | no trade. '
-    + JSON.stringify(tickerData) + ' '
-    + 'For each ticker provide: sentiment(bullish/overbought/bearish/neutral), read(2 sentences max — cite ivr, flow direction, earnings if relevant), '
-    + 'entry(exactly one of the options above), suggestion(concrete trade with strikes if possible), risk(biggest specific threat). '
-    + 'IN POSITION: assess hold/roll/close based on gain%, DTE, and ITM distance. bull=sell puts/buy calls, bear=sell calls/buy puts. '
-    + 'Respond ONLY as raw JSON array, no markdown fences: [{"ticker":"X","sentiment":"...","read":"...","entry":"...","suggestion":"...","risk":"..."}] '
-    + 'Include all ' + allTickers.length + ' tickers.';
-
   try {
-    // Step 1: write ticker JSON to Drive via POST (safe for large payloads)
-    var tickerJson = JSON.stringify(tickerData);
+    // Write {market, tickers} to Drive — Code.gs injects market context into prompt
+    var tickerJson = JSON.stringify({ market: buildMarketContext(), tickers: tickerData });
     var step1 = await fetch(PROXY_URL + '?action=writeContext', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
