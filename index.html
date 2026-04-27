@@ -1766,9 +1766,9 @@ function renderTable() {
       let cspExtra = '';
       if (_cspItm && _cspDte <= 7) {
         const _assignCost = (p.short * 100 * p.cts).toFixed(0);
-        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px">&#128204; Assignment incoming · ~$${Number(_assignCost).toLocaleString()}</span>`;
+        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px">&#128204; Assign 👀 ~$${Number(_assignCost).toLocaleString()}</span>`;
       } else if (_cspItm && _cspDte <= 21) {
-        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px;opacity:.85">&#128204; ITM · watch assignment</span>`;
+        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px;opacity:.85">&#128204; Assign 👀 soon</span>`;
       }
       statusHtml = `<span class="pill pill-csp">&#128204; CSP</span> ` + statusHtml + cspExtra;
     }
@@ -2032,7 +2032,8 @@ function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
   let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0,netGammaDelta=0;
   POSITIONS.forEach(p=>{
-    if (!isLongOption(p)) cnt[getAlertLevel(p)]++;
+    // Debit spreads (FADING) and CSP mode positions are self-managed — exclude from roll counts
+    if (!isLongOption(p) && p.postype !== 'spread_debit' && !p.cspMode) cnt[getAlertLevel(p)]++;
     if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
@@ -2137,7 +2138,7 @@ function renderMobile() {
   if (!container) return;
   const q = (document.getElementById('mobSearch')?.value || '').trim().toUpperCase();
   const cnt = {red:0,orange:0,yellow:0,green:0};
-  POSITIONS.forEach(p => cnt[getAlertLevel(p)]++);
+  POSITIONS.forEach(p => { if (!isLongOption(p) && p.postype !== 'spread_debit' && !p.cspMode) cnt[getAlertLevel(p)]++; });
   const mobRed=document.getElementById('mob-red'), mobOrange=document.getElementById('mob-orange');
   const mobYellow=document.getElementById('mob-yellow'), mobTotal=document.getElementById('mob-total');
   if(mobRed) mobRed.textContent=cnt.red||'—';
