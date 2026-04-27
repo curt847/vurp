@@ -2109,7 +2109,7 @@ function updateStats() {
     const pctColor    = netPct > 15 ? 'var(--green)' : netPct < -15 ? 'var(--red)' : 'var(--accent)';
     gdEl.innerHTML    = `<span style="color:${pctColor}">${netPctStr} net</span>`
                       + `<span style="color:var(--muted);margin:0 5px">·</span>`
-                      + `<span style="color:${pctColor}">${gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString()} / 1%</span>`;
+                      + `<span style="color:${pctColor}">${gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString()}</span>`;
 
     if (dailyEl && dailyLblEl && spyPct !== null) {
       const dailyTotal = Math.round(gammaDollar * spyPct);
