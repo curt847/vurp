@@ -2434,6 +2434,7 @@ function renderOndsCard() {
           const trigger2Class = dte <= 10 ? 'warn' : 'ok';
 
           const extOfMid = mid > 0 ? Math.min(100, extVal / mid * 100) : 100;
+          const decayPct = Math.max(0, Math.min(100, 100 - extRemPct));
           const decayStars = decayPct >= 90 ? '⭐⭐ ' : decayPct >= 75 ? '⭐ ' : '';
           const isUnderwater = decayPct <= 0;
           // Ext% pill: independent color — red <15%, orange <30%, green otherwise
