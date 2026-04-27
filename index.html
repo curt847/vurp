@@ -2434,22 +2434,22 @@ function renderOndsCard() {
           const trigger2Class = dte <= 10 ? 'warn' : 'ok';
 
           const extOfMid = mid > 0 ? Math.min(100, extVal / mid * 100) : 100;
-          const decayPct = Math.max(0, Math.min(100, 100 - extRemPct));
-          // Decay pill: blue at 50%+, brighter blue at 75%+, brightest at 90%+
           const decayStars = decayPct >= 90 ? '⭐⭐ ' : decayPct >= 75 ? '⭐ ' : '';
-          const trigger3Class = decayPct >= 50 ? 'profit' : 'ok';
+          const isUnderwater = decayPct <= 0;
+          // Ext% pill: independent color — red <15%, orange <30%, green otherwise
+          const extClass = extOfMid < 15 ? 'roll' : extOfMid < 30 ? 'warn' : 'ok';
+          // Decay pill: orange if underwater, blue at 50%+, green otherwise
+          const trigger3Class = isUnderwater ? 'warn' : decayPct >= 50 ? 'profit' : 'ok';
 
           const _expDate = new Date(p.expiry + 'T12:00:00');
           const mo = _expDate.toLocaleString('en-US',{month:'short'});
           const dy = _expDate.getDate();
           return `<div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">$${p.short} CC · ${mo} ${dy} · ×${p.cts}<span style="font-weight:400;color:var(--muted)">· open <span style="color:var(--text)">$${openPrem.toFixed(2)}</span> → now <span style="color:var(--text)">$${mid.toFixed(2)}</span></span></div>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
-              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
-              <span class="onds-trigger ${trigger3Class}" style="display:inline-flex;gap:0;padding:0;overflow:hidden;border-radius:4px">
-                <span style="padding:4px 7px;border-right:1px solid rgba(255,255,255,.12)">⏳ ${extOfMid.toFixed(0)}% Ext</span>
-                <span style="padding:4px 7px">${decayStars}${decayPct.toFixed(0)}% decay</span>
-              </span>
+              <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
+              <span class="onds-trigger ${extClass}">⏳ ${extOfMid.toFixed(0)}% Ext</span>
+              <span class="onds-trigger ${trigger3Class}">${decayStars}${decayPct.toFixed(0)}% decay</span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
