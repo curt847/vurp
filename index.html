@@ -613,10 +613,10 @@
     <div class="pnl-stat-lbl">Est. Daily Theta</div>
   </div>
   <div class="pnl-stat" style="border-left:1px solid rgba(0,200,180,.1)">
-    <div class="pnl-stat-val" id="pnl-gammadelta" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight" style="color:var(--accent)">—</div>
-    <div class="pnl-stat-lbl" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight">βγ-Wtd Δ / 1%</div>
-    <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:4px;display:none"></div>
+    <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;display:none"></div>
     <div id="pnl-betadelta-daily-lbl" style="font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:none">est. daily total</div>
+    <div class="pnl-stat-val" id="pnl-gammadelta" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight" style="color:var(--accent);font-size:12px;margin-top:4px">—</div>
+    <div class="pnl-stat-lbl" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight">βγ-Wtd Δ / 1%</div>
   </div>
 </div>
 
@@ -2029,7 +2029,7 @@ function renderTable() {
 
 function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
-  let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0,netGammaDelta=0;
+  let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0,netGammaDelta=0,grossGammaDelta=0;
   POSITIONS.forEach(p=>{
     // Debit spreads (FADING) and CSP mode positions are self-managed — exclude from roll counts
     if (!isLongOption(p) && p.postype !== 'spread_debit' && !p.cspMode) cnt[getAlertLevel(p)]++;
@@ -2063,7 +2063,8 @@ function updateStats() {
     // Gamma-adjusted BWD: scale each position by √(30/DTE) so near-dated positions carry more weight
     const dte = Math.max(getDTE(p), 1);
     const gammaScale = Math.sqrt(30 / dte);
-    netGammaDelta += signedD * beta * (stockPrice / spyPrice) * gammaScale;
+    netGammaDelta   += signedD * beta * (stockPrice / spyPrice) * gammaScale;
+    grossGammaDelta += Math.abs(signedD * beta * (stockPrice / spyPrice) * gammaScale);
   });
   document.getElementById('s-red').textContent=cnt.red;
   document.getElementById('s-orange').textContent=cnt.orange;
@@ -2103,8 +2104,12 @@ function updateStats() {
 
   if (gdEl) {
     const gammaDollar = Math.round(netGammaDelta * spyPrice * 0.01);
-    gdEl.textContent  = gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString();
-    gdEl.style.color  = gammaDollar > 200 ? 'var(--green)' : gammaDollar < -200 ? 'var(--red)' : 'var(--accent)';
+    const netPct      = grossGammaDelta > 0 ? Math.round((netGammaDelta / grossGammaDelta) * 100) : 0;
+    const netPctStr   = (netPct >= 0 ? '+' : '') + netPct + '%';
+    const pctColor    = netPct > 15 ? 'var(--green)' : netPct < -15 ? 'var(--red)' : 'var(--accent)';
+    gdEl.innerHTML    = `<span style="color:${pctColor}">${netPctStr} net</span>`
+                      + `<span style="color:var(--muted);margin:0 5px">·</span>`
+                      + `<span style="color:${pctColor}">${gammaDollar === 0 ? '$0' : (gammaDollar > 0 ? '+$' : '-$') + Math.abs(gammaDollar).toLocaleString()} / 1%</span>`;
 
     if (dailyEl && dailyLblEl && spyPct !== null) {
       const dailyTotal = Math.round(gammaDollar * spyPct);
