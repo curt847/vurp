@@ -743,9 +743,8 @@
   </div>
 </div>
 
-<div class="footer-note">
-  ROLLWATCH v2.1 — Spreads: DTE-aware triggers · &lt;26d cap 0.55 · 26–30d cap 0.65 · &gt;30d cap 0.75 · Favorable drift loosens trigger 0.06 · Yellow RADAR suppressed for OTM · Yellow = 0.05 below trigger — Long Options: &lt;0.15Δ 🔴 | &lt;0.25Δ 🟠 | &lt;0.35Δ 🟡 — Profit Exit: ≤0.20Δ ⭐ CLOSE | ≤0.25Δ 🟦 | ≤0.30Δ 🔷 — Delta: ●LIVE (UW greeks) | ~BS (Black-Scholes est.)
-</div>
+
+
 
 <!-- ═══════════════════════════════════════════════════════
      MOBILE VIEW — read-only cards, desktop never sees this
@@ -2301,7 +2300,7 @@ function updatePnlBar() {
   });
   const pctCaptured = totalToClose > 0 ? (totalExtrinsic / totalToClose) * 100 : 0;
   const pctCapped = Math.max(0, Math.min(100, pctCaptured));
-  const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 40 ? 'var(--yellow)' : 'var(--orange)';
+  const barColor  = pctCaptured >= 75 ? 'var(--green)' : pctCaptured >= 50 ? 'var(--yellow)' : 'var(--orange)';
 
   // Est. daily theta — sqrt-of-time decay model, includes credit spreads + covered calls
   // Formula: pureExtrinsic × (1 - √((DTE-1)/DTE)) per position, summed
@@ -2332,7 +2331,7 @@ function updatePnlBar() {
   // % Extrinsic ≤45d: what fraction of your close cost is still pure time value
   // High = lots of theta left to decay, hold. Low = mostly intrinsic, theta play is done.
   const extPct45 = toClose45d > 0 ? Math.max(0, Math.min(100, (ext45d / toClose45d) * 100)) : 0;
-  const extBarColor = extPct45 >= 75 ? 'var(--green)' : extPct45 >= 40 ? 'var(--yellow)' : 'var(--orange)';
+  const extBarColor = extPct45 >= 75 ? 'var(--green)' : extPct45 >= 50 ? 'var(--yellow)' : 'var(--orange)';
   document.getElementById('pnl-ext-45d').textContent   = fmt(ext45d);
   document.getElementById('pnl-ext-pct').textContent   = extPct45.toFixed(1) + '%';
   document.getElementById('pnl-ext-pct').style.color   = extBarColor;
