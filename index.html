@@ -3612,14 +3612,15 @@ function scoresToSentiment(bullScore, bearScore) {
 }
 
 // ── Confidence string for display ──
-function sentimentConfidence(bullScore, bearScore) {
+function sentimentConfidence(bullScore, bearScore, tradeCount) {
   const net = bullScore + bearScore;
   const total = Math.abs(bullScore) + Math.abs(bearScore);
   if (total === 0) return '';
   const ratio = Math.abs(net) / total;
-  // STRONG: needs both a lopsided ratio AND meaningful total score weight
-  // This prevents a single tiny floor trade from hitting STRONG
-  if (ratio > 0.80 && total >= 3.0) return 'STRONG';
+  // Single-trade tickers always have ratio=1.0 by definition — require a much higher
+  // total score so a lone LEAPS block or low-VOI trade can't trivially hit STRONG.
+  const strongTotal = (tradeCount === 1) ? 7.0 : 3.0;
+  if (ratio > 0.80 && total >= strongTotal) return 'STRONG';
   if (ratio > 0.55 && total >= 1.0) return 'MOD';
   return 'WEAK';
 }
@@ -3656,7 +3657,7 @@ async function fetchFlowAlerts(tickers) {
       if (total < threshold) return;
 
       const sentiment   = scoresToSentiment(bullScore, bearScore);
-      const confidence  = sentimentConfidence(bullScore, bearScore);
+      const confidence  = sentimentConfidence(bullScore, bearScore, callCt + putCt);
       const netRatio    = (Math.abs(bullScore) + Math.abs(bearScore)) > 0
         ? ((bullScore + bearScore) / (Math.abs(bullScore) + Math.abs(bearScore))).toFixed(2) : '0';
       flowData[t] = { sentiment, confidence, premium: total, calls, puts, callCt, putCt, bullScore, bearScore };
@@ -3797,7 +3798,7 @@ function renderWhaleFeed() {
     });
     return {
       sent: scoresToSentiment(bullScore, bearScore),
-      conf: sentimentConfidence(bullScore, bearScore),
+      conf: sentimentConfidence(bullScore, bearScore, arr.length),
       bullScore, bearScore
     };
   }
@@ -7148,6 +7149,19 @@ async function runAIAnalysis() {
       var entryOk  = entryLc === 'good now' || entryLc === 'good now (call spread)' || entryLc.startsWith('contrarian');
       var entryNone = entryLc === 'no trade' || entryLc.startsWith('no trade');
       var entryCol = entryOk ? 'var(--green)' : entryNone ? 'var(--orange)' : 'var(--yellow)';
+      // Chain data — show strike/expiry when entry is actionable
+      var cc = chainData[r.ticker];
+      var chainHtml = '';
+      if (cc && entryOk) {
+        chainHtml = '<div class="aip-sub" style="color:var(--teal);margin-top:2px">'
+          + '📋 ' + cc.type + ' $' + cc.strike + '/$' + cc.longStrike
+          + ' · exp ' + cc.expiry + ' (' + cc.dte + 'd)'
+          + ' · Δ' + cc.delta
+          + ' · cr $' + cc.credit + ' (' + cc.creditPct + '% width)'
+          + ' · coll $' + cc.collateral + '/ct'
+          + (cc.skew ? ' · ' + cc.skew : '')
+          + '</div>';
+      }
       return '<div class="aip-block">'
         + '<div class="aip-name">' + r.ticker + posBadge
         + '<span class="aip-pill" style="background:' + sb + ';border:1px solid ' + sc + ';color:' + sc + '">' + scLabel(r.sentiment) + '</span>'
@@ -7157,6 +7171,7 @@ async function runAIAnalysis() {
         + '<div class="aip-row">\ud83d\udcca ' + r.read + '</div>'
         + '<div class="aip-row" style="color:' + entryCol + '">\ud83c\udfaf ' + r.entry + '</div>'
         + '<div class="aip-row" style="color:var(--accent)">\ud83d\udca1 ' + r.suggestion + '</div>'
+        + chainHtml
         + (r.risk ? '<div class="aip-sub">\u26a0 ' + r.risk + '</div>' : '')
         + '</div>';
     }).join('');
