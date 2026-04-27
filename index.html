@@ -1829,7 +1829,7 @@ function renderTable() {
         if (ws > 0) wBullScore += ws * ntBoost; else wBearScore += ws * ntBoost;
       });
       wSent = scoresToSentiment(wBullScore, wBearScore);
-      wConf = sentimentConfidence(wBullScore, wBearScore);
+      wConf = sentimentConfidence(wBullScore, wBearScore, wArr.length);
 
       // Near-term trade count for tooltip context
       const ntCount  = wArr.filter(w=>{ const exp=w.expiry?new Date(w.expiry+'T12:00:00').getTime():Infinity; return exp<=cutoff45; }).length;
@@ -6305,18 +6305,19 @@ async function askClaudeSingle(idx) {
     let fr = await uw('/api/stock/' + ticker + '/flow-alerts').catch(() => null);
     if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + ticker + '/flow-recent').catch(() => null);
     if (fr && fr.data && fr.data.length) {
-      let bullScore = 0, bearScore = 0, calls = 0, puts = 0;
+      let bullScore = 0, bearScore = 0, calls = 0, puts = 0, tradeCt = 0;
       fr.data.forEach(x => {
         const f = extractFlowFields(x);
         if (!f.type || f.premium <= 0) return;
         if (f.type === 'C') calls += f.premium; else puts += f.premium;
         const w = scoreFlowTrade(f) * Math.sqrt(f.premium / 100000);
         if (w > 0) bullScore += w; else bearScore += w;
+        tradeCt++;
       });
       const total = calls + puts;
       const bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
       if (total >= (bigNames.includes(ticker) ? 200000 : 50000)) {
-        flowData[ticker] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), premium: total, calls, puts };
+        flowData[ticker] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore, tradeCt), premium: total, calls, puts };
       }
     }
   } catch(e) {}
@@ -6828,18 +6829,19 @@ async function runAIAnalysis() {
       var fr = await uw('/api/stock/' + t + '/flow-alerts').catch(function(){ return null; });
       if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + t + '/flow-recent').catch(function(){ return null; });
       if (fr && fr.data && fr.data.length) {
-        var bullScore = 0, bearScore = 0, calls = 0, puts = 0;
+        var bullScore = 0, bearScore = 0, calls = 0, puts = 0, watchTradeCt = 0;
         fr.data.forEach(function(x) {
           var f = extractFlowFields(x);
           if (!f.type || f.premium <= 0) return;
           if (f.type === 'C') calls += f.premium; else puts += f.premium;
           var w = scoreFlowTrade(f) * Math.sqrt(f.premium / 100000);
           if (w > 0) bullScore += w; else bearScore += w;
+          watchTradeCt++;
         });
         var total = calls + puts;
         var bigNames = ['AMZN','META','NVDA','TSLA','AAPL','MSFT','GOOG','AMD','AVGO','JPM','PLTR'];
         if (total >= (bigNames.includes(t) ? 200000 : 50000)) {
-          watchFlow[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore) };
+          watchFlow[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore, watchTradeCt) };
         }
       }
     } catch(e) {}
@@ -7274,17 +7276,18 @@ async function runAIDiscover() {
             var fr = await uw('/api/stock/' + t + '/flow-alerts').catch(function(){ return null; });
             if (!fr || !(fr.data && fr.data.length)) fr = await uw('/api/stock/' + t + '/flow-recent').catch(function(){ return null; });
             if (fr && fr.data && fr.data.length) {
-              var bullScore = 0, bearScore = 0, calls = 0, puts = 0;
+              var bullScore = 0, bearScore = 0, calls = 0, puts = 0, discoverTradeCt = 0;
               fr.data.forEach(function(x) {
                 var f = extractFlowFields(x);
                 if (!f.type || f.premium <= 0) return;
                 if (f.type === 'C') calls += f.premium; else puts += f.premium;
                 var w = scoreFlowTrade(f) * Math.sqrt(f.premium / 100000);
                 if (w > 0) bullScore += w; else bearScore += Math.abs(w);
+                discoverTradeCt++;
               });
               var total = calls + puts;
               if (total >= 50000) {
-                flowData[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore), premium: total, calls, puts };
+                flowData[t] = { sentiment: scoresToSentiment(bullScore, bearScore), confidence: sentimentConfidence(bullScore, bearScore, discoverTradeCt), premium: total, calls, puts };
               }
             }
           } catch(e) {}
