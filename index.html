@@ -7120,10 +7120,20 @@ async function runAIAnalysis() {
 
       return score;
     }
+    function convictionScore(r) {
+      // high=0 sorts first (ascending), standard/null=1, low=2
+      var cv = (r.conviction || '').toLowerCase();
+      if (cv === 'high')   return 0;
+      if (cv === 'low')    return 2;
+      return 1; // standard or absent
+    }
     results.sort(function(a, b) {
       var tierDiff = entryTier(a.entry) - entryTier(b.entry);
       if (tierDiff !== 0) return tierDiff;
-      // Same tier — sort by tradeability score descending
+      // Same tier — sort by conviction (high → standard → low)
+      var cvDiff = convictionScore(a) - convictionScore(b);
+      if (cvDiff !== 0) return cvDiff;
+      // Same tier + conviction — sort by tradeability score descending
       return tradeScore(b) - tradeScore(a);
     });
 
