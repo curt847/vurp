@@ -1889,7 +1889,7 @@ function renderTable() {
     const openStockHtml = p.openStock
       ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">open $${p.openStock.toFixed(2)}</div>`
       : '';
-    const strikesHtml = isLong
+    const strikesHtml = isLong || p.postype === 'covered_call'
       ? `<span class="strike-range">$${p.short}</span>${openStockHtml}`
       : `<span class="strike-range">$${p.short} / $${p.long}</span>${openStockHtml}`;
 
@@ -2181,7 +2181,7 @@ function renderMobile() {
     if(level!==lastLevel) { html+=`<div class="mob-group-hdr">${levelLabels[level]}</div>`; lastLevel=level; }
     const dColor=level==='red'?'var(--red)':level==='orange'?'var(--orange)':level==='yellow'?'var(--yellow)':'var(--green)';
     const sColor=itm?'var(--red)':stock<=p.short*1.05?'var(--yellow)':'var(--green)';
-    const strikes=p.long?`${p.short}/${p.long}`:`${p.short}`;
+    const strikes = p.postype==='covered_call' ? `${p.short}` : p.long ? `${p.short}/${p.long}` : `${p.short}`;
     const exp=p.expiry?p.expiry.slice(5):'—';
     const dteColor=dte<=14?'var(--red)':dte<=21?'var(--orange)':'var(--muted)';
     html+=`
