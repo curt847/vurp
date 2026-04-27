@@ -1648,10 +1648,17 @@ function renderTable() {
       :'<span style="color:var(--muted)">—</span>';
 
     const isLong = isLongOption(p);
+    const isDebitSpread = p.postype === 'spread_debit';
     const longRedLabel = isLong && isITM(p) && getDTE(p) <= 7 ? 'EXPIRING' : 'FADING';
     const pills = isLong ? {
       red:`<span class="pill pill-red"><span class="dot dot-red"></span>${longRedLabel}</span>`,
       green_expiring:`<span class="pill pill-green"><span class="dot dot-green"></span>EXPIRING</span>`,
+      orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
+      yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
+      green:``,
+    } : isDebitSpread ? {
+      // Debit spreads: red = thesis failing (FADING), not a roll candidate
+      red:`<span class="pill pill-red"><span class="dot dot-red"></span>FADING</span>`,
       orange:`<span class="pill pill-orange"><span class="dot dot-orange"></span>WATCH</span>`,
       yellow:`<span class="pill pill-yellow"><span class="dot dot-yellow"></span>RADAR</span>`,
       green:``,
@@ -1704,10 +1711,10 @@ function renderTable() {
       const fadePct = entryD > 0 ? Math.round((1 - delta / entryD) * 100) : 0;
 
       if (!dbProfitLevel) {
-        if (dbRoll === 'dte') {
-          statusHtml += ` <span class="pill pill-close" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⭐ Exit · Δ${delta.toFixed(2)} (↓${fadePct}%)</span>`;
-        } else if (dbRoll === 'dte_watch') {
-          statusHtml += ` <span class="pill pill-watch-profit" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">🔷 Watch · Δ${delta.toFixed(2)} (↓${fadePct}%)</span>`;
+        // 'dte' (thesis badly failing): base FADING pill already shown — no extra pill, no blue.
+        // 'dte_watch' (thesis softening): orange secondary pill with delta detail.
+        if (dbRoll === 'dte_watch') {
+          statusHtml += ` <span class="pill pill-orange" style="margin-left:2px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:2px 8px">⚠ Δ${delta.toFixed(2)} (↓${fadePct}%)</span>`;
         }
       }
       if (dbProfitLevel === 'close') {
