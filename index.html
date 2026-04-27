@@ -2449,8 +2449,8 @@ function renderOndsCard() {
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="onds-trigger ${trigger2Class}">📅 ${dte}d DTE</span>
               <span class="onds-trigger ${trigger1Class}">📍 $${distToStrike.toFixed(2)} / ${distPct.toFixed(0)}% ${distLabel}</span>
-              <span class="onds-trigger ${extClass}">⏳ ${extOfMid.toFixed(0)}% Ext</span>
               <span class="onds-trigger ${trigger3Class}">${decayStars}${decayPct.toFixed(0)}% decay</span>
+              <span class="onds-trigger ${extClass}">⏳ ${extOfMid.toFixed(0)}% Ext</span>
             </div>`;
         }).join('<div style="margin:6px 0;border-top:1px solid var(--border)"></div>');
 
