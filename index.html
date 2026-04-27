@@ -6846,18 +6846,27 @@ async function runAIAnalysis() {
   }));
 
   // Fetch technicals (RSI, MACD, MAs, 52wk) + chain credit for all tickers
+  // Batched 5 at a time with a pause between batches to avoid Yahoo rate-limiting
   content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching technicals + chain data\u2026</div></div>';
   var techData  = {};
   var chainData = {};
-  await Promise.all(allTickers.map(async function(t) {
-    var bias = BIAS[t] || 'neu';
-    var [tech, chain] = await Promise.all([
-      fetchTechnicals(t),
-      fetchChainCredit(t, bias),
-    ]);
-    if (tech)  techData[t]  = tech;
-    if (chain) chainData[t] = chain;
-  }));
+  const _bulkBatchSize = 5;
+  for (let _bi = 0; _bi < allTickers.length; _bi += _bulkBatchSize) {
+    const _batch = allTickers.slice(_bi, _bi + _bulkBatchSize);
+    await Promise.all(_batch.map(async function(t) {
+      var bias = BIAS[t] || 'neu';
+      var [tech, chain] = await Promise.all([
+        fetchTechnicals(t),
+        fetchChainCredit(t, bias),
+      ]);
+      if (tech)  techData[t]  = tech;
+      if (chain) chainData[t] = chain;
+    }));
+    // Pause between batches (skip after the last one)
+    if (_bi + _bulkBatchSize < allTickers.length) {
+      await new Promise(res => setTimeout(res, 600));
+    }
+  }
 
   var tickerData = allTickers.map(function(ticker) {
     var lp      = livePrices[ticker];
@@ -7149,18 +7158,25 @@ async function runAIAnalysis() {
       var entryOk  = entryLc === 'good now' || entryLc === 'good now (call spread)' || entryLc.startsWith('contrarian');
       var entryNone = entryLc === 'no trade' || entryLc.startsWith('no trade');
       var entryCol = entryOk ? 'var(--green)' : entryNone ? 'var(--orange)' : 'var(--yellow)';
-      // Chain data — show strike/expiry when entry is actionable
+      // Chain line — use Claude's entry_detail first (same source as watch cards),
+      // fall back to live chain data if available
       var cc = chainData[r.ticker];
       var chainHtml = '';
-      if (cc && entryOk) {
-        chainHtml = '<div class="aip-sub" style="color:var(--teal);margin-top:2px">'
-          + '📋 ' + cc.type + ' $' + cc.strike + '/$' + cc.longStrike
-          + ' · exp ' + cc.expiry + ' (' + cc.dte + 'd)'
-          + ' · Δ' + cc.delta
-          + ' · cr $' + cc.credit + ' (' + cc.creditPct + '% width)'
-          + ' · coll $' + cc.collateral + '/ct'
-          + (cc.skew ? ' · ' + cc.skew : '')
-          + '</div>';
+      if (entryOk) {
+        if (r.entry_detail) {
+          chainHtml = '<div class="aip-sub" style="color:var(--teal);margin-top:2px">'
+            + '📋 ' + r.entry_detail
+            + '</div>';
+        } else if (cc) {
+          chainHtml = '<div class="aip-sub" style="color:var(--teal);margin-top:2px">'
+            + '📋 ' + cc.type + ' $' + cc.strike + '/$' + cc.longStrike
+            + ' · exp ' + cc.expiry + ' (' + cc.dte + 'd)'
+            + ' · Δ' + cc.delta
+            + ' · cr $' + cc.credit + ' (' + cc.creditPct + '% width)'
+            + ' · coll $' + cc.collateral + '/ct'
+            + (cc.skew ? ' · ' + cc.skew : '')
+            + '</div>';
+        }
       }
       return '<div class="aip-block">'
         + '<div class="aip-name">' + r.ticker + posBadge
