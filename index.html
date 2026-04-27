@@ -131,6 +131,7 @@
   .pill-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,138,.2)}
   .pill-purple{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
   .pill-conviction{background:#ffffff;color:#1a0a2e;border:1px solid rgba(167,139,250,.6);font-weight:800;letter-spacing:.5px}
+  .pill-csp{background:rgba(0,200,180,.15);color:var(--teal);border:1px solid rgba(0,200,180,.4);font-weight:800;letter-spacing:.5px}
   /* Profit pills — blue spectrum */
   .pill-close{background:rgba(59,158,255,.15);color:#3b9eff;border:1px solid rgba(59,158,255,.4);animation:glow-blue 1.5s ease-in-out infinite}
   .pill-profit{background:rgba(59,158,255,.1);color:#3b9eff;border:1px solid rgba(59,158,255,.3)}
@@ -908,7 +909,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Option Type</label>
-        <select class="form-select" id="f-type">
+        <select class="form-select" id="f-type" onchange="onPosTypeChange()">
           <option value="P">PUT</option>
           <option value="C">CALL</option>
         </select>
@@ -989,6 +990,13 @@
       <div>
         <div style="color:var(--purple);font-size:11px;font-weight:700;letter-spacing:.5px">&#127919; CONVICTION HOLD</div>
         <div style="color:var(--muted);font-size:10px;margin-top:2px;line-height:1.5">Binary / thesis play &#8212; bumps roll threshold +0.10 (hard cap 0.85). Suppresses ROLL button unless truly extreme. Shows &#127919; HOLD badge.</div>
+      </div>
+    </label>
+    <label id="csp-mode-group" style="display:none;align-items:flex-start;gap:10px;background:rgba(0,200,180,.06);border:1px solid rgba(0,200,180,.25);border-radius:6px;padding:10px 12px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="f-csp-mode" style="margin-top:2px;accent-color:var(--teal);flex-shrink:0;width:14px;height:14px"/>
+      <div>
+        <div style="color:var(--teal);font-size:11px;font-weight:700;letter-spacing:.5px">&#128204; CSP MODE</div>
+        <div style="color:var(--muted);font-size:10px;margin-top:2px;line-height:1.5">Treat as CSP in disguise &#8212; willing to take assignment. Suppresses ROLL. Converts ITM expiry alert to &#128204; Assignment incoming instead of ROLL NOW.</div>
       </div>
     </label>
     <div id="posFormError" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
@@ -1749,6 +1757,21 @@ function renderTable() {
     
     if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ EARN</span>`;
     if (p.convictionHold) { statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,''); statusHtml = `<span class="pill pill-conviction">&#127919; HOLD</span> ` + statusHtml; }
+    if (p.cspMode) {
+      // Strip ROLL NOW — we're OK with assignment, that's the whole point
+      statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,'');
+      // If ITM and close to expiry, surface an assignment warning instead
+      const _cspDte = getDTE(p);
+      const _cspItm = isITM(p);
+      let cspExtra = '';
+      if (_cspItm && _cspDte <= 7) {
+        const _assignCost = (p.short * 100 * p.cts).toFixed(0);
+        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px">&#128204; Assignment incoming · ~$${Number(_assignCost).toLocaleString()}</span>`;
+      } else if (_cspItm && _cspDte <= 21) {
+        cspExtra = ` <span class="pill pill-csp" style="margin-left:2px;opacity:.85">&#128204; ITM · watch assignment</span>`;
+      }
+      statusHtml = `<span class="pill pill-csp">&#128204; CSP</span> ` + statusHtml + cspExtra;
+    }
 
     let flowHtml='<span style="color:var(--muted);font-size:10px">—</span>';
     if (flow) {
@@ -1905,7 +1928,8 @@ function renderTable() {
     } else {
       // Credit spreads: always "CLOSE" regardless of profit level
       const convictionRollBlock = p.convictionHold && getEffectiveDelta(p) < 0.85;
-      actionHtml = (level==='red'||level==='orange') && !convictionRollBlock
+      const cspRollBlock = p.cspMode; // CSP mode never rolls — assignment is the goal
+      actionHtml = (level==='red'||level==='orange') && !convictionRollBlock && !cspRollBlock
         ? `${pencil} ${rollBtnHtml} ${closeBtnHtml} ${askClaudeBtn}`
         : `${pencil} ${closeBtnHtml} ${askClaudeBtn}`;
     }
@@ -4939,6 +4963,15 @@ function onPosTypeChange() {
     const _pt2 = document.getElementById('f-postype').value;
     _chg.style.display = (_pt2==='covered_call'||_pt2==='long_call'||_pt2==='long_put'||_pt2==='iron_condor') ? 'none' : 'flex';
   }
+  // CSP mode: only for put credit spreads
+  const _cspGrp = document.getElementById('csp-mode-group');
+  if (_cspGrp) {
+    const _pt3  = document.getElementById('f-postype').value;
+    const _typ3 = document.getElementById('f-type').value;
+    const showCsp = _pt3 === 'spread_credit' && _typ3 === 'P';
+    _cspGrp.style.display = showCsp ? 'flex' : 'none';
+    if (!showCsp) { const _cb = document.getElementById('f-csp-mode'); if(_cb) _cb.checked = false; }
+  }
 }
 
 function updateCollateralPreview() {
@@ -4997,6 +5030,7 @@ function showAddModal() {
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('f-type').value = 'P';
   const _cvClear = document.getElementById('f-conviction'); if(_cvClear) _cvClear.checked = false;
+  const _cspClear = document.getElementById('f-csp-mode'); if(_cspClear) _cspClear.checked = false;
   document.getElementById('f-postype').value = 'spread_credit';
   document.getElementById('f-type').disabled = false;
   document.querySelector('.long-strike-group').style.display = 'flex';
@@ -5050,6 +5084,7 @@ function showEditModal(idx) {
   document.getElementById('f-expiry').value   = expiryFromISO(p.expiry);
   document.getElementById('f-open').value     = Math.abs(p.open);
   const _cvEl = document.getElementById('f-conviction'); if(_cvEl) _cvEl.checked = !!(p.convictionHold);
+  const _cspEl = document.getElementById('f-csp-mode'); if(_cspEl) _cspEl.checked = !!(p.cspMode);
   document.getElementById('posFormError').style.display = 'none';
   onPosTypeChange();
   document.getElementById('posModal').classList.add('show');
@@ -5140,6 +5175,7 @@ function savePosition() {
   }
 
   const convictionHold = !!(document.getElementById('f-conviction')?.checked) && postype!=='covered_call' && !isSingleLeg;
+  const cspMode = !!(document.getElementById('f-csp-mode')?.checked) && postype==='spread_credit' && type==='P';
 
   const pos = {
     ticker, type, postype: postype || 'spread_credit',
@@ -5153,6 +5189,7 @@ function savePosition() {
     collateral, gain: 0, remain: 50,
     shortMid: open, longMid: 0,
     convictionHold,
+    cspMode: cspMode || false,
   };
 
   // Calculate and store entryDelta silently using BS at entry
