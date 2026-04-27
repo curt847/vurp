@@ -2051,7 +2051,7 @@ function updateStats() {
     const d = getEffectiveDelta(p);
     const cts = (p.cts || 1) * 100;
     let signedD = 0;
-    if (p.postype === 'covered_call')                        signedD =  d * cts;
+    if (p.postype === 'covered_call')                        signedD =  (1.0 - d) * cts; // net: long stock (1.0) minus short call (d)
     else if (p.postype === 'long_call')                      signedD =  d * cts;
     else if (p.postype === 'long_put')                       signedD = -d * cts;
     else if (p.postype === 'spread_debit' && p.type === 'C') signedD =  d * cts;
@@ -2065,6 +2065,22 @@ function updateStats() {
     const gammaScale = Math.sqrt(30 / dte);
     netGammaDelta   += signedD * beta * (stockPrice / spyPrice) * gammaScale;
     grossGammaDelta += Math.abs(signedD * beta * (stockPrice / spyPrice) * gammaScale);
+  });
+
+  // Add uncovered stock exposure — shares not hedged by a CC
+  STOCKS.forEach(s => {
+    const coveredShares = POSITIONS
+      .filter(p => p.ticker === s.ticker && p.postype === 'covered_call')
+      .reduce((sum, p) => sum + (p.cts || 1) * 100, 0);
+    const uncoveredShares = Math.max(0, s.shares - coveredShares);
+    if (uncoveredShares <= 0) return;
+    const sBeta       = (livePrices[s.ticker] && livePrices[s.ticker].beta) || 1.0;
+    const sPrice      = (livePrices[s.ticker] && livePrices[s.ticker].price) || 100;
+    const spyPriceS   = (livePrices['SPY'] && livePrices['SPY'].price) || 560;
+    const stockDelta  = uncoveredShares * sBeta * (sPrice / spyPriceS); // purely bullish
+    // No DTE for stock — use gammaScale of 1.0 (equivalent to 30 DTE)
+    netGammaDelta   += stockDelta;
+    grossGammaDelta += stockDelta;
   });
   document.getElementById('s-red').textContent=cnt.red;
   document.getElementById('s-orange').textContent=cnt.orange;
