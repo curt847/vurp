@@ -6596,10 +6596,11 @@ function renderStocks() {
     ? `<div class="${totalDayGLClass}" style="font-size:12px;font-weight:600">${totalDayGL>=0?'+':''}$${Math.round(Math.abs(totalDayGL)).toLocaleString()} today</div>`
     : '';
   body.innerHTML += `<tr style="border-top:2px solid var(--border);font-size:17px">
-    <td colspan="4" style="color:var(--muted);font-size:11px;padding:8px 10px">TOTAL</td>
+    <td colspan="3" style="color:var(--muted);font-size:11px;padding:8px 10px">TOTAL</td>
+    <td class="${totalDayGLClass}" style="font-weight:600;font-size:13px">${dayTotalHtml}</td>
     <td style="color:var(--text);font-weight:700;font-size:19px">$${(totalValue/1000).toFixed(1)}K</td>
     <td></td>
-    <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}${dayTotalHtml}</td>
+    <td class="${totalGLClass}" style="font-weight:700">${totalGL>=0?'+':''}$${Math.round(totalGL).toLocaleString()}</td>
     <td></td>
   </tr>`;
   if (document.getElementById('mobStocks')) renderMobileStocks();
