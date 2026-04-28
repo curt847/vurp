@@ -1757,8 +1757,10 @@ function renderTable() {
     if (eWarn) statusHtml+=` <span class="pill pill-purple" style="margin-left:2px">⚠ EARN</span>`;
     if (p.convictionHold) { statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,''); statusHtml = `<span class="pill pill-conviction">&#127919; HOLD</span> ` + statusHtml; }
     if (p.cspMode) {
-      // Strip ROLL NOW — we're OK with assignment, that's the whole point
+      // Strip ROLL NOW, WATCH, RADAR — assignment is the goal, roll/alert noise doesn't apply
       statusHtml = statusHtml.replace(/<span class="pill pill-red"><span class="dot dot-red"><\/span>ROLL NOW<\/span>\s*/g,'');
+      statusHtml = statusHtml.replace(/<span class="pill pill-orange"><span class="dot dot-orange"><\/span>WATCH<\/span>\s*/g,'');
+      statusHtml = statusHtml.replace(/<span class="pill pill-yellow"><span class="dot dot-yellow"><\/span>RADAR<\/span>\s*/g,'');
       // If ITM and close to expiry, surface an assignment warning instead
       const _cspDte = getDTE(p);
       const _cspItm = isITM(p);
