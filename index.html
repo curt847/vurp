@@ -1048,8 +1048,8 @@ const UW_API_KEY   = '13d8cb48-f8f8-4a8e-bb2c-d69f3bce4f4b';
 // If price has drifted IN YOUR FAVOR (delta is below entry), trigger is loosened by a grace amount.
 // Yellow RADAR is suppressed entirely for OTM positions — you won't roll OTM.
 const DTE_BANDS = [
-  { maxDte: 26,  drift: 0.14, cap: 0.60 },  // <26 DTE — tightest near expiry
-  { maxDte: 40,  drift: 0.18, cap: 0.65 },  // 26-40 DTE
+  { maxDte: 26,  drift: 0.14, cap: 0.55 },  // <26 DTE — tightest near expiry (was 0.60)
+  { maxDte: 40,  drift: 0.18, cap: 0.60 },  // 26-40 DTE (was 0.65)
   { maxDte: 9999,drift: 0.22, cap: 0.70 },  // >40 DTE — most breathing room
 ];
 const FAVORABLE_DRIFT_GRACE = 0.06; // loosen trigger this much if price drifted in your favor
@@ -1063,7 +1063,7 @@ function getRollTrigger(p) {
   const currentDelta = getEffectiveDelta(p);
   // If current delta is BELOW entry delta, price has moved favorably — loosen the trigger
   const hasFavorableDrift = (typeof p.entryDelta === 'number') && (currentDelta < p.entryDelta);
-  const grace = hasFavorableDrift ? FAVORABLE_DRIFT_GRACE : 0;
+  const grace = (hasFavorableDrift && dte >= 26) ? FAVORABLE_DRIFT_GRACE : 0; // no grace for short DTE — no time to benefit
   const relative = base + band.drift + grace;
   const normal = Math.min(relative, band.cap + grace);
   if (p.convictionHold) return Math.min(normal + 0.15, 0.85);
@@ -1232,7 +1232,7 @@ function getAlertLevel(p) {
   // ITM safety net — even if delta hasn't hit trigger, ITM near expiry is orange
   // convictionHold softens by one level (red→yellow, orange→green)
   if (isITM(p) && dte <= 7)  return p.convictionHold ? 'yellow' : 'red';
-  if (isITM(p) && dte <= 21) return p.convictionHold ? 'green'  : 'orange';
+  if (isITM(p) && dte <= 30) return p.convictionHold ? 'green'  : 'orange'; // extended from 21 — catches 30d ITM positions
 
   return 'green';
 }
