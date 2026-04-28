@@ -6238,9 +6238,7 @@ function closeAskClaude() {
 }
 
 function askClaudeForTicker(ticker) {
-  const idx = POSITIONS.findIndex(p => p.ticker === ticker);
-  if (idx === -1) return;
-  askClaudeSingle(idx);
+  askClaudeSingle(ticker);
 }
 
 
@@ -6291,13 +6289,19 @@ function buildMarketContext() {
   return parts.join(' | ');
 }
 
-async function askClaudeSingle(idx) {
+async function askClaudeSingle(tickerOrIdx) {
   const modal   = document.getElementById('askClaudeModal');
   const content = document.getElementById('askClaudeContent');
-  const p       = POSITIONS[idx];
-  if (!p) return;
 
-  const ticker = p.ticker;
+  // Accept either a ticker string (from watchcard) or a position index (legacy)
+  let ticker;
+  if (typeof tickerOrIdx === 'number') {
+    const p = POSITIONS[tickerOrIdx];
+    if (!p) return;
+    ticker = p.ticker;
+  } else {
+    ticker = tickerOrIdx;
+  }
   modal.classList.add('show');
   content.innerHTML = '<div class="aip-load"><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><span class="aip-dot">\u25cf</span><div style="margin-top:8px">Fetching IV + flow for ' + ticker + '\u2026</div></div>';
 
@@ -6379,6 +6383,7 @@ async function askClaudeSingle(idx) {
     s:    sector,
     p:    lp.price ? (lp.price.toFixed(2) + ' ' + (lp.pct >= 0 ? 'up' : 'dn') + Math.abs(lp.pct || 0).toFixed(1) + '%') : '?',
     b:    bias,
+    ip:   POSITIONS.some(pos => pos.ticker === ticker) ? 1 : 0,
     n:    note,
     ivr:  ivrStr,
     iv:   ivPct,
@@ -7564,10 +7569,8 @@ function renderWatchList() {
         ? `<span class="wc-pos in">${posCount} pos</span>`
         : `<span class="wc-pos out">watching</span>`;
 
-      // Ask Claude button — only for cards with positions
-      const wcAskBtn = hasPos
-        ? `<button onclick="askClaudeForTicker('${ticker}')" title="Ask Claude" style="background:transparent;border:1px solid rgba(0,212,255,.4);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;cursor:pointer;line-height:1;letter-spacing:.3px">🤖</button>`
-        : '';
+      // Ask Claude button — shown on all cards; routes through singleAnalysis (Opus 4.7)
+      const wcAskBtn = `<button onclick="askClaudeForTicker('${ticker}')" title="Deep single analysis (Opus)" style="background:transparent;border:1px solid rgba(0,212,255,.4);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;cursor:pointer;line-height:1;letter-spacing:.3px">🤖</button>`;
 
       const biasColor = bias==='bull'?'var(--green)':bias==='bear'?'var(--red)':bias==='sell'?'var(--orange)':'var(--muted)';
       const biasLabel = bias==='bull'?'↑ BULL':bias==='bear'?'↓ BEAR':bias==='sell'?'⚡ SELL':'→ NONE';
