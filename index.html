@@ -598,14 +598,14 @@
     <div class="pnl-stat-lbl">% of Extrinsic</div>
     <div class="pnl-progress-wrap"><div class="pnl-progress-bar" id="pnl-bar-fill" style="width:0%;background:var(--green)"></div></div>
   </div>
-  <div class="pnl-stat" title="All positions including long options, covered calls &amp; debit spreads">
-    <div class="pnl-stat-val" id="s-profitable">—</div>
-    <div id="s-profitable-ratio" style="font-size:13px;font-family:'JetBrains Mono',monospace;font-weight:700;margin-top:4px;color:var(--muted)">—</div>
-    <div class="pnl-stat-lbl">P&amp;L Split</div>
-  </div>
   <div class="pnl-stat">
     <div class="pnl-stat-val" id="pnl-collateral" style="color:var(--muted)">—</div>
     <div class="pnl-stat-lbl">Total Collateral at Risk</div>
+  </div>
+  <div class="pnl-stat" title="All positions including long options, covered calls &amp; debit spreads">
+    <div class="pnl-stat-val" id="s-profitable" style="font-size:18px">—</div>
+    <div id="s-profitable-ratio" style="font-size:11px;font-family:'DM Sans',sans-serif;font-weight:700;margin-top:3px;color:var(--muted)">—</div>
+    <div class="pnl-stat-lbl">P&amp;L Split</div>
   </div>
   <!-- Theta + Beta-weighted delta grouped at right -->
   <div class="pnl-stat" style="border-left:2px solid rgba(0,200,180,.2);padding-left:10px">
@@ -613,7 +613,7 @@
     <div class="pnl-stat-lbl">Est. Daily Theta</div>
   </div>
   <div class="pnl-stat" style="border-left:1px solid rgba(0,200,180,.1)">
-    <div id="pnl-betadelta-daily" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;display:none"></div>
+    <div id="pnl-betadelta-daily" style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;display:none"></div>
     <div id="pnl-betadelta-daily-lbl" style="font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:none">est. daily total</div>
     <div class="pnl-stat-val" id="pnl-gammadelta" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight" style="color:var(--accent);font-size:12px;margin-top:4px">—</div>
     <div class="pnl-stat-lbl" title="Beta + gamma adjusted delta — BWD scaled by √(30/DTE) per position so near-dated positions carry more weight">βγ-Wtd Δ / 1%</div>
