@@ -2718,10 +2718,14 @@ async function fetchChainCredit(ticker, bias) {
     // Find nearest monthly 3rd-Friday expiry in 30-45 DTE window (expand to 25-55 if needed)
     const today = new Date();
     function thirdFriday(yr, mo) {
-      const first = new Date(yr, mo, 1);
-      const firstFri = (5 - first.getDay() + 7) % 7;
-      return new Date(yr, mo, 1 + firstFri + 14).toISOString().slice(0, 10);
-    }
+  		const first = new Date(yr, mo, 1);
+  		const firstFri = (5 - first.getDay() + 7) % 7;
+  		const date = new Date(yr, mo, 1 + firstFri + 14).toISOString().slice(0, 10);
+  		const HOLIDAY_ADJ = {
+    				'2026-06-19': '2026-06-18',  // Juneteenth 2026
+ 		 };
+  		return HOLIDAY_ADJ[date] || date;
+}
     const candidates = [];
     let yr = today.getFullYear(), mo = today.getMonth();
     for (let i = 0; i < 4; i++) {
