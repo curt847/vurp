@@ -2718,14 +2718,15 @@ async function fetchChainCredit(ticker, bias) {
     // Find nearest monthly 3rd-Friday expiry in 30-45 DTE window (expand to 25-55 if needed)
     const today = new Date();
     function thirdFriday(yr, mo) {
-  		const first = new Date(yr, mo, 1);
-  		const firstFri = (5 - first.getDay() + 7) % 7;
-  		const date = new Date(yr, mo, 1 + firstFri + 14).toISOString().slice(0, 10);
-  		const HOLIDAY_ADJ = {
-    				'2026-06-19': '2026-06-18',  // Juneteenth 2026
- 		 };
-  		return HOLIDAY_ADJ[date] || date;
-}
+      const first = new Date(yr, mo, 1);
+      const firstFri = (5 - first.getDay() + 7) % 7;
+      const date = new Date(yr, mo, 1 + firstFri + 14).toISOString().slice(0, 10);
+      // Holiday adjustments — when 3rd Friday is a market holiday, expiry shifts to Thursday
+      const HOLIDAY_ADJ = {
+        '2026-06-19': '2026-06-18',  // Juneteenth 2026
+      };
+      return HOLIDAY_ADJ[date] || date;
+    }
     const candidates = [];
     let yr = today.getFullYear(), mo = today.getMonth();
     for (let i = 0; i < 4; i++) {
@@ -2738,7 +2739,7 @@ async function fetchChainCredit(ticker, bias) {
     // Prefer 30-45 DTE, fall back to widest window
     const target = candidates.find(c => c.dte >= 30 && c.dte <= 45) || candidates[0];
 
-    // Pull full greeks chain for this expiry
+    // ── Step 1: Greeks — find the right strike by delta ──────────────
     const g = await uw(`/api/stock/${ticker}/greeks`, target.expiry);
     const chain = Array.isArray(g && g.data) ? g.data : [];
     if (chain.length < 5) return null;
@@ -2751,15 +2752,15 @@ async function fetchChainCredit(ticker, bias) {
     const isBearish = bias === 'bear';
     const optType   = isBearish ? 'C' : 'P';
     const deltaKey  = isBearish ? 'call_delta' : 'put_delta';
+    const symKey    = isBearish ? 'call_option_symbol' : 'put_option_symbol';
 
-    // Filter to the correct option type and find strike nearest 0.35 delta
+    // Map greeks rows — capture delta, IV, and option symbol for matching later
     const rows = chain
       .map(r => ({
-        strike: Number(r.strike),
-        delta:  Math.abs(Number(r[deltaKey])),
-        bid:    Number(r.bid)  || null,
-        ask:    Number(r.ask)  || null,
-        iv:     Number(r.implied_volatility || r.iv || r.call_iv || r.put_iv) || null,
+        strike:    Number(r.strike),
+        delta:     Math.abs(Number(r[deltaKey])),
+        iv:        Number(r.implied_volatility || r.iv || r.call_iv || r.put_iv) || null,
+        optSymbol: r[symKey] || null,
       }))
       .filter(r => r.strike > 0 && r.delta > 0 && r.delta < 1);
 
@@ -2770,21 +2771,32 @@ async function fetchChainCredit(ticker, bias) {
     const shortLeg = rows[0];
     if (!shortLeg || shortLeg.delta < 0.10 || shortLeg.delta > 0.65) return null;
 
-    // Mid price of short leg
-    const shortMid = (shortLeg.bid != null && shortLeg.ask != null)
-      ? (shortLeg.bid + shortLeg.ask) / 2
-      : null;
-    if (!shortMid || shortMid <= 0) return null;
-
     // Find long leg: $5 wide (standard width for $500 collateral target)
-    const longStrike = isBearish
-      ? shortLeg.strike + 5
-      : shortLeg.strike - 5;
+    const longStrike = isBearish ? shortLeg.strike + 5 : shortLeg.strike - 5;
     const longRow = rows.find(r => Math.abs(r.strike - longStrike) < 0.51)
                  || rows.find(r => Math.abs(r.strike - longStrike) < 1.51);
-    const longMid = longRow && longRow.bid != null && longRow.ask != null
-      ? (longRow.bid + longRow.ask) / 2
+
+    // ── Step 2: Option-contracts — get live bid/ask for those strikes ─
+    const oc = await uw(`/api/stock/${ticker}/option-contracts`, target.expiry);
+    const contracts = Array.isArray(oc && oc.data) ? oc.data : [];
+
+    // Match by option symbol from the greeks response
+    const shortContract = shortLeg.optSymbol
+      ? contracts.find(c => c.option_symbol === shortLeg.optSymbol)
       : null;
+    const longContract = longRow && longRow.optSymbol
+      ? contracts.find(c => c.option_symbol === longRow.optSymbol)
+      : null;
+
+    // Compute mid prices from NBBO bid/ask
+    const shortMid = shortContract
+      ? (parseFloat(shortContract.nbbo_bid) + parseFloat(shortContract.nbbo_ask)) / 2
+      : null;
+    const longMid = longContract
+      ? (parseFloat(longContract.nbbo_bid) + parseFloat(longContract.nbbo_ask)) / 2
+      : null;
+
+    if (!shortMid || shortMid <= 0) return null;
 
     // Net credit = short mid - long mid
     const credit = longMid != null
@@ -2795,8 +2807,7 @@ async function fetchChainCredit(ticker, bias) {
     const creditPct  = Math.round((credit / width) * 100); // % of spread width
     const collateral = Math.round((width - credit) * 100); // per contract
 
-    // Put skew: compare put IV vs call IV at same delta distance from ATM
-    // Use the chain to find ATM IV and OTM put IV for skew context
+    // Put skew: compare OTM put IV vs ATM IV for context
     let skewNote = null;
     const atmRow = rows.reduce((best, r) =>
       Math.abs(r.delta - 0.50) < Math.abs(best.delta - 0.50) ? r : best, rows[0]);
