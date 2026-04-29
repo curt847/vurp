@@ -1930,7 +1930,8 @@ function renderTable() {
       // Credit spreads: always "CLOSE" regardless of profit level
       const convictionRollBlock = p.convictionHold && getEffectiveDelta(p) < 0.85;
       const cspRollBlock = p.cspMode; // CSP mode never rolls — assignment is the goal
-      actionHtml = (level==='red'||level==='orange') && !convictionRollBlock && !cspRollBlock
+      const debitSpreadBlock = p.postype === 'spread_debit'; // Debit spreads can't be rolled
+      actionHtml = (level==='red'||level==='orange') && !convictionRollBlock && !cspRollBlock && !debitSpreadBlock
         ? `${pencil} ${rollBtnHtml} ${closeBtnHtml} ${askClaudeBtn}`
         : `${pencil} ${closeBtnHtml} ${askClaudeBtn}`;
     }
@@ -1946,7 +1947,7 @@ function renderTable() {
       const tod = new Date(); tod.setHours(0,0,0,0);
       const earnDate = new Date(e + 'T00:00:00');
       const daysUntil = Math.round((earnDate - tod) / 86400000);
-      return daysUntil >= 0 && daysUntil <= 6;
+      return daysUntil >= 0 && daysUntil <= 1;
     })();
     const hasNote = !!TICKER_NOTES[p.ticker];
     const noteTooltip = hasNote ? TICKER_NOTES[p.ticker].text.slice(0,80).replace(/'/g,"&#39;") : 'Add note';
