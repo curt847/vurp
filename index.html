@@ -37,7 +37,7 @@
   .btn-auto.on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
 
   /* STATS BAR */
-  .stats-bar{display:grid;grid-template-columns:repeat(11,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .stats-bar{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
   .stat-blue .stat-val{color:var(--blue)}
   .stat{background:var(--surface);padding:10px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .stat-val{font-family:'DM Sans',sans-serif;font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
@@ -543,12 +543,14 @@
 
 <div class="stats-bar">
   <div class="stat stat-red"><div class="stat-val" id="s-red">—</div><div class="stat-lbl">🔴 Roll Now</div></div>
-  <div class="stat stat-blue"><div class="stat-val" id="s-closeroll">—</div><div class="stat-lbl">⭐ Close / Roll</div></div>
-  <div class="stat stat-blue" style="--blue:#00c8b4"><div class="stat-val" id="s-cspassign" style="color:var(--teal)">—</div><div class="stat-lbl">📌 CSP Assign</div></div>
   <div class="stat stat-orange"><div class="stat-val" id="s-orange">—</div><div class="stat-lbl">🟠 Watch</div></div>
   <div class="stat stat-yellow"><div class="stat-val" id="s-yellow">—</div><div class="stat-lbl">🟡 Radar</div></div>
   <div class="stat stat-green"><div class="stat-val" id="s-green">—</div><div class="stat-lbl">✅ Healthy</div></div>
+  <div class="stat stat-blue" style="--blue:#00c8b4"><div class="stat-val" id="s-cspassign" style="color:var(--teal)">—</div><div class="stat-lbl">📌 CSP Assign</div></div>
+  <div class="stat"><div class="stat-val" id="s-coveredcalls" style="color:var(--muted)">—</div><div class="stat-lbl">📋 Cov. Calls</div></div>
+  <div class="stat"><div class="stat-val" id="s-debitlongs" style="color:var(--muted)">—</div><div class="stat-lbl">📊 Debit / Longs</div></div>
   <div class="stat stat-accent"><div class="stat-val" id="s-total">59</div><div class="stat-lbl">Positions</div></div>
+  <div class="stat" title="Flag only — positions with ⭐ profit level. Not unique bucket."><div class="stat-val" id="s-closeroll" style="color:var(--blue)">—</div><div class="stat-lbl">⭐ Close / Roll</div></div>
   <div class="stat"><div class="stat-val" id="s-itm" style="color:var(--red)">—</div><div class="stat-lbl">ITM</div></div>
   <div class="stat"><div class="stat-val" id="s-earnings" style="color:var(--purple)">—</div><div class="stat-lbl">⚠ Earnings Risk</div></div>
   <div class="stat" title="Average days to expiration across all positions"><div class="stat-val" id="s-avgdte" style="color:#c9a96e">—</div><div class="stat-lbl">Avg DTE</div></div>
@@ -2036,21 +2038,27 @@ function renderTable() {
 function updateStats() {
   const cnt={red:0,orange:0,yellow:0,green:0};
   let col=0,itm=0,ern=0,pnlWin=0,pnlLoss=0,netDelta=0,netGammaDelta=0,grossGammaDelta=0;
-  let closeRollCnt=0, cspAssignCnt=0;
+  let closeRollCnt=0, cspAssignCnt=0, coveredCallCnt=0, debitLongsCnt=0;
   POSITIONS.forEach(p=>{
-    // Debit spreads (FADING) and CSP mode positions are self-managed — exclude from roll counts
-    // Covered calls are excluded from Roll Now (they get Close/Roll instead)
-    if (!isLongOption(p) && p.postype !== 'spread_debit' && !p.cspMode && p.postype !== 'covered_call') cnt[getAlertLevel(p)]++;
-    if(p.postype!=='covered_call' && !isLongOption(p)) col+=p.collateral;
+    const isLong   = isLongOption(p);
+    const isDebit  = p.postype === 'spread_debit';
+    const isCC     = p.postype === 'covered_call';
+    const isCSP    = p.cspMode;
+
+    // Mutually exclusive buckets that sum to total:
+    // CSP Assign | Covered Calls | Debit/Longs | Roll/Watch/Radar/Healthy
+    if (isCSP)        { cspAssignCnt++; }
+    else if (isCC)    { coveredCallCnt++; }
+    else if (isLong || isDebit) { debitLongsCnt++; }
+    else              { cnt[getAlertLevel(p)]++; }
+
+    if(p.postype!=='covered_call' && !isLong) col+=p.collateral;
     if(isITM(p)) itm++;
     if(hasEarningsRisk(p)) ern++;
-    // Close / Roll: any position with ⭐ or ⭐⭐ profit pill (profitLevel === 'close' or 'profit')
-    // Also include all covered calls that have a profit level
+    // Close / Roll: flag only — any position with ⭐ or ⭐⭐ profit pill
     const _liveGain = calcLiveGain(p);
     const _profitLv = getProfitLevel(p, _liveGain);
     if (_profitLv === 'close' || _profitLv === 'profit') closeRollCnt++;
-    // CSP Assign: cspMode positions that are ITM with DTE ≤ 21 (showing "Assign 👀" pill)
-    if (p.cspMode && isITM(p) && getDTE(p) <= 21) cspAssignCnt++;
     // Dollar-weighted P&L split
     const g = calcLiveGain(p);
     if (!isNaN(g)) {
@@ -2103,6 +2111,8 @@ function updateStats() {
   document.getElementById('s-green').textContent=cnt.green;
   document.getElementById('s-closeroll').textContent=closeRollCnt||'—';
   document.getElementById('s-cspassign').textContent=cspAssignCnt||'—';
+  const ccEl=document.getElementById('s-coveredcalls'); if(ccEl) ccEl.textContent=coveredCallCnt||'—';
+  const dlEl=document.getElementById('s-debitlongs'); if(dlEl) dlEl.textContent=debitLongsCnt||'—';
   document.getElementById('s-total').textContent=POSITIONS.length;
   document.getElementById('s-itm').textContent=itm||'—';
   const colEl=document.getElementById('s-collateral'); if(colEl) colEl.textContent='$'+(col/1000).toFixed(1)+'K';
