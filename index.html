@@ -44,7 +44,7 @@
   .stat-val{font-family:'DM Sans',sans-serif;font-size:30px;font-weight:800;line-height:1;margin-bottom:3px}
   .stat-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
   .stat-flag{background:var(--surface2)}
-  .stat-flag .stat-val{font-size:18px;margin-bottom:2px}
+  .stat-flag .stat-val{font-size:30px;margin-bottom:3px}
   .stat-flag .stat-lbl{font-size:9px}
   .stat-red .stat-val{color:var(--red)}
   .stat-orange .stat-val{color:var(--orange)}
@@ -566,7 +566,7 @@
         <button onclick="adjustBaseline(-1000)" title="-$1K" style="background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:9px;line-height:1;padding:1px 4px;border-radius:3px;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">▼</button>
       </div>
     </div>
-    <div id="s-portpnl" style="font-size:9px;color:var(--muted);margin-top:1px;cursor:pointer" onclick="showBaselineModal()">click to set</div>
+    <div id="s-portpnl" style="font-size:9px;color:var(--muted);margin-top:1px;cursor:pointer;line-height:1.4" onclick="showBaselineModal()">click to set</div>
     <div class="stat-lbl">Portfolio</div>
   </div>
 </div>
@@ -7837,8 +7837,7 @@ function updatePortfolioStat() {
 
   valEl.textContent = '$' + (currentEst/1000).toFixed(1) + 'K';
   valEl.style.color = 'var(--text)';
-  pnlEl.innerHTML = `<span style="color:${color};font-weight:700">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span>
-    <span style="color:var(--muted);font-size:8px"> since ${baseDate}</span>`;
+  pnlEl.innerHTML = `<span style="color:${color};font-weight:700;font-size:12px">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span><br><span style="color:var(--muted);font-size:9px">${baseDate}</span>`;
 }
 
 document.getElementById('baselineModal').addEventListener('click', e => {
