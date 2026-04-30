@@ -45,7 +45,7 @@
   .stat-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
   .stat-flag{background:var(--surface2)}
   .stat-flag .stat-val{font-size:30px;margin-bottom:3px}
-  .stat-flag .stat-lbl{font-size:9px}
+  .stat-flag .stat-lbl{font-size:10px}
   .stat-red .stat-val{color:var(--red)}
   .stat-orange .stat-val{color:var(--orange)}
   .stat-yellow .stat-val{color:var(--yellow)}
@@ -567,7 +567,7 @@
       </div>
     </div>
     <div id="s-portpnl" style="font-size:9px;color:var(--muted);margin-top:1px;cursor:pointer;line-height:1.4" onclick="showBaselineModal()">click to set</div>
-    <div class="stat-lbl">Portfolio</div>
+    <div id="s-portdate" class="stat-lbl">—</div>
   </div>
 </div>
 
@@ -7743,6 +7743,7 @@ function renderWatchList() {
 // ══════════════════════════════════════════
 const PORT_KEY = 'rollwatch_portfolio_v1';
 let portfolioBaseline = null; // { value, date }
+let portfolioAdjust = 0; // arrow-button offset — added to baseline for display/calc only, never persisted
 
 function savePortfolio() {
   // Always go through saveToStorage so Drive gets the full state update
@@ -7803,41 +7804,42 @@ function adjustBaseline(delta) {
     // Prompt to set a baseline first if none exists
     showBaselineModal(); return;
   }
-  portfolioBaseline.value = Math.max(0, portfolioBaseline.value + delta);
-  savePortfolio();
+  portfolioAdjust += delta;
   updatePortfolioStat();
 }
 
 function updatePortfolioStat() {
   const valEl = document.getElementById('s-portval');
   const pnlEl = document.getElementById('s-portpnl');
+  const dateEl = document.getElementById('s-portdate');
 
   if (!portfolioBaseline) {
     valEl.textContent = '—';
-    pnlEl.innerHTML = '<span style="color:var(--muted);font-size:9px">click to set baseline</span>';
+    pnlEl.innerHTML = '<span style="color:var(--muted);font-size:9px">click to set</span>';
     pnlEl.style.color = 'var(--muted)';
+    if (dateEl) dateEl.textContent = 'Portfolio';
     return;
   }
 
   const est = calcCurrentPortfolioValue();
-  // Current estimated value = baseline + options P&L change since baseline + stock value change
-  // We track relative change: options P&L delta from when baseline was set
-  // Simpler: just show running options P&L + stock unrealized G/L as the delta
   const stockGL = STOCKS.reduce((sum, s) => {
     const price = (livePrices[s.ticker]&&livePrices[s.ticker].price) || s.cost;
     return sum + (price - s.cost) * s.shares;
   }, 0);
 
+  // effective baseline = stored baseline + arrow adjustment (adjust never changes stored baseline)
+  const effectiveBaseline = portfolioBaseline.value + portfolioAdjust;
   const totalDelta = est.optionsPnL + stockGL;
-  const currentEst = portfolioBaseline.value + totalDelta;
-  const pct = (totalDelta / portfolioBaseline.value) * 100;
+  const currentEst = effectiveBaseline + totalDelta;
+  const pct = effectiveBaseline > 0 ? (totalDelta / effectiveBaseline) * 100 : 0;
   const color = totalDelta >= 0 ? 'var(--green)' : 'var(--red)';
   const sign = totalDelta >= 0 ? '+' : '';
   const baseDate = new Date(portfolioBaseline.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
   valEl.textContent = '$' + (currentEst/1000).toFixed(1) + 'K';
   valEl.style.color = 'var(--text)';
-  pnlEl.innerHTML = `<span style="color:${color};font-weight:700;font-size:12px">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span><br><span style="color:var(--muted);font-size:9px">${baseDate}</span>`;
+  pnlEl.innerHTML = `<span style="color:${color};font-weight:700;font-size:12px">${sign}$${Math.round(totalDelta).toLocaleString()} (${sign}${pct.toFixed(1)}%)</span>`;
+  if (dateEl) dateEl.textContent = baseDate;
 }
 
 document.getElementById('baselineModal').addEventListener('click', e => {
